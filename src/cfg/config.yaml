@@ -1,0 +1,54 @@
+
+ci_methods: 
+  - "param_t"
+  - "param_z"
+  - "basic"
+  - "percentile"
+  - "BCa"
+  - "studentized"
+
+# Possible values for metrics (for reference, you will use one at a time)
+metric:
+  - "DSC"
+  - "NSD"
+
+# Possible values for summary_stat (choose one from here)
+summary_stat:
+  - "mean"
+  - "median"
+  - "trimmed_mean"
+
+# List of tasks (subtasks for processing)
+tasks:
+  - "BRATS_L1"
+  - "BRATS_L2"
+  - "BRATS_L3"
+  - "colon_L1"
+  - "hepaticvessel_L1"
+  - "hepaticvessel_L2"
+  - "hippocampus_L1"
+  - "hippocampus_L2"
+  - "liver_L1"
+  - "liver_L2"
+  - "pancreas_L1"
+  - "pancreas_L2"
+
+kernel:
+  - "gaussian"
+  - "tophat"
+  - "epanechnikov"
+  - "exponential"
+  - "cosine"
+  - "linear"
+
+# Trimmed mean thresholds (adjustable)
+trimmed_mean_threshold:
+  - 0.1
+  - 0.2
+  - 0.3
+  - 0.4
+  - 0.5
+
+# Additional parameters
+bandwidth: 0.25
+n_samples: 5000
