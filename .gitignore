@@ -174,7 +174,7 @@ cython_debug/
 .pypirc
 
 # Hydra logs
-multirun/
+**/multirun/
 
 # Data Files
-src/data/
+**/data/
