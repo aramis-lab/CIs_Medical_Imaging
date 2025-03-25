@@ -177,4 +177,4 @@ cython_debug/
 **/multirun/
 
 # Data Files
-**/data/
+/src/data/
