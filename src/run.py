@@ -13,9 +13,6 @@ BASE_DIR = os.path.dirname(__file__)
 DATA_PATH = os.path.join(BASE_DIR, "data", "data_matrix_grandchallenge.csv")
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
-
 def extract_df(df, metric, task):
     metric = "DCS" if metric == "DSC" else "HSD" if metric == "NSD" else metric
     df = df[(df["score"] == metric) & (df["subtask"] == task)]
