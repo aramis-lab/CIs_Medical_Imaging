@@ -36,10 +36,11 @@ def compute_bootstrap_CI(data, statistic, alpha=0.05, method="percentile", n_res
 
 def studentized_interval(samples, statistic, alpha, n_resamples=2000):
     samples_statistics = statistic(samples, axis=1)
+    samples_stds = np.std(samples, axis=1)
     bootstrap_samples = np.stack([np.random.choice(samples[i], size=(samples.shape[1], n_resamples), replace=True) for i in range(samples.shape[0])])
     bootstrap_statistics = statistic(bootstrap_samples, axis=1)
     boostrap_stds = np.std(bootstrap_samples, axis=1, ddof=1)
     studentized = (bootstrap_statistics - samples_statistics) / boostrap_stds
     lower_bound = np.percentile(studentized, 100 * alpha / 2, axis=1)
     upper_bound = np.percentile(studentized, 100 * (1 - alpha / 2), axis=1)
-    return np.vstack([samples_statistics - lower_bound * boostrap_stds, samples_statistics - upper_bound * boostrap_stds])
+    return np.vstack([samples_statistics - lower_bound * samples_stds, samples_statistics - upper_bound * samples_stds])
