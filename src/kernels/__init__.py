@@ -4,6 +4,7 @@ from .exponential import *
 from .gaussian import *
 from .linear import *
 from .tophat import *
+from .gamma import *
 
 def get_kernel(kernel_name):
     kernel_dict = {
@@ -12,6 +13,7 @@ def get_kernel(kernel_name):
         "exponential": exponential_kernel,
         "gaussian": gaussian_kernel,
         "linear": linear_kernel,
-        "tophat": tophat_kernel
+        "tophat": tophat_kernel,
+        "gamma" : gamma_kernel
     }
     return kernel_dict.get(kernel_name, None)

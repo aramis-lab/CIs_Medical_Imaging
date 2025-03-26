@@ -33,14 +33,16 @@ def make_kdes_and_compute_metrics(df, task, config):
         x = np.linspace(0, 1, 1000)  # You can change the resolution of x
         alphas = np.ones(len(DSCs))
 
+        dist_to_bounds = np.min([DSCs - np.min(DSCs), np.max(DSCs)-DSCs], axis=0)
+
         # Iterative weighted KDE estimation
-        for _ in range(3):
+        for _ in range(1):
             y = weighted_kde(DSCs, x, alphas, config.kernel)
             indices = np.searchsorted(x, DSCs)
             initial_estimates = y[indices]
             log_g = np.mean(np.log(initial_estimates))
             g = np.exp(log_g)
-            alphas = (initial_estimates / g) ** (-1/2)
+            alphas = (initial_estimates / g) ** (-1/2) * (1-np.exp(-1e6*dist_to_bounds))
         
         y = weighted_kde(DSCs, x, alphas, config.kernel)
         samples = sample_weighted_kde(y, x, 1000000)
