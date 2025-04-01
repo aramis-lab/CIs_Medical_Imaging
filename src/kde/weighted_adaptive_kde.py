@@ -1,10 +1,8 @@
 import numpy as np
 from ..kernels import get_kernel
 
-from scipy.spatial import KDTree
-
 # Weighted KDE estimation
-def weighted_kde(data: np.ndarray, x_points: np.ndarray, alphas=None, kernel_name="epanechnikov"):
+def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndarray, alphas=None, kernel_name="epanechnikov"):
     n = len(data)
     bandwidth = 1.06 * np.std(data) * n ** (-1 / 5)
 
@@ -12,6 +10,7 @@ def weighted_kde(data: np.ndarray, x_points: np.ndarray, alphas=None, kernel_nam
         alphas = np.ones(n)
 
     bandwidths = bandwidth * alphas
+    bandwidths = np.min([bandwidths, dist_to_bounds], axis=0)
 
     kernel = get_kernel(kernel_name)  # Ensure this function returns a valid kernel
 
@@ -22,13 +21,13 @@ def weighted_kde(data: np.ndarray, x_points: np.ndarray, alphas=None, kernel_nam
             current_density = kernel(x_points, data[i], bandwidths[i])
 
             # Ensure total density integrates properly
-            density += current_density / n
+            density += current_density
         
         else : 
             idx = -round(data[i])
-            density[idx] += 1 / (n * (x_points[1] - x_points[0]))
+            density[idx] += 1 / (x_points[1] - x_points[0])
 
-    return density
+    return density / n
 
 # Sampling from KDE with adaptive bandwidth
 def sample_weighted_kde(y, x, n_samples):

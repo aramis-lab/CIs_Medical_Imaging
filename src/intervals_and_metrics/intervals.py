@@ -27,11 +27,11 @@ def compute_bootstrap_CI(data, statistic, alpha=0.05, method="percentile", n_res
     bootstrap_ci = bootstrap((data,), statistic=statistic, vectorized=True, axis=1, batch=1, confidence_level=1 - alpha, n_resamples=n_resamples, method=method).confidence_interval
     ci_bounds = np.array([bootstrap_ci.low, bootstrap_ci.high])
     nan_proportion = 0
-    for i in range(ci_bounds.shape[0]):
+    for i in range(ci_bounds.shape[1]):
         if np.isnan(ci_bounds[:, i]).any():
-            median_sample = np.median(data[i])
-            ci_bounds[:, i] = np.array([median_sample, median_sample])
-            nan_proportion += 1
+            statistic_sample = statistic(data[i])
+            ci_bounds[:, i] = np.array([statistic_sample, statistic_sample])
+            nan_proportion += 1/ci_bounds.shape[1]
     return ci_bounds, nan_proportion
 
 def studentized_interval(samples, statistic, alpha, n_resamples=2000):

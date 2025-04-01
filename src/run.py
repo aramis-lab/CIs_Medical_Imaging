@@ -6,7 +6,7 @@ import hydra
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde
 from summary_stats import get_statistic
-from intervals_and_metrics import compute_CIs, compute_metrics
+from intervals_and_metrics import compute_CIs, compute_metrics, get_bounds
 import os
 
 BASE_DIR = os.path.dirname(__file__)
@@ -25,26 +25,38 @@ def make_kdes_and_compute_metrics(df, task, config):
     statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
     results = pd.DataFrame()
 
+    a, b = get_bounds(config.metric)
+
     # Iterate over algorithms
     for algo in tqdm(df["alg_name"].unique()):
         DSCs = df[df["alg_name"] == algo]["value"].to_numpy()
 
+        values_span = np.max(DSCs) - np.min(DSCs)
         # Define the grid for KDE
-        x = np.linspace(0, 1, 1000)  # You can change the resolution of x
+        if np.isinf(a):
+            min_val = np.min(DSCs) - 0.1 * values_span
+        else:
+            min_val = a
+        
+        if np.isinf(b):
+            max_val = np.max(DSCs) + 0.1 * values_span
+        else:
+            max_val = b
+        x = np.linspace(min_val, max_val, 1000)  # You can change the resolution of x
         alphas = np.ones(len(DSCs))
 
-        dist_to_bounds = np.min([DSCs - np.min(DSCs), np.max(DSCs)-DSCs], axis=0)
+        dist_to_bounds = np.min([DSCs-a, b-DSCs], axis=0)
 
         # Iterative weighted KDE estimation
         for _ in range(1):
-            y = weighted_kde(DSCs, x, alphas, config.kernel)
+            y = weighted_kde(DSCs, x, dist_to_bounds, alphas, config.kernel)
             indices = np.searchsorted(x, DSCs)
             initial_estimates = y[indices]
             log_g = np.mean(np.log(initial_estimates))
             g = np.exp(log_g)
             alphas = (initial_estimates / g) ** (-1/2) * (1-np.exp(-1e6*dist_to_bounds))
         
-        y = weighted_kde(DSCs, x, alphas, config.kernel)
+        y = weighted_kde(DSCs, x, dist_to_bounds, alphas, config.kernel)
         samples = sample_weighted_kde(y, x, 1000000)
 
         # Compute true statistic
