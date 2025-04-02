@@ -7,6 +7,7 @@ from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde
 from summary_stats import get_statistic
 from intervals_and_metrics import compute_CIs, compute_metrics, get_bounds
+from kernels import get_kernel
 import os
 
 BASE_DIR = os.path.dirname(__file__)
@@ -26,6 +27,8 @@ def make_kdes_and_compute_metrics(df, task, config):
     results = pd.DataFrame()
 
     a, b = get_bounds(config.metric)
+
+    kernel = get_kernel(config.kernel)
 
     # Iterate over algorithms
     for algo in tqdm(df["alg_name"].unique()):
@@ -49,14 +52,14 @@ def make_kdes_and_compute_metrics(df, task, config):
 
         # Iterative weighted KDE estimation
         for _ in range(1):
-            y = weighted_kde(DSCs, x, dist_to_bounds, alphas, config.kernel)
+            y = weighted_kde(DSCs, x, dist_to_bounds, kernel, alphas)
             indices = np.searchsorted(x, DSCs)
             initial_estimates = y[indices]
             log_g = np.mean(np.log(initial_estimates))
             g = np.exp(log_g)
             alphas = (initial_estimates / g) ** (-1/2) * (1-np.exp(-1e6*dist_to_bounds))
         
-        y = weighted_kde(DSCs, x, dist_to_bounds, alphas, config.kernel)
+        y = weighted_kde(DSCs, x, dist_to_bounds, kernel, alphas)
         samples = sample_weighted_kde(y, x, 1000000)
 
         # Compute true statistic

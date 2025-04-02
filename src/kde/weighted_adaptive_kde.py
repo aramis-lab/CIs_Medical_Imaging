@@ -1,8 +1,7 @@
 import numpy as np
-from ..kernels import get_kernel
 
 # Weighted KDE estimation
-def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndarray, alphas=None, kernel_name="epanechnikov"):
+def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndarray, kernel, alphas=None):
     n = len(data)
     bandwidth = 1.06 * np.std(data) * n ** (-1 / 5)
 
@@ -11,8 +10,6 @@ def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndar
 
     bandwidths = bandwidth * alphas
     bandwidths = np.min([bandwidths, dist_to_bounds], axis=0)
-
-    kernel = get_kernel(kernel_name)  # Ensure this function returns a valid kernel
 
     density = np.zeros_like(x_points)
 
