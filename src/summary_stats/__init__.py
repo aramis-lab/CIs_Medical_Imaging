@@ -3,20 +3,20 @@ from scipy.stats import trim_mean
 
 
 def mean(x, threshold, axis=None):
-    return np.mean(x, axis=axis)
+    return np.mean(x, axis=axis, keepdims=True)
 
 def median(x, threshold, axis=None):
-    return np.median(x, axis=axis)
+    return np.median(x, axis=axis, keepdims=True)
 
 def trimmed_mean(x, threshold, axis=None):
-    return trim_mean(x, threshold, axis=axis)
+    return trim_mean(x, threshold, axis=axis, keepdims=True)
 
 def std(x, threshold, axis=None):
-    return np.sqrt(np.var(x, axis=axis))
+    return np.sqrt(np.var(x, axis=axis, keepdims=True))
 
 def IQR_width(x, threshold, axis=None):
-    q3 = np.percentile(x, 75, axis=axis)
-    q1 = np.percentile(x, 25, axis=axis)
+    q3 = np.percentile(x, 75, axis=axis, keepdims=True)
+    q1 = np.percentile(x, 25, axis=axis, keepdims=True)
     return q3 - q1
 
 def get_statistic(statistic):

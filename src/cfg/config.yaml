@@ -5,7 +5,7 @@ ci_methods:
   - "basic"
   - "percentile"
   - "BCa"
-  - "studentized"
+  # - "studentized"
 
 # Possible values for metrics (for reference, you will use one at a time)
 metric:
