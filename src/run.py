@@ -9,9 +9,7 @@ from intervals_and_metrics import compute_CIs, compute_metrics, get_bounds
 from kernels import get_kernel
 import os
 
-BASE_DIR = os.path.dirname(__file__)
-DATA_PATH = os.path.join(BASE_DIR, "data")
-RESULTS_DIR = os.path.join(BASE_DIR, "results")
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def extract_df(df, metric, task):
     metric = "DCS" if metric == "DSC" else "HSD" if metric == "NSD" else metric
@@ -77,7 +75,7 @@ def make_kdes_and_compute_metrics(df, task, config):
 
 def process_subtask(task, cfg):
     print(f"Running KDE for metric {cfg.metric} and subtask {task}")
-    df = pd.read_csv(os.path.join(DATA_PATH, cfg.data_file))
+    df = pd.read_csv(os.path.join(BASE_DIR, cfg.relative_data_path))
     df = extract_df(df, cfg.metric, task)
     results = make_kdes_and_compute_metrics(df, task, cfg)
     return results
@@ -94,6 +92,7 @@ def main(cfg: DictConfig):
     for result in results:
         aggreggated_results = pd.concat([aggreggated_results, result], ignore_index=True)
     
+    RESULTS_DIR = os.path.join(BASE_DIR, cfg.relative_results_path)
     aggreggated_results.to_csv(os.path.join(RESULTS_DIR, f"results_{cfg.metric}_{cfg.summary_stat}.csv"))
 
 if __name__ == "__main__":
