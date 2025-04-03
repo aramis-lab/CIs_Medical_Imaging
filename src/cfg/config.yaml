@@ -49,6 +49,19 @@ trimmed_mean_threshold:
   - 0.4
   - 0.5
 
+sample_sizes:
+  - 10
+  - 25
+  - 50
+  - 75
+  - 100
+  - 125
+  - 150
+  - 200
+  - 250
+
+data_file : "data_matrix_grandchallenge.csv"
+
 # Additional parameters
 bandwidth: 0.25
 n_samples: 5000

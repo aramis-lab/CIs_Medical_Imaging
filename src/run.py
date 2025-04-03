@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
 import joblib
 import hydra
 from omegaconf import DictConfig
@@ -11,7 +10,7 @@ from kernels import get_kernel
 import os
 
 BASE_DIR = os.path.dirname(__file__)
-DATA_PATH = os.path.join(BASE_DIR, "data", "data_matrix_grandchallenge.csv")
+DATA_PATH = os.path.join(BASE_DIR, "data")
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
 def extract_df(df, metric, task):
@@ -31,7 +30,7 @@ def make_kdes_and_compute_metrics(df, task, config):
     kernel = get_kernel(config.kernel)
 
     # Iterate over algorithms
-    for algo in tqdm(df["alg_name"].unique()):
+    for algo in df["alg_name"].unique():
         DSCs = df[df["alg_name"] == algo]["value"].to_numpy()
 
         values_span = np.max(DSCs) - np.min(DSCs)
@@ -65,7 +64,7 @@ def make_kdes_and_compute_metrics(df, task, config):
         # Compute true statistic
         true_value = statistic(samples)
 
-        for n in tqdm([10, 25, 50, 75, 100, 125, 150, 200, 250]):
+        for n in config.sample_sizes:
             new_row = {"subtask": task, "alg_name": algo, "n": n}
             samples = sample_weighted_kde(y,x, config.n_samples*n).reshape(config.n_samples, n)
 
@@ -78,7 +77,7 @@ def make_kdes_and_compute_metrics(df, task, config):
 
 def process_subtask(task, cfg):
     print(f"Running KDE for metric {cfg.metric} and subtask {task}")
-    df = pd.read_csv(DATA_PATH)
+    df = pd.read_csv(os.path.join(DATA_PATH, cfg.data_file))
     df = extract_df(df, cfg.metric, task)
     results = make_kdes_and_compute_metrics(df, task, cfg)
     return results
