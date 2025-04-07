@@ -9,6 +9,8 @@ from intervals_and_metrics import compute_CIs, compute_metrics, get_bounds
 from kernels import get_kernel
 import os
 
+from tqdm import tqdm
+
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def extract_df(df, metric, task):
@@ -28,7 +30,7 @@ def make_kdes_and_compute_metrics(df, task, config):
     kernel = get_kernel(config.kernel)
 
     # Iterate over algorithms
-    for algo in df["alg_name"].unique():
+    for algo in tqdm(df["alg_name"].unique()):
         DSCs = df[df["alg_name"] == algo]["value"].to_numpy()
 
         values_span = np.max(DSCs) - np.min(DSCs)
@@ -42,7 +44,7 @@ def make_kdes_and_compute_metrics(df, task, config):
             max_val = np.max(DSCs) + 0.1 * values_span
         else:
             max_val = b
-        x = np.linspace(min_val, max_val, 1000)  # You can change the resolution of x
+        x = np.linspace(min_val, max_val, 10000)  # You can change the resolution of x
         alphas = np.ones(len(DSCs))
 
         dist_to_bounds = np.min([DSCs-a, b-DSCs], axis=0)
@@ -62,7 +64,7 @@ def make_kdes_and_compute_metrics(df, task, config):
         # Compute true statistic
         true_value = statistic(samples)
 
-        for n in config.sample_sizes:
+        for n in tqdm(config.sample_sizes):
             new_row = {"subtask": task, "alg_name": algo, "n": n}
             samples = sample_weighted_kde(y,x, config.n_samples*n).reshape(config.n_samples, n)
 
@@ -86,13 +88,13 @@ def main(cfg: DictConfig):
 
     # Use joblib to parallelize tasks
     with joblib.Parallel(n_jobs=-1) as parallel:
-        results = parallel(joblib.delayed(process_subtask)(task, cfg) for task in cfg.tasks)
+        results = parallel(joblib.delayed(process_subtask)(task, cfg) for task in cfg.tasks[-1:])
 
     # Combine results from all tasks
     for result in results:
         aggreggated_results = pd.concat([aggreggated_results, result], ignore_index=True)
     
-    RESULTS_DIR = os.path.join(BASE_DIR, cfg.relative_results_path)
+    RESULTS_DIR = os.path.join(BASE_DIR, cfg.relative_output_dir)
     aggreggated_results.to_csv(os.path.join(RESULTS_DIR, f"results_{cfg.metric}_{cfg.summary_stat}.csv"))
 
 if __name__ == "__main__":
