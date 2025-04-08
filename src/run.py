@@ -102,8 +102,8 @@ def main(cfg: DictConfig):
     benchmark_instances = get_benchmark_instances(cfg)
 
     # Use joblib to parallelize tasks
-    with joblib.Parallel(n_jobs=4) as parallel:
-        results = parallel(joblib.delayed(process_subtask)(task, algo, cfg) for task, algo in benchmark_instances[-1:])
+    with joblib.Parallel(n_jobs=-1) as parallel:
+        results = parallel(joblib.delayed(process_subtask)(task, algo, cfg) for task, algo in benchmark_instances[-19:])
 
     # Combine results from all tasks
     for result in results:
