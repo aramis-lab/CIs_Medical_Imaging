@@ -1,7 +1,8 @@
 import numpy as np
 
 # Weighted KDE estimation
-def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndarray, kernel, alphas=None):
+def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndarray, kernel=None, alphas=None):
+
     n = len(data)
     bandwidth = 1.06 * np.std(data) * n ** (-1 / 5)
 
@@ -14,14 +15,15 @@ def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndar
     density = np.zeros_like(x_points)
 
     for i in range(n):
-        if bandwidths[i]>0:
+        if bandwidths[i]>0 and kernel is not None:
             current_density = kernel(x_points, data[i], bandwidths[i])
 
             # Ensure total density integrates properly
             density += current_density
         
         else : 
-            idx = -round(data[i])
+            idx = np.searchsorted(x_points, data[i])
+            idx = np.clip(idx, 0, len(x_points) - 1)
             density[idx] += 1 / (x_points[1] - x_points[0])
 
     return density / n
