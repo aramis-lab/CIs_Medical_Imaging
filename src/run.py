@@ -69,7 +69,7 @@ def make_kdes_and_compute_metrics(df, task, algo, config):
         initial_estimates = y[indices]
         log_g = np.mean(np.log(initial_estimates))
         g = np.exp(log_g)
-        alphas = (initial_estimates / g) ** (-1/2) * (1-np.exp(-1e6*dist_to_bounds))
+        alphas = (initial_estimates / g) ** (-1/2)
     
     y = weighted_kde(DSCs, x, dist_to_bounds, kernel, alphas)
     samples = sample_weighted_kde(y, x, 1000000)
