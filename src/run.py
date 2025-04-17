@@ -98,7 +98,7 @@ def make_kdes_and_compute_intervals(df, task, algo, config):
                 results = pd.concat([results, pd.DataFrame(results_row, index=[0])], ignore_index=True)
     return results
 
-def process_subtask(task, algo, cfg):
+def process_instance(task, algo, cfg):
     print(f"Running KDE for metric {cfg.metric}, subtask {task} and algorithm {algo}")
     df = pd.read_csv(os.path.join(BASE_DIR, cfg.relative_data_path))
     df = extract_df(df, cfg.metric, task)
@@ -113,7 +113,7 @@ def main(cfg: DictConfig):
 
     # Use joblib to parallelize tasks
     with joblib.Parallel(n_jobs=-1) as parallel:
-        results = parallel(joblib.delayed(process_subtask)(task, algo, cfg) for task, algo in benchmark_instances[-19:])
+        results = parallel(joblib.delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances)
 
     # Combine results from all tasks
     for result in results:
