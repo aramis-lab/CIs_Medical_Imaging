@@ -3,11 +3,11 @@ from scipy.stats import t, norm, bootstrap
 
 def compute_CIs(samples, method, statistic, alpha=0.05):
     if method == "param_t":
-        return param_t_interval(samples, alpha), None
+        return param_t_interval(samples, alpha)
     elif method == "param_z":
-        return param_z_interval(samples, alpha), None
+        return param_z_interval(samples, alpha)
     elif method == "studentized":
-        return studentized_interval(samples, statistic, alpha), None
+        return studentized_interval(samples, statistic, alpha)
     else:
         return compute_bootstrap_CI(samples, statistic, alpha, method)
 
@@ -26,13 +26,7 @@ def param_t_interval(data, alpha=0.05):
 def compute_bootstrap_CI(data, statistic, alpha=0.05, method="percentile", n_resamples=2000):
     bootstrap_ci = bootstrap((data,), statistic=statistic, vectorized=True, axis=1, batch=1, confidence_level=1 - alpha, n_resamples=n_resamples, method=method).confidence_interval
     ci_bounds = np.array([bootstrap_ci.low, bootstrap_ci.high])
-    nan_proportion = 0
-    for i in range(ci_bounds.shape[1]):
-        if np.isnan(ci_bounds[:, i]).any():
-            statistic_sample = statistic(data[i])
-            ci_bounds[:, i] = np.array([statistic_sample, statistic_sample])
-            nan_proportion += 1/ci_bounds.shape[1]
-    return ci_bounds, nan_proportion
+    return ci_bounds
 
 def studentized_interval(samples, statistic, alpha, n_resamples=2000):
     samples_statistics = np.expand_dims(statistic(samples, axis=-1), -2)

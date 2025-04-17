@@ -33,7 +33,7 @@ def get_benchmark_instances(cfg):
 
     return np.array(benchmark_instances)
 
-def make_kdes_and_compute_metrics(df, task, algo, config):
+def make_kdes_and_compute_intervals(df, task, algo, config):
 
     # Retrieve configuration and set up variables
     ci_methods = config.ci_methods
@@ -78,21 +78,31 @@ def make_kdes_and_compute_metrics(df, task, algo, config):
     true_value = statistic(samples)
 
     for n in tqdm(config.sample_sizes):
-        new_row = {"subtask": task, "alg_name": algo, "n": n}
         samples = sample_weighted_kde(y,x, config.n_samples*n).reshape(config.n_samples, n)
 
         for method in ci_methods:
-            CIs, nan_proportion = compute_CIs(samples, method, statistic)
-            coverage, proportion_oob, width = compute_metrics(CIs, true_value)
-            new_row.update({f"{method}_coverage": coverage, f"{method}_proportion_oob": proportion_oob, f"{method}_width": width, f"{method}_nans": nan_proportion})
-        results = pd.concat([results, pd.DataFrame(new_row, index=[0])], ignore_index=True)
+            CIs = compute_CIs(samples, method, statistic)
+            for sample_index in range(CIs.shape[1]):
+                CI = CIs[:,sample_index]
+                results_row = {
+                    "subtask": task,
+                    "alg_name": algo,
+                    "n": n,
+                    "sample_index": sample_index,
+                    f"lower_bound_{method}": CI[0],
+                    f"upper_bound_{method}": CI[1],
+                    f"contains_true_stat_{method}": CI[0] <= true_value <= CI[1],
+                    f"width_{method}": CI[1] - CI[0],
+                    f"proportion_oob_{method}": ((CI[0] < 0) * (-CI[0]) + (CI[1] > 1) * (CI[1] - 1)) / (CI[1] - CI[0]),
+                }
+                results = pd.concat([results, pd.DataFrame(results_row, index=[0])], ignore_index=True)
     return results
 
 def process_subtask(task, algo, cfg):
     print(f"Running KDE for metric {cfg.metric}, subtask {task} and algorithm {algo}")
     df = pd.read_csv(os.path.join(BASE_DIR, cfg.relative_data_path))
     df = extract_df(df, cfg.metric, task)
-    results = make_kdes_and_compute_metrics(df, task, algo, cfg)
+    results = make_kdes_and_compute_intervals(df, task, algo, cfg)
     return results
 
 @hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
