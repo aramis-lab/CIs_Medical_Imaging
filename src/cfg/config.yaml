@@ -68,4 +68,4 @@ relative_output_dir: "../results"
 
 # Additional parameters
 bandwidth: 0.25
-n_samples: 5000
+n_samples: 10000
