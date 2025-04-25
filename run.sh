@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --job-name=hydra_sweep
 #SBATCH --output=logs/%x_%j.out
-#SBATCH --time=02:00:00
-#SBATCH --cpus-per-task=4
+#SBATCH --time=04:00:00
+#SBATCH --cpus-per-task=20
 #SBATCH --mem=16G
-#SBATCH --partition=your_partition_name
+#SBATCH --partition=cpu_p1
 
 module load python
 conda activate CI
