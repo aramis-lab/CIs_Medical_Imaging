@@ -1,0 +1,14 @@
+# SLURM launcher for Hydra using Submitit
+
+_target_: hydra._internal.core_plugins.submitit_launcher.SlurmLauncher
+
+timeout_min: 300
+cpus_per_task: 20
+mem_gb: 16
+gpus_per_node: 0
+nodes: 3
+tasks_per_node: 2
+partition: cpu_p1
+name: run_hydra
+array_parallelism: 256
+max_num_timeout: 3
