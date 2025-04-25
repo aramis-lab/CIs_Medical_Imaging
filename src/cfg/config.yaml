@@ -23,6 +23,8 @@ summary_stat:
   - "mean"
   - "median"
   - "trimmed_mean"
+  - "std"
+  - "iqr_length"
 
 # List of tasks (subtasks for processing)
 tasks:
