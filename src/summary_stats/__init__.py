@@ -14,7 +14,7 @@ def trimmed_mean(x, threshold, axis=None):
 def std(x, threshold, axis=None):
     return np.sqrt(np.var(x, axis=axis, keepdims=True))
 
-def IQR_width(x, threshold, axis=None):
+def IQR_length(x, threshold, axis=None):
     q3 = np.percentile(x, 75, axis=axis, keepdims=True)
     q1 = np.percentile(x, 25, axis=axis, keepdims=True)
     return q3 - q1
@@ -26,7 +26,7 @@ def get_statistic(statistic):
         "median": median,
         "trimmed_mean": trimmed_mean,
         "std": std,
-        "IQR_width": IQR_width
+        "iqr_length": IQR_length
     }
 
     return statistic_dict.get(statistic, None)

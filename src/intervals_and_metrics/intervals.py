@@ -8,7 +8,7 @@ def compute_CIs(samples, method, statistic, alpha=0.05):
         return param_z_interval(samples, alpha)
     elif method == "studentized":
         return studentized_interval(samples, statistic, alpha)
-    else:
+    elif method in ["basic", "percentile", "BCa"]:
         return compute_bootstrap_CI(samples, statistic, alpha, method)
 
 def param_z_interval(data, alpha=0.05):

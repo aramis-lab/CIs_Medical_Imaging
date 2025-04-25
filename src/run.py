@@ -5,7 +5,7 @@ import hydra
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde
 from summary_stats import get_statistic
-from intervals_and_metrics import compute_CIs, compute_metrics, get_bounds
+from intervals_and_metrics import compute_CIs, get_bounds, get_authorized_methods
 from kernels import get_kernel
 import os
 
@@ -36,7 +36,7 @@ def get_benchmark_instances(cfg):
 def make_kdes_and_compute_intervals(df, task, algo, config):
 
     # Retrieve configuration and set up variables
-    ci_methods = config.ci_methods
+    ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
     statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
     results = pd.DataFrame()
 
@@ -44,34 +44,33 @@ def make_kdes_and_compute_intervals(df, task, algo, config):
 
     kernel = get_kernel(config.kernel)
 
-    DSCs = df[df["alg_name"] == algo]["value"].to_numpy()
+    values = df[df["alg_name"] == algo]["value"].to_numpy()
 
-    values_span = np.max(DSCs) - np.min(DSCs)
+    values_span = np.max(values) - np.min(values)
     # Define the grid for KDE
     if np.isinf(a):
-        min_val = np.min(DSCs) - 0.1 * values_span
+        min_val = np.min(values) - 0.1 * values_span
     else:
         min_val = a
     
     if np.isinf(b):
-        max_val = np.max(DSCs) + 0.1 * values_span
+        max_val = np.max(values) + 0.1 * values_span
     else:
         max_val = b
     x = np.linspace(min_val, max_val, 10000)  # You can change the resolution of x
-    alphas = np.ones(len(DSCs))
+    alphas = np.ones(len(values))
 
-    dist_to_bounds = np.min([DSCs-a, b-DSCs], axis=0)
+    dist_to_bounds = np.min([values-a, b-values], axis=0)
 
     # Iterative weighted KDE estimation
-    for _ in range(1):
-        y = weighted_kde(DSCs, x, dist_to_bounds, kernel, alphas)
-        indices = np.searchsorted(x, DSCs)
-        initial_estimates = y[indices]
-        log_g = np.mean(np.log(initial_estimates))
-        g = np.exp(log_g)
-        alphas = (initial_estimates / g) ** (-1/2)
+    y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
+    indices = np.searchsorted(x, values)
+    initial_estimates = y[indices]
+    log_g = np.mean(np.log(initial_estimates))
+    g = np.exp(log_g)
+    alphas = (initial_estimates / g) ** (-1/2)
     
-    y = weighted_kde(DSCs, x, dist_to_bounds, kernel, alphas)
+    y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
     samples = sample_weighted_kde(y, x, 1000000)
 
     # Compute true statistic
