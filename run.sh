@@ -9,8 +9,9 @@
 module load python
 conda activate CI
 
-python main.py -m \
+python src/run.py -m \
   --config-path cfg \
   --config-name config.yaml \
   metric=dsc,nsd \
+  kernel=epanechnikov \
   summary_stat=mean,median,trimmed_mean,std,iqr_length
