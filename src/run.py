@@ -7,33 +7,25 @@ from kde import weighted_kde, sample_weighted_kde
 from summary_stats import get_statistic
 from intervals_and_metrics import compute_CIs, get_bounds, get_authorized_methods
 from kernels import get_kernel
+from utils import get_benchmark_instances, extract_df
 import os
 
 from tqdm import tqdm
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-def extract_df(df, metric, task):
-    metric = "DCS" if metric == "DSC" else "HSD" if metric == "NSD" else metric
-    df = df[(df["score"] == metric) & (df["subtask"] == task)]
-    return df.drop(["score", "subtask", "task", "case", "alg_number", "phase"], axis=1)
+def make_kdes_classification(df, task, algo, config):
 
-def get_benchmark_instances(cfg):
-    benchmark_instances = []
-    df = pd.read_csv(os.path.join(BASE_DIR, cfg.relative_data_path))
-    for task in cfg.tasks:
-        df_task = extract_df(df, cfg.metric, task)
-        algos = df_task["alg_name"].unique()
-        for algo in algos:
-            benchmark_instances.append((task, algo))
-    # Sort by task
-    benchmark_instances.sort(key=lambda x: (x[0], x[1]))
-    # Remove duplicates
-    benchmark_instances = list(dict.fromkeys(benchmark_instances))
+    # Retrieve configuration and set up variables
+    ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
+    results = pd.DataFrame()
 
-    return np.array(benchmark_instances)
+    a, b = get_bounds(config.metric)
 
-def make_kdes_and_compute_intervals(df, task, algo, config):
+    results = None
+    return results
+
+def make_kdes_segmentation(df, task, algo, config):
 
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
@@ -99,16 +91,19 @@ def make_kdes_and_compute_intervals(df, task, algo, config):
 
 def process_instance(task, algo, cfg):
     print(f"Running KDE for metric {cfg.metric}, subtask {task} and algorithm {algo}")
-    df = pd.read_csv(os.path.join(BASE_DIR, cfg.relative_data_path))
-    df = extract_df(df, cfg.metric, task)
-    results = make_kdes_and_compute_intervals(df, task, algo, cfg)
+    path = os.path.join(BASE_DIR, cfg.relative_data_path)
+    df = extract_df(path, cfg.metric, task)
+    if cfg.metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "mcc", "ap", "auroc", "auc"]:
+        results = make_kdes_classification(df, task, algo, cfg)
+    else:
+        results = make_kdes_segmentation(df, task, algo, cfg)
     return results
 
 @hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
 def main(cfg: DictConfig):
     aggreggated_results = pd.DataFrame()
 
-    benchmark_instances = get_benchmark_instances(cfg)
+    benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
 
     # Use joblib to parallelize tasks
     with joblib.Parallel(n_jobs=-1) as parallel:

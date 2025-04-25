@@ -17,6 +17,7 @@ ci_methods:
 metric:
   - "dsc"
   - "nsd"
+  - 
 
 # Possible values for summary_stat (choose one from here)
 summary_stat:
