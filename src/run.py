@@ -71,22 +71,29 @@ def make_kdes_segmentation(df, task, algo, config):
     for n in tqdm(config.sample_sizes):
         samples = sample_weighted_kde(y,x, config.n_samples*n).reshape(config.n_samples, n)
 
-        for method in ci_methods:
-            CIs = compute_CIs(samples, method, statistic)
-            for sample_index in range(CIs.shape[1]):
-                CI = CIs[:,sample_index]
-                results_row = {
-                    "subtask": task,
-                    "alg_name": algo,
-                    "n": n,
-                    "sample_index": sample_index,
+        method_CIs = {
+        method: compute_CIs(samples, method, statistic)
+        for method in ci_methods
+        }
+        for sample_index in range(config.n_samples):
+            row = {
+                "subtask": task,
+                "alg_name": algo,
+                "n": n,
+                "sample_index": sample_index
+            }
+
+            for method, CIs in method_CIs.items():
+                CI = CIs[:, sample_index]
+                row.update({
                     f"lower_bound_{method}": CI[0],
                     f"upper_bound_{method}": CI[1],
                     f"contains_true_stat_{method}": CI[0] <= true_value <= CI[1],
                     f"width_{method}": CI[1] - CI[0],
                     f"proportion_oob_{method}": ((CI[0] < 0) * (-CI[0]) + (CI[1] > 1) * (CI[1] - 1)) / (CI[1] - CI[0]),
-                }
-                results = pd.concat([results, pd.DataFrame(results_row, index=[0])], ignore_index=True)
+                })
+
+            results = pd.concat([results, pd.DataFrame(row, index=[0])], ignore_index=True)
     return results
 
 def process_instance(task, algo, cfg):
