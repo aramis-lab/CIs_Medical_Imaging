@@ -4,6 +4,7 @@
 #SBATCH --time=50:00:00
 #SBATCH --cpus-per-task=20
 #SBATCH --mem150G
+#SBATCH --account=qhn@cpu
 #SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
 #SBATCH --hint=nomultithread
