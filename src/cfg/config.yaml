@@ -1,8 +1,3 @@
-
-defaults:
-  - hydra/launcher: submitit_slurm
-  - _self_
-
 ci_methods: ["param_t", "param_z", "basic", "percentile", "bca", "studentized", "agresti_coull", "wilson", "wald", "param_z", "cloper_pearson", "exact"]
 
 # Possible values for metrics (for reference, you will use one at a time)
