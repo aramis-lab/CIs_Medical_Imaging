@@ -93,7 +93,6 @@ def process_instance(task, algo, cfg):
     print(f"Running KDE for metric {cfg.metric}, subtask {task} and algorithm {algo}")
     path = os.path.join(BASE_DIR, cfg.relative_data_path)
     df = extract_df(path, cfg.metric, task)
-    print(cfg.metric)
     if cfg.metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "mcc", "ap", "auroc", "auc"]:
         results = make_kdes_classification(df, task, algo, cfg)
     else:
