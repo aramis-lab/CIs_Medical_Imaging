@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --job-name=hydra_sweep
 #SBATCH --output=logs/%x_%j.out
-#SBATCH --time=50:00:00
-#SBATCH --cpus-per-task=20
-#SBATCH --mem150G
+#SBATCH --time=20:00:00
+#SBATCH --cpus-per-task=800
+#SBATCH --mem=150G
 #SBATCH --account=qhn@cpu
 #SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
