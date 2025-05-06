@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import joblib
+import starpu
 import hydra
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde
@@ -12,6 +12,7 @@ import os
 
 from tqdm import tqdm
 
+starpu.init()
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def make_kdes_classification(df, task, algo, config):
@@ -113,8 +114,8 @@ def main(cfg: DictConfig):
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
 
     # Use joblib to parallelize tasks
-    with joblib.Parallel(n_jobs=-1) as parallel:
-        results = parallel(joblib.delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances)
+    with starpu.joblib.Parallel(n_jobs=-1) as parallel:
+        results = parallel(starpu.joblib.delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances)
 
     # Combine results from all tasks
     for result in results:
@@ -124,4 +125,6 @@ def main(cfg: DictConfig):
     aggreggated_results.to_csv(os.path.join(RESULTS_DIR, f"results_{cfg.metric}_{cfg.summary_stat}.csv"))
 
 if __name__ == "__main__":
+    starpu.init()
     main()
+    starpu.shutdown()

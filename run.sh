@@ -9,6 +9,7 @@
 #SBATCH --hint=nomultithread
 
 module load python
+module load starpu
 conda activate CI
 
 python src/run.py -m \
