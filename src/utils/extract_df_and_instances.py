@@ -11,11 +11,11 @@ def extract_df(path, metric, task):
 def get_benchmark_instances(BASE_DIR, cfg):
     benchmark_instances = []
     for task in cfg.tasks:
-        print(os.path.join(BASE_DIR, cfg.relative_data_path))
         df_task = extract_df(os.path.join(BASE_DIR, cfg.relative_data_path), cfg.metric, task)
         algos = df_task["alg_name"].unique()
         for algo in algos:
             benchmark_instances.append((task, algo))
+    print(len(benchmark_instances))
     # Sort by task
     benchmark_instances.sort(key=lambda x: (x[0], x[1]))
     # Remove duplicates
