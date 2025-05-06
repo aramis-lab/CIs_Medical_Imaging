@@ -111,6 +111,7 @@ def main(cfg: DictConfig):
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
     # Initialize Submitit executor
     executor = submitit.AutoExecutor(folder="submitit_logs/")
+    print("executor initialized")
 
     # Launch jobs
     jobs = []
