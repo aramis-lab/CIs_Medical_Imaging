@@ -11,6 +11,7 @@ from utils import get_benchmark_instances, extract_df
 import os
 
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -108,28 +109,20 @@ def process_instance(task, algo, cfg):
 
 @hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
 def main(cfg: DictConfig):
-    aggreggated_results = pd.DataFrame()
+    aggregated_results = pd.DataFrame()
 
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
-    # Initialize Submitit executor
-    executor = submitit.AutoExecutor(folder="submitit_logs/")
-    executor.update_parameters(slurm_partition="cpu_p1", slurm_account="qhn@cpu")
-
-    # Launch jobs
-    jobs = []
-    with executor.batch():
-        for task, algo in benchmark_instances:
-            jobs.append(executor.submit(process_instance, task, algo, cfg))
+    # Process instances in parallel using joblib
+    results = Parallel(n_jobs=-1)(
+        delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances
+    )
 
     # Collect results
-    aggregated_results = pd.DataFrame()
-    for job in jobs:
-        result = job.result()
-        aggregated_results = pd.concat([aggregated_results, result], ignore_index=True)
+    aggregated_results = pd.concat(results, ignore_index=True)
 
     
     RESULTS_DIR = os.path.join(BASE_DIR, cfg.relative_output_dir)
-    aggreggated_results.to_csv(os.path.join(RESULTS_DIR, f"results_{cfg.metric}_{cfg.summary_stat}.csv"))
+    aggregated_results.to_csv(os.path.join(RESULTS_DIR, f"results_{cfg.metric}_{cfg.summary_stat}.csv"))
 
 if __name__ == "__main__":
     main()
