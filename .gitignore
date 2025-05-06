@@ -176,6 +176,7 @@ cython_debug/
 # Hydra logs
 multirun/
 outputs/
+logs/
 
 # Data and results Files
 src/data/*
