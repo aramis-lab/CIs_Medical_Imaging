@@ -9,11 +9,9 @@ from intervals_and_metrics import compute_CIs, get_bounds, get_authorized_method
 from kernels import get_kernel
 from utils import get_benchmark_instances, extract_df
 import os
-import logging
 
 from tqdm import tqdm
 
-log = logging.getLogger(__name__)
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def make_kdes_classification(df, task, algo, config):
@@ -39,11 +37,6 @@ def make_kdes_segmentation(df, task, algo, config):
     kernel = get_kernel(config.kernel)
 
     values = df[df["alg_name"] == algo]["value"].to_numpy()
-
-    # Log variables into hydra log
-    log.info(f"ci_methods: {ci_methods}")
-    log.info(f"values[:5]: {values[:5]}")
-    log.info(f"config.sample_sizes: {config.sample_sizes}")
 
     values_span = np.max(values) - np.min(values)
     # Define the grid for KDE
