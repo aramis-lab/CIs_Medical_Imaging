@@ -109,7 +109,7 @@ def main(cfg: DictConfig):
     aggreggated_results = pd.DataFrame()
 
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
-
+    print(cfg)
     # Use joblib to parallelize tasks
     with joblib.Parallel(n_jobs=joblib.cpu_count()) as parallel:
         results = parallel(joblib.delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances)
