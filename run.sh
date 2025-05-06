@@ -6,7 +6,7 @@
 #SBATCH --account=qhn@cpu
 #SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
-#SBATCH --hint=nomultithread
+#SBATCH --hint=multithread
 
 module load python
 module load starpu
