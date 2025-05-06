@@ -10,7 +10,7 @@
 
 module load python
 module load starpu
-conda activate CI
+source activate CI
 
 python src/run.py -m \
   --config-path cfg \
