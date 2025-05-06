@@ -108,6 +108,7 @@ def process_instance(task, algo, cfg):
 def main(cfg: DictConfig):
     aggreggated_results = pd.DataFrame()
 
+    print(BASE_DIR)
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
     # Initialize Submitit executor
     executor = submitit.AutoExecutor(folder="submitit_logs/")
