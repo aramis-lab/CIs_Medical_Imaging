@@ -1,10 +1,7 @@
 import pandas as pd
 import numpy as np
 import hydra
-import logging
-from joblib import Parallel, delayed, parallel_backend
-
-logging.basicConfig(level=logging.INFO)
+import joblib
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde
 from summary_stats import get_statistic
@@ -113,8 +110,8 @@ def main(cfg: DictConfig):
 
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
     # Use joblib to parallelize tasks
-    with parallel_backend('loky'):
-        results = Parallel(n_jobs=10)(delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances)
+    with joblib.Parallel(n_jobs=joblib.cpu_count()) as parallel:
+        results = parallel(joblib.delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances)
 
     # Combine results from all tasks
     for result in results:
