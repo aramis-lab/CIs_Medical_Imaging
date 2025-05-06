@@ -38,6 +38,11 @@ def make_kdes_segmentation(df, task, algo, config):
 
     values = df[df["alg_name"] == algo]["value"].to_numpy()
 
+    # Log variables into hydra log
+    hydra.utils.log.info(f"ci_methods: {ci_methods}")
+    hydra.utils.log.info(f"values[:5]: {values[:5]}")
+    hydra.utils.log.info(f"config.sample_sizes: {config.sample_sizes}")
+
     values_span = np.max(values) - np.min(values)
     # Define the grid for KDE
     if np.isinf(a):
