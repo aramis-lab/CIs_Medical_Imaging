@@ -81,7 +81,7 @@ def make_kdes_segmentation(df, task, algo, config):
             }
 
             for method in ci_methods:
-                CI = compute_CIs(samples[sample_index], method, statistic)
+                CI = compute_CIs(samples[sample_index, :], method, statistic)
                 row.update({
                     f"lower_bound_{method}": CI[0],
                     f"upper_bound_{method}": CI[1],

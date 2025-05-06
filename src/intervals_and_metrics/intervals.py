@@ -2,6 +2,8 @@ import numpy as np
 from scipy.stats import t, norm, bootstrap
 
 def compute_CIs(samples, method, statistic, alpha=0.05):
+    if len(samples.shape) == 1:
+        samples = np.expand_dims(samples, axis=0)
     if method == "param_t":
         return param_t_interval(samples, alpha)
     elif method == "param_z":
