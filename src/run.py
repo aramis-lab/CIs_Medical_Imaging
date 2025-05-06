@@ -120,5 +120,12 @@ def main(cfg: DictConfig):
     RESULTS_DIR = os.path.join(BASE_DIR, cfg.relative_output_dir)
     aggreggated_results.to_csv(os.path.join(RESULTS_DIR, f"results_{cfg.metric}_{cfg.summary_stat}.csv"))
 
+def test_function(x):
+    print(f"Running {x} in PID {os.getpid()}")
+    return x * x
+
 if __name__ == "__main__":
-    main()
+    # main()
+
+    results = joblib.Parallel(n_jobs=4)(joblib.delayed(test_function)(i) for i in range(10))
+    print("Results:", results)
