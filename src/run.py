@@ -10,8 +10,6 @@ from kernels import get_kernel
 from utils import get_benchmark_instances, extract_df
 import os
 
-from tqdm import tqdm
-
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def make_kdes_classification(df, task, algo, config):
@@ -68,7 +66,7 @@ def make_kdes_segmentation(df, task, algo, config):
     # Compute true statistic
     true_value = statistic(samples)
 
-    for n in tqdm(config.sample_sizes):
+    for n in config.sample_sizes:
         samples = sample_weighted_kde(y,x, config.n_samples*n).reshape(config.n_samples, n)
 
         method_CIs = {
@@ -114,6 +112,7 @@ def main(cfg: DictConfig):
 
     # Use joblib to parallelize tasks
     try:
+        print("Starting parallel processing...")
         with joblib.Parallel(n_jobs=-1) as parallel:
             results = parallel(joblib.delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances)
     except Exception as e:
