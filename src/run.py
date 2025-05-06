@@ -109,7 +109,7 @@ def main(cfg: DictConfig):
 
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
     # Process instances in parallel using joblib
-    results = Parallel(n_jobs=10)(
+    results = Parallel(n_jobs=-1)(
         delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances
     )
 
