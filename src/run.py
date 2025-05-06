@@ -70,12 +70,8 @@ def make_kdes_segmentation(df, task, algo, config):
     true_value = statistic(samples)
 
     for n in tqdm(config.sample_sizes):
-        samples = sample_weighted_kde(y,x, config.n_samples*n).reshape(config.n_samples, n)
+        samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
 
-        method_CIs = {
-        method: compute_CIs(samples, method, statistic)
-        for method in ci_methods
-        }
         for sample_index in range(config.n_samples):
             row = {
                 "subtask": task,
@@ -84,8 +80,8 @@ def make_kdes_segmentation(df, task, algo, config):
                 "sample_index": sample_index
             }
 
-            for method, CIs in method_CIs.items():
-                CI = CIs[:, sample_index]
+            for method in ci_methods:
+                CI = compute_CIs(samples[sample_index], method, statistic)
                 row.update({
                     f"lower_bound_{method}": CI[0],
                     f"upper_bound_{method}": CI[1],
