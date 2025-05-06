@@ -111,6 +111,7 @@ def main(cfg: DictConfig):
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
     # Initialize Submitit executor
     executor = submitit.AutoExecutor(folder="submitit_logs/")
+    executor.update_parameters(slurm_partition="cpu_p1", slurm_account="qhn@cpu")
 
     # Launch jobs
     jobs = []
