@@ -10,6 +10,10 @@ from kernels import get_kernel
 from utils import get_benchmark_instances, extract_df
 import os
 
+import multiprocessing as mp
+mp.set_start_method('fork', force=True)
+
+
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def make_kdes_classification(df, task, algo, config):
