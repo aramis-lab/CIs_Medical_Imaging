@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import hydra
-import joblib
+import submitit
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde
 from summary_stats import get_statistic
@@ -109,23 +109,24 @@ def main(cfg: DictConfig):
     aggreggated_results = pd.DataFrame()
 
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
-    # Use joblib to parallelize tasks
-    with joblib.Parallel(n_jobs=joblib.cpu_count()) as parallel:
-        results = parallel(joblib.delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances)
+    # Initialize Submitit executor
+    executor = submitit.AutoExecutor(folder="submitit_logs/")
 
-    # Combine results from all tasks
-    for result in results:
-        aggreggated_results = pd.concat([aggreggated_results, result], ignore_index=True)
+    # Launch jobs
+    jobs = []
+    with executor.batch():
+        for task, algo in benchmark_instances:
+            jobs.append(executor.submit(process_instance, task, algo, cfg))
+
+    # Collect results
+    aggregated_results = pd.DataFrame()
+    for job in jobs:
+        result = job.result()
+        aggregated_results = pd.concat([aggregated_results, result], ignore_index=True)
+
     
     RESULTS_DIR = os.path.join(BASE_DIR, cfg.relative_output_dir)
     aggreggated_results.to_csv(os.path.join(RESULTS_DIR, f"results_{cfg.metric}_{cfg.summary_stat}.csv"))
 
-def test_function(x):
-    print(f"Running {x} in PID {os.getpid()}")
-    return x * x
-
 if __name__ == "__main__":
-    # main()
-
-    results = joblib.Parallel(n_jobs=4)(joblib.delayed(test_function)(i) for i in range(10))
-    print("Results:", results)
+    main()
