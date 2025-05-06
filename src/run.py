@@ -116,6 +116,7 @@ def main(cfg: DictConfig):
     # Launch jobs
     jobs = []
     with executor.batch():
+        print("Submitting jobs")
         for task, algo in benchmark_instances:
             print(f"Submitting job for task {task} and algorithm {algo}")
             jobs.append(executor.submit(process_instance, task, algo, cfg))
