@@ -9,8 +9,7 @@
 #SBATCH --hint=multithread
 
 module load python
-module load starpu
-source activate CI
+conda activate CI
 
 python src/run.py -m \
   --config-path cfg \
