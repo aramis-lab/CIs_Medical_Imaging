@@ -6,7 +6,7 @@
 #SBATCH -A qhn@cpu
 #SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
-#SBATCH --hint=multithread
+#SBATCH --hint=nomultithread
 
 module load python
 conda activate CI
