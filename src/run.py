@@ -72,25 +72,37 @@ def make_kdes_segmentation(df, task, algo, config):
     for n in tqdm(config.sample_sizes):
         samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
 
-        for sample_index in range(config.n_samples):
-            row = {
-                "subtask": task,
-                "alg_name": algo,
-                "n": n,
-                "sample_index": sample_index
-            }
-
-            for method in ci_methods:
-                CI = compute_CIs(samples[sample_index, :], method, statistic).squeeze()
-                row.update({
+        for method in ci_methods:
+            CIs = compute_CIs(samples, method, statistic)
+            
+            for sample_index, CI in enumerate(CIs):
+                row = {
+                    "subtask": task,
+                    "alg_name": algo,
+                    "n": n,
+                    "sample_index": sample_index,
                     f"lower_bound_{method}": CI[0],
                     f"upper_bound_{method}": CI[1],
                     f"contains_true_stat_{method}": CI[0] <= true_value <= CI[1],
                     f"width_{method}": CI[1] - CI[0],
                     f"proportion_oob_{method}": ((CI[0] < 0) * (-CI[0]) + (CI[1] > 1) * (CI[1] - 1)) / (CI[1] - CI[0]),
-                })
+                }
 
-            results = pd.concat([results, pd.DataFrame(row, index=[0])], ignore_index=True)
+                # Check if a row with the same (task, algo, n, sample_index) already exists
+                existing_row_index = results[
+                    (results["subtask"] == task) &
+                    (results["alg_name"] == algo) &
+                    (results["n"] == n) &
+                    (results["sample_index"] == sample_index)
+                ].index
+
+                if not existing_row_index.empty:
+                    # Update the existing row with new method-specific values
+                    for key, value in row.items():
+                        results.loc[existing_row_index, key] = value
+                else:
+                    # Add a new row if no existing row matches
+                    results = pd.concat([results, pd.DataFrame(row, index=[0])], ignore_index=True)
     return results
 
 def process_instance(task, algo, cfg):
