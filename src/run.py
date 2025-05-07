@@ -31,7 +31,7 @@ def make_kdes_segmentation(df, task, algo, config):
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
     statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
-    results = pd.DataFrame()
+    results = pd.DataFrame(columns=["subtask", "alg_name", "n", "sample_index"] + [f"{method}_{stat}" for method in ci_methods for stat in ["lower_bound", "upper_bound", "contains_true_stat", "width", "proportion_oob"]])
 
     a, b = get_bounds(config.metric)
 
