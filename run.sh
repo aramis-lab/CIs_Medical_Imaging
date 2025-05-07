@@ -4,6 +4,8 @@
 #SBATCH --time=20:00:00
 #SBATCH --nodes=10
 #SBATCH -A qhn@cpu
+#SBATCH --ntasks=1 
+#SBATCH --cpus-per-task=40
 #SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
 #SBATCH --hint=nomultithread
