@@ -80,7 +80,7 @@ def make_kdes_segmentation(df, task, algo, config):
                     "sample_index": sample_index}
             for method in ci_methods:
                 # Compute the confidence interval for the current sample
-                CI = compute_CIs(sample.flatten(), method, statistic)
+                CI = compute_CIs(sample, method, statistic).flatten()
                 row.update({
                     f"lower_bound_{method}": CI[0],
                     f"upper_bound_{method}": CI[1],
