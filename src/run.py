@@ -73,29 +73,33 @@ def make_kdes_segmentation(df, task, algo, config):
     for n in tqdm(config.sample_sizes):
         samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
 
+        batch_size = 100
         for method in ci_methods:
-            CIs = compute_CIs(samples, method, statistic)
+            for batch_start in range(0, config.n_samples, batch_size):
+                batch_end = min(batch_start + batch_size, config.n_samples)
+                batch_samples = samples[batch_start * n:batch_end * n].reshape(batch_end - batch_start, n)
+                CIs = compute_CIs(batch_samples, method, statistic)
 
-            # Precompute vectorized components for speed
-            lower_bounds = CIs[:, 0]
-            upper_bounds = CIs[:, 1]
-            widths = upper_bounds - lower_bounds
-            contains_true = (lower_bounds <= true_value) & (true_value <= upper_bounds)
-            proportion_oob = ((lower_bounds < 0) * (-lower_bounds) + (upper_bounds > 1) * (upper_bounds - 1)) / widths
+                # Precompute vectorized components for speed
+                lower_bounds = CIs[:, 0]
+                upper_bounds = CIs[:, 1]
+                widths = upper_bounds - lower_bounds
+                contains_true = (lower_bounds <= true_value) & (true_value <= upper_bounds)
+                proportion_oob = ((lower_bounds < 0) * (-lower_bounds) + (upper_bounds > 1) * (upper_bounds - 1)) / widths
 
-            for sample_index in range(CIs.shape[0]):
-                key = (task, algo, n, sample_index)
-                all_rows[key].update({
+                for sample_index in range(batch_start, batch_end):
+                    key = (task, algo, n, sample_index)
+                    all_rows[key].update({
                     "subtask": task,
                     "alg_name": algo,
                     "n": n,
                     "sample_index": sample_index,
-                    f"lower_bound_{method}": lower_bounds[sample_index],
-                    f"upper_bound_{method}": upper_bounds[sample_index],
-                    f"contains_true_stat_{method}": contains_true[sample_index],
-                    f"width_{method}": widths[sample_index],
-                    f"proportion_oob_{method}": proportion_oob[sample_index],
-                })
+                    f"lower_bound_{method}": lower_bounds[sample_index - batch_start],
+                    f"upper_bound_{method}": upper_bounds[sample_index - batch_start],
+                    f"contains_true_stat_{method}": contains_true[sample_index - batch_start],
+                    f"width_{method}": widths[sample_index - batch_start],
+                    f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
+                    })
     results = pd.DataFrame(all_rows)
     return results
 
