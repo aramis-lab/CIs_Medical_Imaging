@@ -8,9 +8,8 @@ from statsmodels.stats.proportion import proportion_confint
 from scipy.stats import chi2
 from scipy.optimize import root_scalar
 
-
 def CI_accuracy(y_true, y_pred, method, alpha):
-    n_success=np.sum(y_true==y_pred)
+    n_success=np.sum(y_true==y_pred, axis=0)
     n=len(y_pred)
     if method in ["normal","agresti_coull","beta","wilson"]:
         return  np.array(proportion_confint(n_success, n, alpha=alpha, method= method)).squeeze().T
@@ -18,7 +17,6 @@ def CI_accuracy(y_true, y_pred, method, alpha):
         return scipy_bootstrap_ci((y_true==y_pred), method=method)
     elif method == 'studentized':
         return studentized_interval_accuracy((y_true==y_pred,), alpha=alpha)
-
 
 def scipy_bootstrap_ci(data, method='percentile', alpha=0.05, n_resamples=9999):
     data = np.array(data).astype(float)
@@ -86,8 +84,6 @@ def CI_AUC(y_true, y_pred, method, alpha):
     elif method == 'studentized':
         return studentized_interval_accuracy(y_true, y_pred,alpha=alpha, outer_resamples=1000, inner_resamples=500)
     
-
-CI_AUC(y, y_pred, 'bca', alpha)
 def auc_statistic(y, y_pred, axis=None):
     return roc_auc_score(y, y_pred)
 
@@ -97,11 +93,9 @@ def CI_LT(AUC, m, n, S):
         UL=np.log(AUC/(1-AUC))+1.96*np.sqrt((m+n)*S**2/(m*n))/(AUC*(1-AUC))
         LT_low=np.exp(LL)/(1+np.exp(LL))
         LT_high=np.exp(UL)/(1+np.exp(UL))
-        return(np.arrayy([LT_low, LT_high]))
+        return(np.array([LT_low, LT_high]))
     else:
         return( np.array([np.nan, np.nan]))
-
-
 
 def CI_DL(y_pred, y,AUC, m,n):
     positive_preds = y_pred[y == 1]
