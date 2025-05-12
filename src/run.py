@@ -73,7 +73,7 @@ def make_kdes_segmentation(df, task, algo, config):
     for n in tqdm(config.sample_sizes):
         samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
 
-        batch_size = 100
+        batch_size = 50
         for method in ci_methods:
             for batch_start in range(0, config.n_samples, batch_size):
                 batch_end = min(batch_start + batch_size, config.n_samples)
