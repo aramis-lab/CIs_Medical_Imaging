@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import hydra
-import submitit
+from collections import defaultdict
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde
 from summary_stats import get_statistic
@@ -68,28 +68,35 @@ def make_kdes_segmentation(df, task, algo, config):
 
     # Compute true statistic
     true_value = statistic(samples)
+    all_rows = defaultdict(dict)
 
-    for n in config.sample_sizes:
-        samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
-            
-        for sample_index, sample in tqdm(enumerate(samples)):
-            row = {
+    for n in tqdm(config.sample_sizes):
+        samples = sample_weighted_kde(y, x, 100 * n).reshape(100, n)
+
+        for method in ci_methods:
+            CIs = compute_CIs(samples, method, statistic)
+
+            # Precompute vectorized components for speed
+            lower_bounds = CIs[:, 0]
+            upper_bounds = CIs[:, 1]
+            widths = upper_bounds - lower_bounds
+            contains_true = (lower_bounds <= true_value) & (true_value <= upper_bounds)
+            proportion_oob = ((lower_bounds < 0) * (-lower_bounds) + (upper_bounds > 1) * (upper_bounds - 1)) / widths
+
+            for sample_index in range(CIs.shape[0]):
+                key = (task, algo, n, sample_index)
+                all_rows[key].update({
                     "subtask": task,
                     "alg_name": algo,
                     "n": n,
-                    "sample_index": sample_index}
-            for method in ci_methods:
-                # Compute the confidence interval for the current sample
-                CI = compute_CIs(sample, method, statistic).flatten()
-                row.update({
-                    f"lower_bound_{method}": CI[0],
-                    f"upper_bound_{method}": CI[1],
-                    f"contains_true_stat_{method}": CI[0] <= true_value <= CI[1],
-                    f"width_{method}": CI[1] - CI[0],
-                    f"proportion_oob_{method}": ((CI[0] < 0) * (-CI[0]) + (CI[1] > 1) * (CI[1] - 1)) / (CI[1] - CI[0]),
+                    "sample_index": sample_index,
+                    f"lower_bound_{method}": lower_bounds[sample_index],
+                    f"upper_bound_{method}": upper_bounds[sample_index],
+                    f"contains_true_stat_{method}": contains_true[sample_index],
+                    f"width_{method}": widths[sample_index],
+                    f"proportion_oob_{method}": proportion_oob[sample_index],
                 })
-
-            results = pd.concat([results, pd.DataFrame(row, index=[0])], ignore_index=True)
+    results = pd.DataFrame(all_rows)
     return results
 
 def process_instance(task, algo, cfg):
