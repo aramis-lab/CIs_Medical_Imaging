@@ -13,35 +13,32 @@ def CI_accuracy(y_true, y_pred, method, alpha):
     n_success=np.sum(y_true==y_pred)
     n=len(y_pred)
     if method in ["normal","agresti_coull","beta","wilson"]:
-        return  proportion_confint(n_success, n, alpha=alpha, method= method)
+        return  np.array(proportion_confint(n_success, n, alpha=alpha, method= method)).squeeze().T
     elif method in ['percentile', 'basic', 'bca']:
-        return scipy_bootstrap_ci((y_true==y_pred), method=method, statistic=np.mean)
+        return scipy_bootstrap_ci((y_true==y_pred), method=method)
     elif method == 'studentized':
         return studentized_interval_accuracy((y_true==y_pred,), alpha=alpha)
 
 
-def scipy_bootstrap_ci(data, method='percentile',statistic, alpha=0.05, n_resamples=9999):
+def scipy_bootstrap_ci(data, method='percentile', alpha=0.05, n_resamples=9999):
     data = np.array(data).astype(float)
     ci = bootstrap(
         data=(data,),
-        statistic=statistic,
+        statistic=np.mean,
         confidence_level=1 - alpha,
         method=method,
         n_resamples=n_resamples,
-        random_state=42,
-        vectorized=False,
+        vectorized=True,
     ).confidence_interval
-    return  np.array([ci.low, ci.high])
-
-
+    return  np.array([ci.low, ci.high]).squeeze().T
 
 def studentized_interval_accuracy(samples, alpha, n_resamples=9999):
     samples = np.array(samples).astype(float)
-    samples_statistics = np.expand_dims(np.mean(samples, axis=-1), -2)
+    samples_statistics = np.mean(samples, axis=-1)
     
-    samples_stds = np.std(samples, axis=-1, keepdims=True)
+    samples_stds = np.std(samples, axis=-1).squeeze()
     bootstrap_samples = np.stack([np.random.choice(samples[i], size=(n_resamples, samples.shape[1]), replace=True) for i in range(samples.shape[0])])
-    bootstrap_statistics = np.mean(bootstrap_samples, axis=-1)
+    bootstrap_statistics = np.mean(bootstrap_samples, axis=-1).squeeze()
     
     boostrap_stds = np.std(bootstrap_samples, axis=-1)
     studentized = (bootstrap_statistics - samples_statistics) / boostrap_stds
@@ -49,11 +46,7 @@ def studentized_interval_accuracy(samples, alpha, n_resamples=9999):
     lower_bound = np.percentile(studentized, 100 * alpha / 2, axis=1)
     
     upper_bound = np.percentile(studentized, 100 * (1 - alpha / 2), axis=1)
-    return np.vstack([samples_statistics - upper_bound * samples_stds, samples_statistics - lower_bounds * samples_stds])
-
-
-
-
+    return np.vstack([samples_statistics.squeeze() - upper_bound * samples_stds, samples_statistics.squeeze() - lower_bound * samples_stds]).squeeze().T
 
 def CI_AUC(y_true, y_pred, method, alpha):
     N=len(y_true)
@@ -72,7 +65,7 @@ def CI_AUC(y_true, y_pred, method, alpha):
     S_10=(1/((m-1)*n**2))*(np.sum((negative_in_sorted-ideal_R)**2)-m*(bar_R-(m+1)/2)**2)
     S_01=(1/((n-1)*n**2))*(np.sum((positive_in_sorted-ideal_S)**2)-n*(bar_S-(n+1)/2)**2)
     S=np.sqrt((m*S_01+n*S_10)/(m+n))
-    Y = y_pred[y == 1]  # diseased
+    Y = y_pred[y == 1] # diseased
     X = y_pred[y == 0] 
     if method == "DeLong": 
         return CI_DL(y_pred, y_true,AUC, m,n)
