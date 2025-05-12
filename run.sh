@@ -13,7 +13,7 @@
 module load python
 conda activate CI
 
-python src/run.py -m \
+python -W ignore src/run.py -m \
   --config-path cfg \
   --config-name config.yaml \
   metric=dsc,nsd \
