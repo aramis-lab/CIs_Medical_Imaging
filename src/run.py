@@ -71,7 +71,7 @@ def make_kdes_segmentation(df, task, algo, config):
     all_rows = defaultdict(dict)
 
     for n in tqdm(config.sample_sizes):
-        samples = sample_weighted_kde(y, x, 100 * n).reshape(100, n)
+        samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
 
         for method in ci_methods:
             CIs = compute_CIs(samples, method, statistic)
