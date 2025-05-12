@@ -13,7 +13,7 @@ def compute_CIs(samples, method, statistic, alpha=0.05):
     elif method in ["basic", "percentile", "bca"]:
         return compute_bootstrap_CI(samples, statistic, alpha, method)
     else:
-        return np.empty((2, samples.shape[0]))
+        return np.empty((samples.shape[0], 2))
 
 def param_z_interval(data, alpha=0.05):
     means = np.mean(data, axis=1)
