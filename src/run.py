@@ -69,10 +69,10 @@ def make_kdes_segmentation(df, task, algo, config):
     # Compute true statistic
     true_value = statistic(samples)
 
-    for n in tqdm(config.sample_sizes):
+    for n in config.sample_sizes:
         samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
             
-        for sample_index, sample in enumerate(samples):
+        for sample_index, sample in tqdm(enumerate(samples)):
             row = {
                     "subtask": task,
                     "alg_name": algo,
