@@ -13,6 +13,9 @@ import os
 from tqdm import tqdm
 from joblib import Parallel, delayed
 
+import warnings
+warnings.filterwarnings("ignore")
+
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def make_kdes_classification(df, task, algo, config):
