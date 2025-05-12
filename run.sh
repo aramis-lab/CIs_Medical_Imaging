@@ -2,7 +2,7 @@
 #SBATCH --job-name=hydra_sweep
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --time=20:00:00
-#SBATCH --nodes=10
+#SBATCH --nodes=40
 #SBATCH -A qhn@cpu
 #SBATCH --ntasks=10
 #SBATCH --cpus-per-task=40
