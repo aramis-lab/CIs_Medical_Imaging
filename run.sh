@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=hydra_sweep
 #SBATCH --output=logs/%x_%j.out
-#SBATCH --time=20:00:00
+#SBATCH --time=50:00:00
 #SBATCH --nodes=40
 #SBATCH -A qhn@cpu
 #SBATCH --ntasks=40
