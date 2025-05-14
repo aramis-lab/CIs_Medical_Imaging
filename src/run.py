@@ -106,14 +106,14 @@ def make_kdes_segmentation(df, task, algo, config):
                     f"width_{method}": widths[sample_index - batch_start],
                     f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
                     })
-    results = pd.DataFrame(all_rows)
+        results = pd.DataFrame(all_rows)
 
-    if os.path.exists(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv")):
-        existing_results = pd.read_csv(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv"))
-        existing_results = pd.concat([existing_results, results], ignore_index=True)
-    else:
-        existing_results = results
-    existing_results.to_csv(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv"), index=False)
+        if os.path.exists(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv")):
+            existing_results = pd.read_csv(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv"))
+            existing_results = pd.concat([existing_results, results], ignore_index=True)
+        else:
+            existing_results = results
+        existing_results.to_csv(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv"), index=False)
 
 
 def process_instance(task, algo, cfg):
