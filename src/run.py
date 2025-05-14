@@ -27,7 +27,13 @@ def make_kdes_classification(df, task, algo, config):
     return results
 
 def make_kdes_segmentation(df, task, algo, config):
-
+    RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
+    if os.path.exists(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv")):
+        existing_results = pd.read_csv(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv"))
+        if not existing_results[(existing_results["subtask"]==task) & (existing_results["alg_name"]==algo) &
+                                (existing_results["n"]==n) & (existing_results["sample_index"]==sample_index)].empty:
+            print(f"Skipping task {task}, algorithm {algo}, sample size {n}, sample index {sample_index} as it already exists.")
+            return pd.DataFrame()
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
     statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
@@ -101,34 +107,32 @@ def make_kdes_segmentation(df, task, algo, config):
                     f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
                     })
     results = pd.DataFrame(all_rows)
-    return results
+
+    if os.path.exists(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv")):
+        existing_results = pd.read_csv(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv"))
+        existing_results = pd.concat([existing_results, results], ignore_index=True)
+    else:
+        existing_results = results
+    existing_results.to_csv(os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}.csv"), index=False)
+
 
 def process_instance(task, algo, cfg):
     print(f"Running KDE for metric {cfg.metric}, subtask {task} and algorithm {algo}")
     path = os.path.join(BASE_DIR, cfg.relative_data_path)
     df = extract_df(path, cfg.metric, task)
     if cfg.metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "mcc", "ap", "auroc", "auc"]:
-        results = make_kdes_classification(df, task, algo, cfg)
+        make_kdes_classification(df, task, algo, cfg)
     else:
-        results = make_kdes_segmentation(df, task, algo, cfg)
-    return results
+        make_kdes_segmentation(df, task, algo, cfg)
 
 @hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
 def main(cfg: DictConfig):
-    aggregated_results = pd.DataFrame()
 
     benchmark_instances = get_benchmark_instances(BASE_DIR, cfg)
     # Process instances in parallel using joblib
-    results = Parallel(n_jobs=-1)(
+    Parallel(n_jobs=-1)(
         delayed(process_instance)(task, algo, cfg) for task, algo in benchmark_instances
     )
-
-    # Collect results
-    aggregated_results = pd.concat(results, ignore_index=True)
-
-    
-    RESULTS_DIR = os.path.join(BASE_DIR, cfg.relative_output_dir)
-    aggregated_results.to_csv(os.path.join(RESULTS_DIR, f"results_{cfg.metric}_{cfg.summary_stat}.csv"))
 
 if __name__ == "__main__":
     main()
