@@ -1,3 +1,4 @@
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -5,20 +6,24 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.tree import DecisionTreeClassifier
 from scipy.stats import binomtest, bootstrap
 from statsmodels.stats.proportion import proportion_confint
-from scipy.stats import chi2
+from scipy.stats import chi2, norm
 from scipy.optimize import root_scalar
 
-def CI_accuracy(y_true, y_pred, method, alpha):
-    n_success=np.sum(y_true==y_pred, axis=0)
-    n=len(y_pred)
-    if method in ["normal","agresti_coull","beta","wilson"]:
-        return  np.array(proportion_confint(n_success, n, alpha=alpha, method= method)).squeeze().T
-    elif method in ['percentile', 'basic', 'bca']:
-        return scipy_bootstrap_ci((y_true==y_pred), method=method)
-    elif method == 'studentized':
-        return studentized_interval_accuracy((y_true==y_pred,), alpha=alpha)
 
-def scipy_bootstrap_ci(data, method='percentile', alpha=0.05, n_resamples=9999):
+from sklearn.preprocessing import label_binarize
+
+def CI_accuracy(y_true, y_pred, method, alpha):
+    
+    if method in ["normal","agresti_coull","beta","wilson"]:
+        n_success=np.sum(y_true==y_pred)
+        n=len(y_pred)
+        return  proportion_confint(n_success, n, alpha=alpha, method= method)
+    if method in ['percentile', 'basic', 'bca', 'studentized']:
+        return stratified_bootstrap_metric(y_true, y_pred, metric='accuracy', average=None, n_bootstrap=1000, alpha=1-alpha, method=method)
+
+
+def scipy_bootstrap_ci(data, method='percentile',statistic=np.mean, alpha=0.05, n_resamples=9999):
+
     data = np.array(data).astype(float)
     ci = bootstrap(
         data=(data,),
@@ -44,48 +49,52 @@ def studentized_interval_accuracy(samples, alpha, n_resamples=9999):
     lower_bound = np.percentile(studentized, 100 * alpha / 2, axis=1)
     
     upper_bound = np.percentile(studentized, 100 * (1 - alpha / 2), axis=1)
-    return np.vstack([samples_statistics.squeeze() - upper_bound * samples_stds, samples_statistics.squeeze() - lower_bound * samples_stds]).squeeze().T
 
-def CI_AUC(y_true, y_pred, method, alpha):
-    N=len(y_true)
-    n=np.sum(y_true)
-    m=N-n
-    AUC=roc_auc_score(y_true, y_pred)
-    sorted_indices = np.argsort(y_pred)
-    y_pred_sorted = y_pred[sorted_indices]
-    y_sorted = y_true[sorted_indices]
-    positive_in_sorted = np.where(y_sorted == 1)[0]
-    negative_in_sorted=np.where(y_sorted == 0)[0]
-    bar_R=np.mean(negative_in_sorted)
-    bar_S=np.mean(positive_in_sorted)
-    ideal_R = np.arange(1, len(negative_in_sorted) + 1)
-    ideal_S=np.arange(1, len(positive_in_sorted) + 1)
-    S_10=(1/((m-1)*n**2))*(np.sum((negative_in_sorted-ideal_R)**2)-m*(bar_R-(m+1)/2)**2)
-    S_01=(1/((n-1)*n**2))*(np.sum((positive_in_sorted-ideal_S)**2)-n*(bar_S-(n+1)/2)**2)
-    S=np.sqrt((m*S_01+n*S_10)/(m+n))
-    Y = y_pred[y == 1] # diseased
-    X = y_pred[y == 0] 
-    if method == "DeLong": 
-        return CI_DL(y_pred, y_true,AUC, m,n)
-    elif method == "Logit Transform":
-        return CI_LT(AUC, m, n, S)
-    elif method == "Empirical Likelihood":
-        return el_auc_confidence_interval(Y, X, S)
-    elif method in ['percentile', 'basic', 'bca']:
-        res=bootstrap((y, y_pred),
-                statistic=auc_statistic,
-                vectorized=False,  # because roc_auc_score isn't vectorized
-                paired=True,
-                confidence_level=0.95,
-                n_resamples=1000,
-                method=method,
-                random_state=42).confidence_interval
-        return np.array([res.low, res.high])
-    elif method == 'studentized':
-        return studentized_interval_accuracy(y_true, y_pred,alpha=alpha, outer_resamples=1000, inner_resamples=500)
-    
-def auc_statistic(y, y_pred, axis=None):
-    return roc_auc_score(y, y_pred)
+    return np.vstack([samples_statistics - upper_bound * samples_stds, samples_statistics - lower_bound * samples_stds])
+
+
+
+
+
+def CI_AUC(y_true, y_pred, method, alpha, average):
+   
+    if method in ['percentile', 'basic', 'bca','studentized']: 
+        
+        return stratified_bootstrap_metric(y_true, y_pred, metric='auc', average=average, n_bootstrap=1000, alpha=alpha, method=method)
+    else: 
+        N=len(y_true)
+        n=np.sum(y_true)
+        m=N-n
+        AUC=roc_auc_score(y_true, y_pred)
+        sorted_indices = np.argsort(y_pred)
+        y_pred_sorted = y_pred[sorted_indices]
+        y_sorted = y_true[sorted_indices]
+        positive_in_sorted = np.where(y_sorted == 1)[0]
+        negative_in_sorted=np.where(y_sorted == 0)[0]
+        bar_R=np.mean(negative_in_sorted)
+        bar_S=np.mean(positive_in_sorted)
+        ideal_R = np.arange(1, len(negative_in_sorted) + 1)
+        ideal_S=np.arange(1, len(positive_in_sorted) + 1)
+        S_10=(1/((m-1)*n**2))*(np.sum((negative_in_sorted-ideal_R)**2)-m*(bar_R-(m+1)/2)**2)
+        S_01=(1/((n-1)*n**2))*(np.sum((positive_in_sorted-ideal_S)**2)-n*(bar_S-(n+1)/2)**2)
+        S=np.sqrt((m*S_01+n*S_10)/(m+n))
+        Y = y_pred[y_true == 1]  # diseased
+        X = y_pred[y_true == 0] 
+        if method == "DeLong": 
+            return CI_DL(y_pred, y_true,AUC, m,n)
+        elif method == "Logit Transform":
+            return CI_LT(AUC, m, n, S)
+        elif method == "Empirical Likelihood":
+            return el_auc_confidence_interval(Y, X, S,AUC, alpha)
+       
+
+
+def auc_statistic(y, y_pred, axis=None, average=None ):
+    if average=="weighted":
+        return roc_auc_score(y, y_pred, average="weighted")
+    else: 
+        return roc_auc_score(y, y_pred)
+
 
 def CI_LT(AUC, m, n, S):
     if AUC !=0 and AUC !=1:
@@ -122,7 +131,7 @@ def CI_DL(y_pred, y,AUC, m,n):
     DL_high=AUC+1.96*np.sqrt(var)
     return(np.array([DL_low, DL_high]))
 
-def el_auc_confidence_interval(Y, X, S):
+def el_auc_confidence_interval(Y, X, S,AUC, alpha):
     n, m = len(Y), len(X)
     tol=1e-8
     # Compute U_hat
@@ -197,58 +206,113 @@ def el_auc_confidence_interval(Y, X, S):
         raise ValueError(f"Failed to compute confidence interval: {e}")
 
 
-def studentized_bootstrap_auc(y_true, y_score, alpha=0.05, outer_resamples=1000, inner_resamples=500):
-    rng = np.random.default_rng(42)
 
+
+def stratified_bootstrap_metric(y_true, y_score, metric='auc', average='micro', n_bootstrap=1000, alpha=0.05, method='percentile'):
+    y_true = np.array(y_true)
+   
+    y_score = np.array(y_score)
+    
+    classes = np.unique(y_true)
+    n_classes = len(classes)
     n = len(y_true)
+
+    # Binarize if needed for AUC
+    if metric == 'auc':
+        y_true_bin = label_binarize(y_true, classes=classes)
+        if y_score.ndim == 1 or y_score.shape[1] == 1:
+            y_score = y_score.ravel()
+            y_true_bin = y_true_bin.ravel()
+        original_stat = roc_auc_score(y_true_bin, y_score, average=average, multi_class='ovr')
+    elif metric == 'accuracy':
+ 
+        y_pred = np.argmax(y_score, axis=1) if y_score.ndim > 1 else y_score
+        original_stat = accuracy_score(y_true, y_pred)
+    else:
+        raise ValueError(f"Unsupported metric: {metric}")
+
+    stats = []
     
-    # Original AUC
-    auc_hat = roc_auc_score(y_true, y_score)
-    
-    t_values = []
-    auc_boots = []
-    
-    for _ in range(outer_resamples):
-        # Outer bootstrap: sample indices with replacement
-        indices = rng.choice(n, size=n, replace=True)
-        y_b = y_true[indices]
-        s_b = y_score[indices]
-        
-        try:
-            auc_b = roc_auc_score(y_b, s_b)
-        except ValueError:
-            # Not enough class variety
-            continue
-        
-        # Inner bootstrap to estimate std of AUC_b
-        inner_aucs = []
-        for _ in range(inner_resamples):
-            inner_indices = rng.choice(n, size=n, replace=True)
-            y_i = y_b[inner_indices]
-            s_i = s_b[inner_indices]
+    # Stratified resampling
+    class_indices = {cls: np.where(y_true == cls)[0] for cls in classes}
+
+    for _ in range(n_bootstrap):
+        resample_idx = []
+        for cls in classes:
+            resample_idx.extend(np.random.choice(class_indices[cls], size=len(class_indices[cls]), replace=True))
+        resample_idx = np.array(resample_idx)
+        np.random.shuffle(resample_idx)
+
+        if metric == 'auc':
+            y_sample_bin = y_true_bin[resample_idx]
+            y_sample_score = y_score[resample_idx]
             try:
-                inner_auc = roc_auc_score(y_i, s_i)
-                inner_aucs.append(inner_auc)
+                stat = roc_auc_score(y_sample_bin, y_sample_score, average=average, multi_class='ovr')
+                stats.append(stat)
             except ValueError:
                 continue
+        elif metric == 'accuracy':
+            y_sample = y_true[resample_idx]
+            
+            y_sample_score = y_score[resample_idx]
+         
+            y_sample_pred = np.argmax(y_sample_score, axis=1) if y_sample_score.ndim > 1 else y_sample_score
+            stat = accuracy_score(y_sample, y_sample_pred)
+           
+            stats.append(stat)
 
-        if len(inner_aucs) < 2:
-            continue
+    stats = np.array(stats)
+   
+    # Confidence interval calculation
+    lower = np.percentile(stats, 100 * alpha / 2)
+    upper = np.percentile(stats, 100 * (1 - alpha / 2))
 
-        sigma_b = np.std(inner_aucs, ddof=1)
-        t = (auc_b - auc_hat) / sigma_b
-        t_values.append(t)
-        auc_boots.append(auc_b)
-    
-    t_values = np.array(t_values)
-    t_low = np.percentile(t_values, 100 * (1 - alpha / 2))
-    t_high = np.percentile(t_values, 100 * (alpha / 2))
+    if method == 'percentile':
+        return [lower, upper]
 
-    sigma_hat = np.std(auc_boots, ddof=1)
+    elif method == 'basic':
+        low = 2 * original_stat - upper
+        high = 2 * original_stat - lower
+        return [low, high]
 
-    # Invert studentized statistic to get CI
-    lower = auc_hat - t_low * sigma_hat
-    upper = auc_hat - t_high * sigma_hat
+    elif method == 'studentized':
+        ses = []
+        for stat in stats:
+            inner_resample = np.random.choice(stats, size=50, replace=True)
+            ses.append(np.std(inner_resample))
+        z_scores = (stats - original_stat) / np.array(ses)
+        z_low = np.percentile(z_scores, 100 * (1 - alpha / 2))
+        z_high = np.percentile(z_scores, 100 * alpha / 2)
+        ci_low = original_stat - z_low * np.std(stats)
+        ci_high = original_stat - z_high * np.std(stats)
+        return [ci_low, ci_high]
 
-    return np.array([lower, upper])
-        
+    elif method == 'bca':
+        jack_stats = []
+        for i in range(n):
+            jack_idx = np.delete(np.arange(n), i)
+            if metric == 'auc':
+                jack_stat = roc_auc_score(y_true_bin[jack_idx], y_score[jack_idx], average=average, multi_class='ovr')
+            else:
+                y_jack_pred = np.argmax(y_score[jack_idx], axis=1) if y_score.ndim > 1 else y_score[jack_idx]
+                jack_stat = accuracy_score(y_true[jack_idx], y_jack_pred)
+            jack_stats.append(jack_stat)
+
+        jack_stats = np.array(jack_stats)
+        jack_mean = np.mean(jack_stats)
+        acc = np.sum((jack_mean - jack_stats) ** 3) / (6 * (np.sum((jack_mean - jack_stats) ** 2) ** 1.5 + 1e-8))
+
+        z0 = norm.ppf(np.mean(stats < original_stat))
+        z_low = norm.ppf(alpha / 2)
+        z_high = norm.ppf(1 - alpha / 2)
+
+        pct1 = norm.cdf(z0 + (z0 + z_low) / (1 - acc * (z0 + z_low)))
+        pct2 = norm.cdf(z0 + (z0 + z_high) / (1 - acc * (z0 + z_high)))
+
+        bca_low = np.percentile(stats, 100 * pct1)
+        bca_high = np.percentile(stats, 100 * pct2)
+        return [bca_low, bca_high]
+
+    else:
+        raise ValueError(f"Unknown method: {method}")
+print( CI_accuracy(np.array([1, 0, 1, 0, 1, 1, 0, 1]), np.array([1, 1, 1, 0, 0, 0, 0, 1]) ,method= "studentized", alpha=0.95))
