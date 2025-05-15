@@ -13,12 +13,10 @@
 module load python
 conda activate CI
 
-if [ ! -f benchmark_list.txt ]; then
-  python src/utils/extract_df_and_make_instance_list.py -m \
+python src/utils/extract_df_and_make_instance_list.py -m \
     metric=dsc,nsd \
     kernel=epanechnikov \
     summary_stat=mean,median,trimmed_mean,std,iqr_length
-fi
 
 mapfile -t TASKS_AND_ALGOS < benchmark_list.txt
 PAIR="${TASKS_AND_ALGOS[$SLURM_ARRAY_TASK_ID]}"

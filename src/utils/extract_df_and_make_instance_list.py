@@ -30,9 +30,10 @@ def export_benchmark_list(cfg: DictConfig):
     print(instances)
     if not os.path.exists(os.path.join(BASE_DIR, "/instances_list")):
         os.makedirs(os.path.join(BASE_DIR, "/instances_list"))
-    with open(os.path.join(BASE_DIR, f"/instances_list/{cfg.metric}.txt"), "w") as f:
-        for task, algo in instances:
-            f.write(f"{task} {algo}\n")
+    if not os.path.exists(os.path.join(BASE_DIR, f"/instances_list/{cfg.metric}.txt")):
+        with open(os.path.join(BASE_DIR, f"/instances_list/{cfg.metric}.txt"), "w") as f:
+            for task, algo in instances:
+                f.write(f"{task} {algo}\n")
 
 if __name__ == "__main__":
     export_benchmark_list()
