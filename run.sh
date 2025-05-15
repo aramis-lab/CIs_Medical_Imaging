@@ -1,12 +1,12 @@
 #!/bin/bash
 #SBATCH --job-name=hydra_sweep
 #SBATCH --output=logs/%x_%j.out
-#SBATCH --time=50:00:00
-#SBATCH --nodes=16
+#SBATCH --time=20:00:00
+#SBATCH --nodes=20
 #SBATCH -A qhn@cpu
-#SBATCH --ntasks=16
+#SBATCH --ntasks=20
 #SBATCH --cpus-per-task=40
-#SBATCH --qos=qos_cpu-t4
+#SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
 #SBATCH --hint=nomultithread
 
