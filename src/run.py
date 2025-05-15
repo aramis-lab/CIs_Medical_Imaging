@@ -36,8 +36,7 @@ def make_kdes_segmentation(df, task, algo, config):
     a, b = get_bounds(config.metric)
 
     kernel = get_kernel(config.kernel)
-
-    print(df["alg_name"].unique(), algo, type(algo))
+    
     values = df[df["alg_name"] == algo]["value"].to_numpy()
 
     values_span = np.max(values) - np.min(values)
@@ -117,9 +116,9 @@ def main(cfg: DictConfig):
     path = os.path.join(BASE_DIR, cfg.relative_data_path)
     df = extract_df(path, cfg.metric, cfg.task)
     if cfg.metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "mcc", "ap", "auroc", "auc"]:
-        make_kdes_classification(df, cfg.task, cfg.algo, cfg)
+        make_kdes_classification(df, cfg.task, str(cfg.algo), cfg)
     else:
-        make_kdes_segmentation(df, cfg.task, cfg.algo, cfg)
+        make_kdes_segmentation(df, cfg.task, str(cfg.algo), cfg)
 
 if __name__ == "__main__":
     main()
