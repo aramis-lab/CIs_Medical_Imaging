@@ -6,7 +6,9 @@ import os
 
 def extract_df(path, metric, task):
     df = pd.read_csv(path)
+    print(df.head)
     df = df[(df["score"] == metric) & (df["subtask"] == task)]
+    print(task, metric, df.head())
     return df.drop(["score", "subtask", "task", "case", "alg_number", "phase"], axis=1)
 
 def get_benchmark_instances(BASE_DIR, cfg):
