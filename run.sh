@@ -13,6 +13,10 @@
 module load python
 conda activate CI
 
+if [ ! -f benchmark_list.txt ]; then
+  python src/utils/make_instance_list.py
+fi
+
 mapfile -t TASKS_AND_ALGOS < benchmark_list.txt
 PAIR="${TASKS_AND_ALGOS[$SLURM_ARRAY_TASK_ID]}"
 TASK=$(echo $PAIR | cut -d ' ' -f1)

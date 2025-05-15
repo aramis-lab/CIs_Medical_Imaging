@@ -1,6 +1,6 @@
 # make_benchmark_list.py
-from utils import get_benchmark_instances
-from run import BASE_DIR
+from . import get_benchmark_instances
+from ..run import BASE_DIR
 from omegaconf import OmegaConf
 
 cfg_path = "cfg/config.yaml"
