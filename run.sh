@@ -14,18 +14,21 @@ module load python
 conda activate CI
 
 python src/utils/extract_df_and_make_instance_list.py -m \
-    metric=dsc,nsd \
+    metric="${METRICS[@]}" \
     kernel=epanechnikov \
     summary_stat=mean,median,trimmed_mean,std,iqr_length
 
-mapfile -t TASKS_AND_ALGOS < benchmark_list.txt
-PAIR="${TASKS_AND_ALGOS[$SLURM_ARRAY_TASK_ID]}"
-TASK=$(echo $PAIR | cut -d ' ' -f1)
-ALGO=$(echo $PAIR | cut -d ' ' -f2)
+METRICS=(dsc nsd)
+for METRIC in "${METRICS[@]}"; do
+  LIST_FILE="instances_list/${METRIC}.txt"
+  mapfile -t TASKS_AND_ALGOS < "$LIST_FILE"
+  PAIR="${TASKS_AND_ALGOS[$SLURM_ARRAY_TASK_ID]}"
+  TASK=$(echo "$PAIR" | cut -d ' ' -f1)
+  ALGO=$(echo "$PAIR" | cut -d ' ' -f2)
 
-# Run hydra sweep over configurations for this task+algo
-python src/run.py -m \
-  metric=dsc,nsd \
-  kernel=epanechnikov \
-  summary_stat=mean,median,trimmed_mean,std,iqr_length \
-  +task="$TASK" +algo="$ALGO"
+  python src/run.py -m \
+    metric="$METRIC" \
+    kernel=epanechnikov \
+    summary_stat=mean,median,trimmed_mean,std,iqr_length \
+    +task="$TASK" +algo="$ALGO"
+done
