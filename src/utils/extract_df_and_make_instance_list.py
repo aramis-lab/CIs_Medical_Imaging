@@ -24,8 +24,8 @@ def get_benchmark_instances(BASE_DIR, cfg):
 
 if __name__ == "__main__":
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-    cfg_path = "../cfg/config.yaml"
-    cfg = OmegaConf.load(cfg_path)
+    cfg_path = "cfg/config.yaml"
+    cfg = OmegaConf.load(os.path.join(BASE_DIR, cfg_path))
     instances = get_benchmark_instances(BASE_DIR, cfg)
 
     with open("../benchmark_list.txt", "w") as f:
