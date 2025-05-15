@@ -28,6 +28,6 @@ if __name__ == "__main__":
     cfg = OmegaConf.load(os.path.join(BASE_DIR, cfg_path))
     instances = get_benchmark_instances(BASE_DIR, cfg)
 
-    with open("../benchmark_list.txt", "w") as f:
+    with open(os.path.join(BASE_DIR, "/benchmark_list.txt"), "w") as f:
         for task, algo in instances:
             f.write(f"{task} {algo}\n")
