@@ -114,6 +114,7 @@ def main(cfg: DictConfig):
 
     print(f"Running KDE for metric {cfg.metric}, subtask {cfg.task} and algorithm {cfg.algo}")
     path = os.path.join(BASE_DIR, cfg.relative_data_path)
+    print(path)
     df = extract_df(path, cfg.metric, cfg.task)
     if cfg.metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "mcc", "ap", "auroc", "auc"]:
         make_kdes_classification(df, cfg.task, cfg.algo, cfg)
