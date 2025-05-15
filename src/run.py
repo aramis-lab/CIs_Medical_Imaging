@@ -112,16 +112,13 @@ def make_kdes_segmentation(df, task, algo, config):
 @hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
 def main(cfg: DictConfig):
 
-    task = sys.argv[1]
-    algo = sys.argv[2]
-
-    print(f"Running KDE for metric {cfg.metric}, subtask {task} and algorithm {algo}")
+    print(f"Running KDE for metric {cfg.metric}, subtask {cfg.task} and algorithm {cfg.algo}")
     path = os.path.join(BASE_DIR, cfg.relative_data_path)
-    df = extract_df(path, cfg.metric, task)
+    df = extract_df(path, cfg.metric, cfg.task)
     if cfg.metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "mcc", "ap", "auroc", "auc"]:
-        make_kdes_classification(df, task, algo, cfg)
+        make_kdes_classification(df, cfg.task, cfg.algo, cfg)
     else:
-        make_kdes_segmentation(df, task, algo, cfg)
+        make_kdes_segmentation(df, cfg.task, cfg.algo, cfg)
 
 if __name__ == "__main__":
     main()

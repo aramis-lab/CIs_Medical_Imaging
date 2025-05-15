@@ -27,6 +27,7 @@ def get_benchmark_instances(BASE_DIR, cfg):
 def export_benchmark_list(cfg: DictConfig):
     BASE_DIR = BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     instances = get_benchmark_instances(BASE_DIR, cfg)
+    print(instances)
     if not os.path.exists(os.path.join(BASE_DIR, "/instances_list")):
         os.makedirs(os.path.join(BASE_DIR, "/instances_list"))
     with open(os.path.join(BASE_DIR, f"/instances_list/{cfg.metric}.txt"), "w") as f:
