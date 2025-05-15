@@ -25,7 +25,7 @@ def get_benchmark_instances(BASE_DIR, cfg):
 
 @hydra.main(config_path="../cfg", config_name="config", version_base="1.3.2")
 def export_benchmark_list(cfg: DictConfig):
-    BASE_DIR = BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     instances = get_benchmark_instances(BASE_DIR, cfg)
     print(instances)
     if not os.path.exists(os.path.join(BASE_DIR, "/instances_list")):
