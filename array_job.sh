@@ -1,0 +1,38 @@
+#!/bin/bash
+#SBATCH --job-name=hydra_sweep
+#SBATCH --output=logs/%x_%j.out
+#SBATCH --time=20:00:00
+#SBATCH --nodes=20
+#SBATCH -A qhn@cpu
+#SBATCH --ntasks=20
+#SBATCH --cpus-per-task=40
+#SBATCH --qos=qos_cpu-t3
+#SBATCH --partition=cpu_p1
+#SBATCH --hint=nomultithread
+
+module load python
+conda activate CI
+
+# Load all task-algo pairs
+METRICS=(dsc nsd)
+ALL_PAIRS=()
+
+for METRIC in "${METRICS[@]}"; do
+  LIST_FILE="instances_list/${METRIC}.txt"
+  if [[ -f "$LIST_FILE" ]]; then
+    mapfile -t LINES < "$LIST_FILE"
+    for LINE in "${LINES[@]}"; do
+      ALL_PAIRS+=("$METRIC;$LINE")
+    done
+  fi
+done
+
+PAIR="${ALL_PAIRS[$SLURM_ARRAY_TASK_ID]}"
+IFS=";" read -r METRIC TASK_ALGO <<< "$PAIR"
+read -r TASK ALGO <<< "$TASK_ALGO"
+
+python src/run.py -m \
+  metric="$METRIC" \
+  kernel=epanechnikov \
+  summary_stat=mean,median,trimmed_mean,std,iqr_length \
+  +task="$TASK" +algo="$ALGO"
