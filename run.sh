@@ -14,7 +14,7 @@ module load python
 conda activate CI
 
 if [ ! -f benchmark_list.txt ]; then
-  python src/utils/make_instance_list.py
+  python src/utils/extract_df_and_make_instance_list.py
 fi
 
 mapfile -t TASKS_AND_ALGOS < benchmark_list.txt
