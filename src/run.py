@@ -37,7 +37,7 @@ def make_kdes_segmentation(df, task, algo, config):
 
     kernel = get_kernel(config.kernel)
 
-    print(df["alg_name"].unique())
+    print(df["alg_name"].unique(), algo)
     values = df[df["alg_name"] == algo]["value"].to_numpy()
 
     values_span = np.max(values) - np.min(values)
