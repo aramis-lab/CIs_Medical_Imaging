@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from omegaconf import OmegaConf
+import hydra
+from omegaconf import DictConfig
 import os
 
 def extract_df(path, metric, task):
@@ -22,12 +23,15 @@ def get_benchmark_instances(BASE_DIR, cfg):
     
     return np.array(benchmark_instances)
 
-if __name__ == "__main__":
-    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-    cfg_path = "src/cfg/config.yaml"
-    cfg = OmegaConf.load(os.path.join(BASE_DIR, cfg_path))
+@hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
+def export_benchmark_list(cfg: DictConfig):
+    BASE_DIR = BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     instances = get_benchmark_instances(BASE_DIR, cfg)
-
-    with open(os.path.join(BASE_DIR, "/benchmark_list.txt"), "w") as f:
+    if not os.path.exists(os.path.join(BASE_DIR, "/instances_list")):
+        os.makedirs(os.path.join(BASE_DIR, "/instances_list"))
+    with open(os.path.join(BASE_DIR, f"/instances_list/{cfg.metric}.txt"), "w") as f:
         for task, algo in instances:
             f.write(f"{task} {algo}\n")
+
+if __name__ == "__main__":
+    export_benchmark_list()
