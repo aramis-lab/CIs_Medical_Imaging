@@ -1,6 +1,6 @@
 # make_benchmark_list.py
 from extract_df_and_instances import get_benchmark_instances
-from run import BASE_DIR
+from CIs_Medical_Imaging.src.run import BASE_DIR
 from omegaconf import OmegaConf
 
 cfg_path = "cfg/config.yaml"

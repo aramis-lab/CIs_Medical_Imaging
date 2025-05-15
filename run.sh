@@ -23,7 +23,7 @@ TASK=$(echo $PAIR | cut -d ' ' -f1)
 ALGO=$(echo $PAIR | cut -d ' ' -f2)
 
 # Run hydra sweep over configurations for this task+algo
-python src/run_instance.py "$TASK" "$ALGO" -m \
+python src/run.py "$TASK" "$ALGO" -m \
   metric=dsc,nsd \
   kernel=epanechnikov \
   summary_stat=mean,median,trimmed_mean,std,iqr_length
