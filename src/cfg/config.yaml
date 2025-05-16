@@ -34,7 +34,7 @@ sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
 relative_data_path : "../data_matrix_grandchallenge.csv"
 
 # Path to the output directory for saving results, absolute
-absolute_output_dir: "${env:$WORK}/results"
+absolute_output_dir: "$WORK/results"  
 
 # Number of samples to draw from KDE
 n_samples: 10000
