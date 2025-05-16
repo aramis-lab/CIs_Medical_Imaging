@@ -11,7 +11,6 @@
 #SBATCH --hint=nomultithread
 
 module load python
-conda init
 conda activate CI
 
 # Load all task-algo pairs
