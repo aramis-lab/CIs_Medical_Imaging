@@ -111,6 +111,7 @@ def make_kdes_segmentation(df, task, algo, config):
         if os.path.exists(output_path):
             existing_results = pd.read_csv(output_path)
             results = pd.concat([existing_results, results], ignore_index=True)
+            results = results.drop_duplicates(["subtask", "alg_name", "n", "sample_index"])
         results.to_csv(output_path, index=False)
 
 @hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
