@@ -2,15 +2,16 @@
 #SBATCH --job-name=hydra_sweep
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --time=20:00:00
-#SBATCH --nodes=20
+#SBATCH --nodes=1
 #SBATCH -A qhn@cpu
-#SBATCH --ntasks=20
-#SBATCH --cpus-per-task=40
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=2
 #SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
 #SBATCH --hint=nomultithread
 
 module load python
+conda init
 conda activate CI
 
 # Load all task-algo pairs
