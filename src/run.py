@@ -28,6 +28,11 @@ def make_kdes_classification(df, task, algo, config):
 
 def make_kdes_segmentation(df, task, algo, config):
     RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
+    output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}_{task}_{algo}.csv")
+    if os.path.exists(output_path):
+        existing_results = pd.read_csv(output_path)
+        if existing_results.shape[0]==config.n_samples*config.sample_sizes: # Already computed
+            return None
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
     statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
@@ -103,7 +108,6 @@ def make_kdes_segmentation(df, task, algo, config):
 
         results = pd.concat([results, pd.DataFrame(data = all_rows.values())], ignore_index=True)
 
-        output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}_{task}_{algo}.csv")
         if os.path.exists(output_path):
             existing_results = pd.read_csv(output_path)
             results = pd.concat([existing_results, results], ignore_index=True)
