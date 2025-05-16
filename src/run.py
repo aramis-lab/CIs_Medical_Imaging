@@ -27,7 +27,7 @@ def make_kdes_classification(df, task, algo, config):
     return results
 
 def make_kdes_segmentation(df, task, algo, config):
-    RESULTS_DIR = config.absolute_output_dir
+    RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
     statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
