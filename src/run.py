@@ -33,6 +33,7 @@ def make_kdes_segmentation(df, task, algo, config):
         existing_results = pd.read_csv(output_path)
         if existing_results.shape[0]==config.n_samples*config.sample_sizes: # Already computed
             return None
+        del existing_results
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
     statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
@@ -111,6 +112,7 @@ def make_kdes_segmentation(df, task, algo, config):
         if os.path.exists(output_path):
             existing_results = pd.read_csv(output_path)
             results = pd.concat([existing_results, results], ignore_index=True)
+            del existing_results
             results = results.drop_duplicates(["subtask", "alg_name", "n", "sample_index"])
         results.to_csv(output_path, index=False)
 
