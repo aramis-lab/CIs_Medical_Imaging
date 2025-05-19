@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=hydra_sweep
 #SBATCH --output=logs/%x_%j.out
+#SBATCH --error=logs/%x_%j.out
 #SBATCH --time=20:00:00
 #SBATCH --nodes=1
 #SBATCH -A zcd@cpu
