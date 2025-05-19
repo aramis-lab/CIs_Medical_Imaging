@@ -3,6 +3,7 @@
 #SBATCH --output=logs/%x_%j.out
 #SBATCH --time=20:00:00
 #SBATCH --nodes=1
+#SBATCH -A zcd@cpu
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --qos=qos_cpu-t3
