@@ -34,6 +34,7 @@ def make_kdes_segmentation(df, task, algo, config):
         if existing_results.shape[0]==config.n_samples*config.sample_sizes: # Already computed
             return None
         del existing_results
+    print("Tested if results already existed")
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
     statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
