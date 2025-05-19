@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.stats import trim_mean
 
 
 def mean(x, threshold, axis=None):
@@ -9,7 +8,26 @@ def median(x, threshold, axis=None):
     return np.median(x, axis=axis, keepdims=True)
 
 def trimmed_mean(x, threshold, axis=None):
-    return trim_mean(x, threshold, axis=axis, keepdims=True)
+    a = np.asarray(a)
+
+    if a.size == 0:
+        return np.nan
+
+    if axis is None:
+        a = a.ravel()
+        axis = 0
+
+    nobs = a.shape[axis]
+    lowercut = int(threshold * nobs)
+    uppercut = nobs - lowercut
+    if (lowercut > uppercut):
+        raise ValueError("Proportion too big.")
+
+    atmp = np.partition(a, (lowercut, uppercut - 1), axis)
+
+    sl = [slice(None)] * atmp.ndim
+    sl[axis] = slice(lowercut, uppercut)
+    return np.mean(atmp[tuple(sl)], axis=axis, keepdims=True)
 
 def std(x, threshold, axis=None):
     return np.sqrt(np.var(x, axis=axis, keepdims=True))
