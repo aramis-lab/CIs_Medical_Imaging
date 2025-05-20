@@ -74,7 +74,7 @@ def make_kdes_segmentation(df, task, algo, config):
         output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv")
         if os.path.exists(output_path):
             existing_results = pd.read_csv(output_path)
-            if existing_results.shape[0]==config.n_samples: # Already computed
+            if existing_results.shape[0]>=config.n_samples: # Already computed
                 print(f"Skipping n = {n}, results already exist")
                 continue
             else:
@@ -110,7 +110,7 @@ def make_kdes_segmentation(df, task, algo, config):
                     f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
                     })
 
-        results = pd.concat([results, pd.DataFrame(data = all_rows.values())], ignore_index=True)
+        results = pd.DataFrame(data = all_rows.values())
 
         results = results.drop_duplicates(["subtask", "alg_name", "n", "sample_index"])
         results.to_csv(output_path, index=False)
