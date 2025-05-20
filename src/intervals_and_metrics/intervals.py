@@ -8,8 +8,6 @@ def compute_CIs(samples, method, statistic, alpha=0.05):
         return param_t_interval(samples, alpha)
     elif method == "param_z":
         return param_z_interval(samples, alpha)
-    elif method == "studentized":
-        return studentized_interval(samples, statistic, alpha)
     elif method in ["basic", "percentile", "bca"]:
         return compute_bootstrap_CI(samples, statistic, alpha, method)
     else:
@@ -31,14 +29,3 @@ def compute_bootstrap_CI(data, statistic, alpha=0.05, method="percentile"):
     bootstrap_ci = bootstrap((data,), statistic=statistic, vectorized=True, axis=1, batch=1, confidence_level=1 - alpha, n_resamples=9999, method=method).confidence_interval
     ci_bounds = np.array([bootstrap_ci.low, bootstrap_ci.high])
     return ci_bounds.squeeze().T
-
-def studentized_interval(samples, statistic, alpha, n_resamples=9999):
-    samples_statistics = statistic(samples, axis=-1)
-    samples_stds = np.std(samples, axis=-1).squeeze()
-    bootstrap_samples = np.stack([np.random.choice(samples[i], size=(n_resamples, samples.shape[1]), replace=True) for i in range(samples.shape[0])])
-    bootstrap_statistics = statistic(bootstrap_samples, axis=-1).squeeze()
-    boostrap_stds = np.std(bootstrap_samples, axis=-1)
-    studentized = (bootstrap_statistics - samples_statistics) / boostrap_stds
-    lower_bound = np.percentile(studentized, 100 * alpha / 2, axis=1)
-    upper_bound = np.percentile(studentized, 100 * (1 - alpha / 2), axis=1)
-    return np.vstack([samples_statistics.squeeze() - lower_bound * samples_stds, samples_statistics.squeeze() - upper_bound * samples_stds]).squeeze().T
