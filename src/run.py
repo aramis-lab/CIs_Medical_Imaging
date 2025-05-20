@@ -76,7 +76,7 @@ def make_kdes_segmentation(df, task, algo, config):
             existing_results = pd.read_csv(output_path)
             if existing_results.shape[0]==config.n_samples: # Already computed
                 print(f"Skipping n = {n}, results already exist")
-                return None
+                continue
             else:
                 print(f"Computing CIs for n = {n}")
             del existing_results
