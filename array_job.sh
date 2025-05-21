@@ -36,5 +36,4 @@ python src/run.py -m \
   metric="$METRIC" \
   kernel=epanechnikov \
   summary_stat=mean,median,trimmed_mean,std,iqr_length \
-  
   +task="$TASK" +algo="$ALGO"
