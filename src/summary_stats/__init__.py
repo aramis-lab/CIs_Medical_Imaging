@@ -8,7 +8,7 @@ def median(x, threshold, axis=None):
     return np.median(x, axis=axis, keepdims=True)
 
 def trimmed_mean(x, threshold, axis=None):
-    a = np.asarray(a)
+    a = np.asarray(x)
 
     if a.size == 0:
         return np.nan
