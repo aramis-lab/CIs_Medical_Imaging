@@ -275,18 +275,6 @@ def stratified_bootstrap_metric(y_true, y_score, metric='auc', average='micro', 
         high = 2 * original_stat - lower
         return [low, high]
 
-    elif method == 'studentized':
-        ses = []
-        for stat in stats:
-            inner_resample = np.random.choice(stats, size=50, replace=True)
-            ses.append(np.std(inner_resample))
-        z_scores = (stats - original_stat) / np.array(ses)
-        z_low = np.percentile(z_scores, 100 * (1 - alpha / 2))
-        z_high = np.percentile(z_scores, 100 * alpha / 2)
-        ci_low = original_stat - z_low * np.std(stats)
-        ci_high = original_stat - z_high * np.std(stats)
-        return [ci_low, ci_high]
-
     elif method == 'bca':
         jack_stats = []
         for i in range(n):
