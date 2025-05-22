@@ -35,5 +35,5 @@ read -r TASK ALGO <<< "$TASK_ALGO"
 python src/run.py -m \
   metric="$METRIC" \
   kernel=epanechnikov \
-  summary_stat=mean,median,trimmed_mean,std,iqr_length \
+  summary_stat=trimmed_mean \
   +task="$TASK" +algo="$ALGO"
