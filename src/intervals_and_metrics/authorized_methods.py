@@ -1,5 +1,5 @@
 def get_authorized_methods(summary_stat, metric):
-    if metric in ["nsd", "boundary_iou", "cldice", "dsc", "iou", "nsd"]:
+    if metric in ["nsd", "boundary_iou", "cldice", "dsc", "iou"]:
         if summary_stat in ["mean", "trimmed_mean"]:
             return {"param_t", "param_z", "percentile", "basic", "bca"}
         elif summary_stat in ["median", "iqr_length", "std"]:
