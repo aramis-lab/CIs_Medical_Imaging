@@ -18,4 +18,4 @@ python src/run.py -m \
   metric=nsd \
   kernel=epanechnikov \
   summary_stat=iqr_length \
-  +task=pancreas_l1 +algo=17111010008
+  +task=pancreas_L1 +algo=17111010008
