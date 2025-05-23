@@ -15,9 +15,9 @@ def compute_CIs(samples, method, summary_stat_name, statistic, threshold, alpha=
 
 def param_z_interval(data, summary_stat_name, threshold, alpha=0.05):
     if summary_stat_name == "trimmed_mean":
-        lowercut = int(threshold * len(data))
+        lowercut = int(threshold * data.shape[1])
         uppercut = len(data) - lowercut
-        data = data[lowercut:uppercut]
+        data = data[:, lowercut:uppercut]
     means = np.mean(data, axis=1)
     std_errors = np.std(data, axis=1, ddof=1) / np.sqrt(data.shape[1])
     z_score = norm.ppf(1 - alpha / 2)
@@ -25,9 +25,9 @@ def param_z_interval(data, summary_stat_name, threshold, alpha=0.05):
 
 def param_t_interval(data, summary_stat_name, threshold, alpha=0.05):
     if summary_stat_name == "trimmed_mean":
-        lowercut = int(threshold * len(data))
-        uppercut = len(data) - lowercut
-        data = data[lowercut:uppercut]
+        lowercut = int(threshold * data.shape[1])
+        uppercut = data.shape[1] - lowercut
+        data = data[:, lowercut:uppercut]
     means = np.mean(data, axis=1)
     std_errors = np.std(data, axis=1, ddof=1) / np.sqrt(data.shape[1])
     t_score = t.ppf(1 - alpha / 2, df=data.shape[1] - 1)
