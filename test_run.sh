@@ -15,7 +15,7 @@ module load python
 conda activate CI
 
 python src/run.py -m \
-  metric=nsd \
+  metric=dsc \
   kernel=epanechnikov \
-  summary_stat=iqr_length \
+  summary_stat=trimmed_mean \
   +task=pancreas_L1 +algo=17111010008
