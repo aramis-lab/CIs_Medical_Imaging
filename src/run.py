@@ -84,7 +84,7 @@ def make_kdes_segmentation(df, task, algo, config):
 
         batch_size = 50
         for method in ci_methods:
-            for batch_start in tqdm(range(0, config.n_samples, batch_size)):
+            for batch_start in range(0, config.n_samples, batch_size):
                 batch_end = min(batch_start + batch_size, config.n_samples)
                 batch_samples = samples[batch_start:batch_end]
                 CIs = compute_CIs(batch_samples, method, config.summary_stat, statistic, config.trimmed_mean_threshold)
