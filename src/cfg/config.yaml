@@ -1,4 +1,4 @@
-ci_methods: ["param_t", "param_z", "basic", "percentile", "bca", "agresti_coull", "wilson", "wald", "param_z", "cloper_pearson", "exact"]
+ci_methods: ["param_t", "param_z", "basic", "percentile", "bca", "agresti_coull", "wilson", "wald", "cloper_pearson", "exact"]
 
 # Possible values for metrics (for reference, you will use one at a time)
 metric:

@@ -14,9 +14,12 @@ def compute_CIs(samples, method, summary_stat_name, statistic, threshold, alpha=
         return np.empty((samples.shape[0], 2))
 
 def param_z_interval(data, summary_stat_name, threshold, alpha=0.05):
+    data = np.sort(data, axis=1)
+    # If summary_stat_name is "trimmed_mean", we trim the data
+    # by removing the lowest and highest threshold percent of samples
     if summary_stat_name == "trimmed_mean":
         lowercut = int(threshold * data.shape[1])
-        uppercut = len(data) - lowercut
+        uppercut = data.shape[1] - lowercut
         data = data[:, lowercut:uppercut]
     means = np.mean(data, axis=1)
     std_errors = np.std(data, axis=1, ddof=1) / np.sqrt(data.shape[1])
@@ -24,6 +27,9 @@ def param_z_interval(data, summary_stat_name, threshold, alpha=0.05):
     return np.vstack([means - z_score * std_errors, means + z_score * std_errors]).T
 
 def param_t_interval(data, summary_stat_name, threshold, alpha=0.05):
+    data = np.sort(data, axis=1)
+    # If summary_stat_name is "trimmed_mean", we trim the data
+    # by removing the lowest and highest threshold percent of samples
     if summary_stat_name == "trimmed_mean":
         lowercut = int(threshold * data.shape[1])
         uppercut = data.shape[1] - lowercut
