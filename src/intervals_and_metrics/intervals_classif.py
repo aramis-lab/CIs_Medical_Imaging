@@ -14,13 +14,12 @@ def CI_accuracy(y_true, y_pred, method, alpha):
         n=len(y_pred)
         return  proportion_confint(n_success, n, alpha=alpha, method= method)
     if method in ['percentile', 'basic', 'bca']:
-        return stratified_bootstrap_metric(y_true, y_pred, metric='accuracy', average=None, n_bootstrap=1000, alpha=1-alpha, method=method)
+        return stratified_bootstrap_CI(y_true, y_pred, metric='accuracy', average=None, n_bootstrap=1000, alpha=1-alpha, method=method)
 
 def CI_AUC(y_true, y_pred, method, alpha, average):
    
     if method in ['percentile', 'basic', 'bca']: 
-        
-        return stratified_bootstrap_metric(y_true, y_pred, metric='auc', average=average, n_bootstrap=1000, alpha=alpha, method=method)
+        return stratified_bootstrap_CI(y_true, y_pred, metric='auc', average=average, n_bootstrap=1000, alpha=alpha, method=method)
     else: 
         N=len(y_true)
         n=np.sum(y_true)
@@ -161,7 +160,7 @@ def el_auc_confidence_interval(Y, X, S,AUC, alpha):
     except Exception as e:
         raise ValueError(f"Failed to compute confidence interval: {e}")
 
-def stratified_bootstrap_metric(y_true, y_score, metric='auc', average='micro', n_bootstrap=1000, alpha=0.05, method='percentile'):
+def stratified_bootstrap_CI(y_true, y_score, metric='auc', average='micro', n_bootstrap=1000, alpha=0.05, method='percentile'):
     y_true = np.array(y_true)
    
     y_score = np.array(y_score)
