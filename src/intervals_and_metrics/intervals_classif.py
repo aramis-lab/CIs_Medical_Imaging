@@ -16,41 +16,6 @@ def CI_accuracy(y_true, y_pred, method, alpha):
     if method in ['percentile', 'basic', 'bca']:
         return stratified_bootstrap_metric(y_true, y_pred, metric='accuracy', average=None, n_bootstrap=1000, alpha=1-alpha, method=method)
 
-
-def scipy_bootstrap_ci(data, method='percentile',statistic=np.mean, alpha=0.05, n_resamples=9999):
-
-    data = np.array(data).astype(float)
-    ci = bootstrap(
-        data=(data,),
-        statistic=np.mean,
-        confidence_level=1 - alpha,
-        method=method,
-        n_resamples=n_resamples,
-        vectorized=True,
-    ).confidence_interval
-    return  np.array([ci.low, ci.high]).squeeze().T
-
-def studentized_interval_accuracy(samples, alpha, n_resamples=9999):
-    samples = np.array(samples).astype(float)
-    samples_statistics = np.mean(samples, axis=-1)
-    
-    samples_stds = np.std(samples, axis=-1).squeeze()
-    bootstrap_samples = np.stack([np.random.choice(samples[i], size=(n_resamples, samples.shape[1]), replace=True) for i in range(samples.shape[0])])
-    bootstrap_statistics = np.mean(bootstrap_samples, axis=-1).squeeze()
-    
-    boostrap_stds = np.std(bootstrap_samples, axis=-1)
-    studentized = (bootstrap_statistics - samples_statistics) / boostrap_stds
-    
-    lower_bound = np.percentile(studentized, 100 * alpha / 2, axis=1)
-    
-    upper_bound = np.percentile(studentized, 100 * (1 - alpha / 2), axis=1)
-
-    return np.vstack([samples_statistics - upper_bound * samples_stds, samples_statistics - lower_bound * samples_stds])
-
-
-
-
-
 def CI_AUC(y_true, y_pred, method, alpha, average):
    
     if method in ['percentile', 'basic', 'bca']: 
@@ -62,7 +27,6 @@ def CI_AUC(y_true, y_pred, method, alpha, average):
         m=N-n
         AUC=roc_auc_score(y_true, y_pred)
         sorted_indices = np.argsort(y_pred)
-        y_pred_sorted = y_pred[sorted_indices]
         y_sorted = y_true[sorted_indices]
         positive_in_sorted = np.where(y_sorted == 1)[0]
         negative_in_sorted=np.where(y_sorted == 0)[0]
@@ -82,14 +46,11 @@ def CI_AUC(y_true, y_pred, method, alpha, average):
         elif method == "Empirical Likelihood":
             return el_auc_confidence_interval(Y, X, S,AUC, alpha)
        
-
-
 def auc_statistic(y, y_pred, axis=None, average=None ):
     if average=="weighted":
         return roc_auc_score(y, y_pred, average="weighted")
     else: 
         return roc_auc_score(y, y_pred)
-
 
 def CI_LT(AUC, m, n, S):
     if AUC !=0 and AUC !=1:
@@ -200,9 +161,6 @@ def el_auc_confidence_interval(Y, X, S,AUC, alpha):
     except Exception as e:
         raise ValueError(f"Failed to compute confidence interval: {e}")
 
-
-
-
 def stratified_bootstrap_metric(y_true, y_score, metric='auc', average='micro', n_bootstrap=1000, alpha=0.05, method='percentile'):
     y_true = np.array(y_true)
    
@@ -300,4 +258,3 @@ def stratified_bootstrap_metric(y_true, y_score, metric='auc', average='micro', 
 
     else:
         raise ValueError(f"Unknown method: {method}")
-print( CI_accuracy(np.array([1, 0, 1, 0, 1, 1, 0, 1]), np.array([1, 1, 1, 0, 0, 0, 0, 1]) ,method= "studentized", alpha=0.95))
