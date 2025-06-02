@@ -7,6 +7,14 @@ from scipy.optimize import root_scalar
 
 from sklearn.preprocessing import label_binarize
 
+def compute_CIs_classification(y_true, y_pred, metric, method, alpha=0.05, average=None):
+    if metric == 'accuracy':
+        return CI_accuracy(y_true, y_pred, method, alpha)
+    elif metric == 'auc':
+        return CI_AUC(y_true, y_pred, method, alpha, average)
+    else:
+        raise ValueError(f"Unsupported metric: {metric}")
+
 def CI_accuracy(y_true, y_pred, method, alpha):
     
     if method in ["normal","agresti_coull","beta","wilson"]:
@@ -253,7 +261,7 @@ def stratified_bootstrap_CI(y_true, y_score, metric='auc', average='micro', n_bo
 
         bca_low = np.percentile(stats, 100 * pct1)
         bca_high = np.percentile(stats, 100 * pct2)
-        return [bca_low, bca_high]
+        return np.array([bca_low, bca_high])
 
     else:
         raise ValueError(f"Unknown method: {method}")

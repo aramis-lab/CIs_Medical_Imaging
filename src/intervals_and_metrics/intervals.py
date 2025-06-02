@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import t, norm, bootstrap
 
-def compute_CIs(samples, method, summary_stat_name, statistic, threshold, alpha=0.05):
+def compute_CIs_segmentation(samples, method, summary_stat_name, statistic, threshold, alpha=0.05):
     if len(samples.shape) == 1:
         samples = np.expand_dims(samples, axis=0)
     if method == "param_t":
