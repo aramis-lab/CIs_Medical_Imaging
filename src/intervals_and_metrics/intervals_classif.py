@@ -1,14 +1,9 @@
 
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, roc_auc_score
-from sklearn.tree import DecisionTreeClassifier
-from scipy.stats import binomtest, bootstrap
 from statsmodels.stats.proportion import proportion_confint
 from scipy.stats import chi2, norm
 from scipy.optimize import root_scalar
-
 
 from sklearn.preprocessing import label_binarize
 
@@ -18,7 +13,7 @@ def CI_accuracy(y_true, y_pred, method, alpha):
         n_success=np.sum(y_true==y_pred)
         n=len(y_pred)
         return  proportion_confint(n_success, n, alpha=alpha, method= method)
-    if method in ['percentile', 'basic', 'bca', 'studentized']:
+    if method in ['percentile', 'basic', 'bca']:
         return stratified_bootstrap_metric(y_true, y_pred, metric='accuracy', average=None, n_bootstrap=1000, alpha=1-alpha, method=method)
 
 
@@ -58,7 +53,7 @@ def studentized_interval_accuracy(samples, alpha, n_resamples=9999):
 
 def CI_AUC(y_true, y_pred, method, alpha, average):
    
-    if method in ['percentile', 'basic', 'bca','studentized']: 
+    if method in ['percentile', 'basic', 'bca']: 
         
         return stratified_bootstrap_metric(y_true, y_pred, metric='auc', average=average, n_bootstrap=1000, alpha=alpha, method=method)
     else: 
@@ -220,7 +215,7 @@ def stratified_bootstrap_metric(y_true, y_score, metric='auc', average='micro', 
     # Binarize if needed for AUC
     if metric == 'auc':
         y_true_bin = label_binarize(y_true, classes=classes)
-        if y_score.ndim == 1 or y_score.shape[1] == 1:
+        if n_classes == 2:
             y_score = y_score.ravel()
             y_true_bin = y_true_bin.ravel()
         original_stat = roc_auc_score(y_true_bin, y_score, average=average, multi_class='ovr')
@@ -280,7 +275,9 @@ def stratified_bootstrap_metric(y_true, y_score, metric='auc', average='micro', 
         for i in range(n):
             jack_idx = np.delete(np.arange(n), i)
             if metric == 'auc':
-                jack_stat = roc_auc_score(y_true_bin[jack_idx], y_score[jack_idx], average=average, multi_class='ovr')
+                y_true_jack = y_true[jack_idx]
+                y_true_bin_jack = label_binarize(y_true_jack, classes=classes)
+                jack_stat = roc_auc_score(y_true_bin_jack, y_score[jack_idx], average=average, multi_class='ovr')
             else:
                 y_jack_pred = np.argmax(y_score[jack_idx], axis=1) if y_score.ndim > 1 else y_score[jack_idx]
                 jack_stat = accuracy_score(y_true[jack_idx], y_jack_pred)
@@ -288,7 +285,7 @@ def stratified_bootstrap_metric(y_true, y_score, metric='auc', average='micro', 
 
         jack_stats = np.array(jack_stats)
         jack_mean = np.mean(jack_stats)
-        acc = np.sum((jack_mean - jack_stats) ** 3) / (6 * (np.sum((jack_mean - jack_stats) ** 2) ** 1.5 + 1e-8))
+        acc = np.sum((jack_mean - jack_stats) ** 3) / (6 * (np.sum((jack_mean - jack_stats) ** 2) ** 1.5))
 
         z0 = norm.ppf(np.mean(stats < original_stat))
         z_low = norm.ppf(alpha / 2)
