@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def mean(x, threshold, axis=None):
     return np.mean(x, axis=axis, keepdims=True)
 

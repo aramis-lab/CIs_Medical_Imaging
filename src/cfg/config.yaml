@@ -24,6 +24,8 @@ kernel:
   - "cosine"
   - "linear"
 
+adaptive_bandwidth: true
+
 # Trimmed mean thresholds (adjustable)
 trimmed_mean_threshold: 0.25
 

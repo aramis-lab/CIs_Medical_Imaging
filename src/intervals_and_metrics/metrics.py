@@ -1,28 +1,96 @@
 import numpy as np
-import pandas as pd
-import os
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, average_precision_score, matthews_corrcoef
+from sklearn.preprocessing import label_binarize
 
-def compute_metrics(input_dir, output_dir, metrics, summary_stats, tasks, algos):
+def accuracy(y_true, y_pred, average="micro"):
+    return np.mean(y_true == y_pred)
 
-    for metric in metrics:
-        for summary_stat in summary_stats:
-            results = pd.DataFrame()
-            for task in tasks:
-                for algo in algos:
-                    if os.path.exists(os.path.join(input_dir, f"results_{metric}_{summary_stat}_{task}_{algo}.csv")):
+def npv(y_true, y_pred, average="micro"):
+    classes = np.unique(y_true)
+    y_true = label_binarize(y_true, classes=classes)
+    y_pred = label_binarize(y_pred, classes=classes)
 
-                        results_df = pd.read_csv(os.path.join(input_dir, f"results_{metric}_{summary_stat}_{task}_{algo}.csv"), low_memory=False)
+    tn = np.sum((y_true == 0) & (y_pred == 0))
+    fn = np.sum((y_true == 1) & (y_pred == 0))
+    return tn / (tn + fn) if (tn + fn) > 0 else 0
 
-                        n_list = results_df["n"].unique()
+def ppv(y_true, y_pred, average="micro"):
+    classes = np.unique(y_true)
+    y_true = label_binarize(y_true, classes=classes)
+    y_pred = label_binarize(y_pred, classes=classes)
 
-                        columns_to_drop = ["sample_index"] + [c for c in results_df.columns if "bound" in c]
-                        results_df = results_df.drop(columns=columns_to_drop)
-                        
-                        for n in n_list:
-                            df_n = results_df[results_df["n"]==n]
-                            mean_df = df_n.mean(numeric_only=True)
-                            for col in df_n.columns:
-                                if col not in mean_df:
-                                    mean_df[col] = df_n[col].iloc[0]
-                            results = pd.concat([results, mean_df.to_frame().T], ignore_index=True)
-            results.to_csv(os.path.join(output_dir, f"aggregated_results_{metric}_{summary_stat}"))
+    tp = np.sum((y_true == 1) & (y_pred == 1))
+    fp = np.sum((y_true == 0) & (y_pred == 1))
+    return tp / (tp + fp) if (tp + fp) > 0 else 0
+
+def precision(y_true, y_pred, average="micro"):
+    return precision_score(y_true, y_pred, average=average)
+
+def recall(y_true, y_pred, average="micro"):
+    return recall_score(y_true, y_pred, average=average)
+
+def sensitivity(y_true, y_pred, average="micro"):
+    classes = np.unique(y_true)
+    y_true = label_binarize(y_true, classes=classes)
+    y_pred = label_binarize(y_pred, classes=classes)
+
+    tp = np.sum((y_true == 1) & (y_pred == 1), axis=0)
+    fn = np.sum((y_true == 1) & (y_pred == 0), axis=0)
+    return tp / (tp + fn) if (tp + fn) > 0 else 0
+
+def specificity(y_true, y_pred, average="micro"):
+    classes = np.unique(y_true)
+    y_true = label_binarize(y_true, classes=classes)
+    y_pred = label_binarize(y_pred, classes=classes)
+
+    tn = np.sum((y_true == 0) & (y_pred == 0), axis=0)
+    fp = np.sum((y_true == 0) & (y_pred == 1), axis=0)
+    return tn / (tn + fp) if (tn + fp) > 0 else 0
+
+def balanced_accuracy(y_true, y_pred, average="micro"):
+    classes = np.unique(y_true)
+    y_true = label_binarize(y_true, classes=classes)
+    y_pred = label_binarize(y_pred, classes=classes)
+
+    sensitivity_scores = sensitivity(y_true, y_pred, average="micro")
+    specificity_scores = specificity(y_true, y_pred, average="micro")
+    
+    return np.mean(sensitivity_scores + specificity_scores) / 2
+
+def f1(y_true, y_pred, average="micro"):
+    return f1_score(y_true, y_pred, average=average)
+
+def fbeta_score(y_true, y_pred, beta=1.0, average="micro"):
+    return f1_score(y_true, y_pred, beta=beta, average=average)
+
+def mcc(y_true, y_pred, average="micro"):
+    return matthews_corrcoef(y_true, y_pred)
+
+def ap(y_true, y_score, average="micro"):
+    y_true = label_binarize(y_true, classes=np.unique(y_true))
+    return average_precision_score(y_true, y_score, average=average)
+
+def auroc(y_true, y_score, average="micro"):
+    y_true = label_binarize(y_true, classes=np.unique(y_true))
+    return roc_auc_score(y_true, y_score, average=average, multi_class='ovr')
+
+def get_metric(metric):
+
+    metric_dict = {
+        "accuracy": accuracy,
+        "npv": npv,
+        "ppv": ppv,
+        "precision": precision,
+        "recall": recall,
+        "sensitivity": sensitivity,
+        "specificity": specificity,
+        "balanced_accuracy": balanced_accuracy,
+        "f1_score": f1,
+        "fbeta_score": fbeta_score,
+        "mcc": mcc,
+        "ap" : ap,
+        "auroc" : auroc,
+        "auc" : auroc,
+    }
+
+    return metric_dict.get(metric, None)

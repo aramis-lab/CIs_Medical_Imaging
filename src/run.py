@@ -1,12 +1,12 @@
 import pandas as pd
 import numpy as np
 import hydra
-import sys
 from collections import defaultdict
 from omegaconf import DictConfig
-from kde import weighted_kde, sample_weighted_kde
+from kde import weighted_kde, sample_weighted_kde, weighted_kde_multivariate, sample_weighted_kde_multivariate
 from summary_stats import get_statistic
-from intervals_and_metrics import compute_CIs, get_bounds, get_authorized_methods
+from intervals_and_metrics import get_metric
+from intervals_and_metrics import compute_CIs_segmentation, compute_CIs_classification, get_bounds, get_authorized_methods
 from kernels import get_kernel
 from utils import extract_df
 import os
@@ -18,10 +18,29 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 def make_kdes_classification(df, task, algo, config):
 
     # Retrieve configuration and set up variables
-    ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
+    ci_methods = set(config.ci_methods).intersection(get_authorized_methods(None, config.metric))
+    metric = get_metric(config.metric)
     results = pd.DataFrame()
 
-    a, b = get_bounds(config.metric)
+    values = df[df["alg_name"] == algo]["logits"].to_numpy()
+    labels = df[df["alg_name"] == algo]["target"].to_numpy()
+
+    print(values)
+
+    # Define the grid for KDE
+    alphas = np.ones(len(values))
+
+    # Iterative weighted KDE estimation
+    if config.adaptive_bandwidth:
+        kde = weighted_kde_multivariate(values, alphas)
+        initial_estimates = kde(values)
+        log_g = np.mean(np.log(initial_estimates))
+        g = np.exp(log_g)
+        alphas = (initial_estimates / g) ** (-1/2)
+    
+    samples, sim_labels = sample_weighted_kde_multivariate(values, labels, 1000000, alphas)
+
+    true_value = metric(samples, sim_labels, average=config.average)
 
     results = None
     return results
@@ -29,7 +48,8 @@ def make_kdes_classification(df, task, algo, config):
 def make_kdes_segmentation(df, task, algo, config):
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
-    statistic = lambda x, axis=None: get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
+    def statistic(x, axis=None):
+        return get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
     results = pd.DataFrame(columns=["subtask", "alg_name", "n", "sample_index"] + [f"{stat}_{method}" for method in ci_methods for stat in ["lower_bound", "upper_bound", "contains_true_stat", "width", "proportion_oob"]])
 
     a, b = get_bounds(config.metric)
@@ -56,13 +76,15 @@ def make_kdes_segmentation(df, task, algo, config):
 
     # Iterative weighted KDE estimation
     y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
-    indices = np.searchsorted(x, values)
-    initial_estimates = y[indices]
-    log_g = np.mean(np.log(initial_estimates))
-    g = np.exp(log_g)
-    alphas = (initial_estimates / g) ** (-1/2)
+    if config.adaptive_bandwidth:
+        indices = np.searchsorted(x, values)
+        initial_estimates = y[indices]
+        log_g = np.mean(np.log(initial_estimates))
+        g = np.exp(log_g)
+        alphas = (initial_estimates / g) ** (-1/2)
+        y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
     
-    y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
+
     samples = sample_weighted_kde(y, x, 1000000)
 
     # Compute true statistic
@@ -87,7 +109,7 @@ def make_kdes_segmentation(df, task, algo, config):
             for batch_start in range(0, config.n_samples, batch_size):
                 batch_end = min(batch_start + batch_size, config.n_samples)
                 batch_samples = samples[batch_start:batch_end]
-                CIs = compute_CIs(batch_samples, method, config.summary_stat, statistic, config.trimmed_mean_threshold)
+                CIs = compute_CIs_segmentation(batch_samples, method, config.summary_stat, statistic, config.trimmed_mean_threshold)
 
                 # Precompute vectorized components for speed
                 lower_bounds = CIs[:, 0]
