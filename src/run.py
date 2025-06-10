@@ -5,8 +5,7 @@ from collections import defaultdict
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde, weighted_kde_multivariate, sample_weighted_kde_multivariate
 from summary_stats import get_statistic
-from intervals_and_metrics import get_metric
-from intervals_and_metrics import compute_CIs_segmentation, compute_CIs_classification, get_bounds, get_authorized_methods
+from intervals_and_metrics import get_metric, is_continuous, compute_CIs_segmentation, compute_CIs_classification, get_bounds, get_authorized_methods
 from kernels import get_kernel
 from utils import extract_df
 import os
@@ -103,7 +102,7 @@ def make_kdes_segmentation(df, task, algo, config):
     
     values = df[df["alg_name"] == algo]["value"].to_numpy()
 
-    if "hd" in config.metric:
+    if not is_continuous(config.metric):
         samples = np.random.choice(values, size=1000000, replace=True)
     else:
         values_span = np.max(values) - np.min(values)
@@ -149,7 +148,7 @@ def make_kdes_segmentation(df, task, algo, config):
             else:
                 print(f"Computing CIs for n = {n}")
             del existing_results
-        if "hd" in config.metric: # For Hausdorff distance, KDE makes no sense, we sample uniformly
+        if not is_continuous(config.metric): # For discrete metrics, KDE makes no sense, we sample uniformly
             samples = np.random.choice(values, size=config.n_samples * n, replace=True).reshape(config.n_samples, n)
         else:
             samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
