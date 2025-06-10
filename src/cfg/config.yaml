@@ -13,9 +13,6 @@ summary_stat:
   - "std"
   - "iqr_length"
 
-# List of tasks (subtasks for processing)
-tasks: ["BRATS_L1", "BRATS_L2", "BRATS_L3", "colon_L1", "hepaticvessel_L1", "hepaticvessel_L2", "hippocampus_L1", "hippocampus_L2", "liver_L1", "liver_L2", "pancreas_L1", "pancreas_L2"]
-
 kernel:
   - "gaussian"
   - "tophat"

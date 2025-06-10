@@ -18,7 +18,9 @@ def extract_df(path, metric, task):
 
 def get_benchmark_instances(BASE_DIR, cfg):
     benchmark_instances = []
-    for task in cfg.tasks:
+    df_all = pd.read_csv(os.path.join(BASE_DIR, cfg.relative_data_path))
+    tasks = df_all["subtask"].unique()
+    for task in tasks:
         df_task = extract_df(os.path.join(BASE_DIR, cfg.relative_data_path), cfg.metric, task)
         algos = df_task["alg_name"].unique()
         for algo in algos:
