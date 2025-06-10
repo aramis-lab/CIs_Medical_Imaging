@@ -6,5 +6,5 @@ def get_bounds(metric):
         return (0,1)
     elif metric.lower() in ["mcc"]:
         return (-1, 1)
-    elif metric.lower() in ["hd", "hd95", "hd perc", "assd", "masd"]:
+    elif metric.lower() in ["hd", "hd_95", "hd perc", "assd", "masd"]:
         return (0, np.inf)

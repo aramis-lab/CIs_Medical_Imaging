@@ -7,7 +7,14 @@ import os
 def extract_df(path, metric, task):
     df = pd.read_csv(path)
     df = df[(df["score"] == metric) & (df["subtask"] == task)]
-    return df["alg_name", "value"]
+    if "alg_name" in df.columns and "value" in df.columns:
+        print(f"Extracting values for metric '{metric}' and task '{task}'")
+        return df[["alg_name", "value"]]
+    elif "alg_name" in df.columns and "logits" in df.columns and "target" in df.columns:
+        print(f"Extracting logits and targets for metric '{metric}' and task '{task}'")
+        return df[["alg_name", "logits", "target"]]
+    else:
+        raise ValueError(f"DataFrame does not contain required columns for metric '{metric}' and task '{task}'.")
 
 def get_benchmark_instances(BASE_DIR, cfg):
     benchmark_instances = []

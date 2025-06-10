@@ -7,7 +7,7 @@ from scipy.optimize import root_scalar
 
 from sklearn.preprocessing import label_binarize
 
-def compute_CIs_classification(y_true, y_pred, metric, method, alpha=0.05, average=None):
+def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alpha=0.05):
     if metric == 'accuracy':
         return CI_accuracy(y_true, y_pred, method, alpha)
     elif metric == 'auc':

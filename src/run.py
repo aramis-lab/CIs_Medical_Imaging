@@ -41,9 +41,54 @@ def make_kdes_classification(df, task, algo, config):
     samples, sim_labels = sample_weighted_kde_multivariate(values, labels, 1000000, alphas)
 
     true_value = metric(samples, sim_labels, average=config.average)
+    all_rows = defaultdict(dict)
+    RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
+    for n in tqdm(config.sample_sizes):
+        output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv")
+        if os.path.exists(output_path):
+            existing_results = pd.read_csv(output_path)
+            if existing_results.shape[0]>=config.n_samples: # Already computed
+                print(f"Skipping n = {n}, results already exist")
+                continue
+            else:
+                print(f"Computing CIs for n = {n}")
+            del existing_results
+        samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.n_samples * n, alphas)
+        samples = samples.reshape(config.n_samples, n, -1)
+        sim_labels = sim_labels.reshape(config.n_samples, n)
+        batch_size = 50
+        for method in ci_methods:
+            for batch_start in range(0, config.n_samples, batch_size):
+                batch_end = min(batch_start + batch_size, config.n_samples)
+                batch_samples = samples[batch_start:batch_end]
+                batch_labels = sim_labels[batch_start:batch_end]
+                CIs = compute_CIs_classification(batch_samples, batch_labels, config.metric, method, average=config.average)
 
-    results = None
-    return results
+                # Precompute vectorized components for speed
+                lower_bounds = CIs[:, 0]
+                upper_bounds = CIs[:, 1]
+                widths = upper_bounds - lower_bounds
+                contains_true = (lower_bounds <= true_value) & (true_value <= upper_bounds)
+                proportion_oob = ((lower_bounds < 0) * (-lower_bounds) + (upper_bounds > 1) * (upper_bounds - 1)) / widths
+
+                for sample_index in range(batch_start, batch_end):
+                    key = (task, algo, n, sample_index)
+                    all_rows[key].update({
+                    "subtask": task,
+                    "alg_name": algo,
+                    "n": n,
+                    "sample_index": sample_index,
+                    f"lower_bound_{method}": lower_bounds[sample_index - batch_start],
+                    f"upper_bound_{method}": upper_bounds[sample_index - batch_start],
+                    f"contains_true_stat_{method}": contains_true[sample_index - batch_start],
+                    f"width_{method}": widths[sample_index - batch_start],
+                    f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
+                    })
+
+        results = pd.DataFrame(data = all_rows.values())
+
+        results = results.drop_duplicates(["subtask", "alg_name", "n", "sample_index"])
+        results.to_csv(output_path, index=False)
 
 def make_kdes_segmentation(df, task, algo, config):
     # Retrieve configuration and set up variables
@@ -58,34 +103,36 @@ def make_kdes_segmentation(df, task, algo, config):
     
     values = df[df["alg_name"] == algo]["value"].to_numpy()
 
-    values_span = np.max(values) - np.min(values)
-    # Define the grid for KDE
-    if np.isinf(a):
-        min_val = np.min(values) - 0.1 * values_span
+    if "hd" in config.metric:
+        samples = np.random.choice(values, size=1000000, replace=True)
     else:
-        min_val = a
-    
-    if np.isinf(b):
-        max_val = np.max(values) + 0.1 * values_span
-    else:
-        max_val = b
-    x = np.linspace(min_val, max_val, 10000)  # You can change the resolution of x
-    alphas = np.ones(len(values))
+        values_span = np.max(values) - np.min(values)
+        # Define the grid for KDE
+        if np.isinf(a):
+            min_val = np.min(values) - 0.1 * values_span
+        else:
+            min_val = a
+        
+        if np.isinf(b):
+            max_val = np.max(values) + 0.1 * values_span
+        else:
+            max_val = b
+        x = np.linspace(min_val, max_val, 10000)  # You can change the resolution of x
+        alphas = np.ones(len(values))
 
-    dist_to_bounds = np.min([values-a, b-values], axis=0)
+        dist_to_bounds = np.min([values-a, b-values], axis=0)
 
-    # Iterative weighted KDE estimation
-    y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
-    if config.adaptive_bandwidth:
-        indices = np.searchsorted(x, values)
-        initial_estimates = y[indices]
-        log_g = np.mean(np.log(initial_estimates))
-        g = np.exp(log_g)
-        alphas = (initial_estimates / g) ** (-1/2)
+        # Iterative weighted KDE estimation
         y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
-    
+        if config.adaptive_bandwidth:
+            indices = np.searchsorted(x, values)
+            initial_estimates = y[indices]
+            log_g = np.mean(np.log(initial_estimates))
+            g = np.exp(log_g)
+            alphas = (initial_estimates / g) ** (-1/2)
+            y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
 
-    samples = sample_weighted_kde(y, x, 1000000)
+        samples = sample_weighted_kde(y, x, 1000000)
 
     # Compute true statistic
     true_value = statistic(samples)
@@ -102,7 +149,10 @@ def make_kdes_segmentation(df, task, algo, config):
             else:
                 print(f"Computing CIs for n = {n}")
             del existing_results
-        samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
+        if "hd" in config.metric: # For Hausdorff distance, KDE makes no sense, we sample uniformly
+            samples = np.random.choice(values, size=config.n_samples * n, replace=True).reshape(config.n_samples, n)
+        else:
+            samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
 
         batch_size = 50
         for method in ci_methods:
