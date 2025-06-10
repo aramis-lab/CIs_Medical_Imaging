@@ -151,6 +151,8 @@ def make_kdes_segmentation(df, task, algo, config):
     for n in tqdm(config.sample_sizes):
         output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv")
         if os.path.exists(output_path):
+            # Check if results already exist
+            print(f"Output path {output_path} already exists, checking if results are sufficient")
             existing_results = pd.read_csv(output_path)
             if existing_results.shape[0]>=config.n_samples: # Already computed
                 print(f"Skipping n = {n}, results already exist")
