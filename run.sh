@@ -3,7 +3,8 @@
 module load python
 conda activate CI
 
-METRICS=(dsc nsd boundary_iou assd cldice hd hd_perc iou masd)
+# METRICS=(boundary_iou assd cldice hd hd_perc iou masd)
+METRICS=(assd hd)
 metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 
 # Preprocess instance lists
