@@ -26,6 +26,12 @@ def make_kdes_classification(df, task, algo, config):
 
     print(values)
 
+    values = values[~np.isnan(values)]  # Remove NaN values
+    labels = labels[~np.isnan(values)]  # Remove NaN values in labels
+    if len(values) < 50:
+        print(f"Not enough values for {task} {algo} ({len(values)}), skipping KDE")
+        return
+
     # Define the grid for KDE
     alphas = np.ones(len(values))
 
@@ -101,6 +107,10 @@ def make_kdes_segmentation(df, task, algo, config):
     kernel = get_kernel(config.kernel)
     
     values = df[df["alg_name"] == algo]["value"].to_numpy()
+    values = values[~np.isnan(values)]  # Remove NaN values
+    if len(values) < 50:
+        print(f"Not enough values for {task} {algo} ({len(values)}), skipping KDE")
+        return
 
     if not is_continuous(config.metric):
         samples = np.random.choice(values, size=1000000, replace=True)
