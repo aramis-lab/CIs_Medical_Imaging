@@ -15,7 +15,7 @@ module load python
 conda activate CI
 
 # Load all task-algo pairs
-METRICS=(dsc nsd)
+METRICS=(dsc nsd boundary_iou assd cldice hd hd_perc iou masd)
 ALL_PAIRS=()
 
 for METRIC in "${METRICS[@]}"; do

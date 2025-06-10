@@ -32,7 +32,7 @@ trimmed_mean_threshold: 0.25
 sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
 
 # Path to the data file, relative to the repository root
-relative_data_path : "../data_matrix_grandchallenge.csv"
+relative_data_path : "../data_matrix_grandchallenge_all.csv"
 
 # Path to the output directory for saving results, relative to the repository root
 relative_output_dir: "../results"  
