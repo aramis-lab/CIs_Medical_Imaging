@@ -7,7 +7,7 @@ def get_authorized_methods(summary_stat, metric):
     elif metric in ["assd", "hd", "hd_95", "masd"]:
         if summary_stat in ["mean", "trimmed_mean"]:
             return {"param_t", "param_z", "percentile", "basic", "bca"}
-        elif summary_stat in ["median"]:
+        elif summary_stat in ["median", "iqr_length", "std"]:
             return {"percentile", "basic", "bca"}
     elif metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "fbeta_score", "mcc"]:
         return {"percentile", "basic", "bca", "agresti_coull", "wilson", "wald", "param_z", "cloper_pearson", "exact"}
