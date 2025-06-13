@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, average_precision_score, matthews_corrcoef
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score, average_precision_score, matthews_corrcoef, fbeta_score
 from sklearn.preprocessing import label_binarize
 
 def softmax_to_predictions(softmax_scores):
@@ -89,9 +89,9 @@ def f1(y_true, y_pred, average="micro"):
     y_pred = softmax_to_predictions(y_pred) if y_pred.ndim > 1 else y_pred
     return f1_score(y_true, y_pred, average=average)
 
-def fbeta_score(y_true, y_pred, beta=1.0, average="micro"):
+def fbeta(y_true, y_pred, beta=1.0, average="micro"):
     y_pred = softmax_to_predictions(y_pred) if y_pred.ndim > 1 else y_pred
-    return f1_score(y_true, y_pred, beta=beta, average=average)
+    return fbeta_score(y_true, y_pred, beta=beta, average=average)
 
 def mcc(y_true, y_pred, average="micro"):
     y_pred = softmax_to_predictions(y_pred) if y_pred.ndim > 1 else y_pred
@@ -117,7 +117,7 @@ def get_metric(metric):
         "specificity": specificity,
         "balanced_accuracy": balanced_accuracy,
         "f1_score": f1,
-        "fbeta_score": fbeta_score,
+        "fbeta_score": fbeta,
         "mcc": mcc,
         "ap" : ap,
         "auroc" : auroc,
