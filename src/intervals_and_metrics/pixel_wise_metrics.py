@@ -23,7 +23,11 @@ def npv(y_true, y_pred, average="micro"):
 
     tn = np.sum((y_true == 0) & (y_pred == 0))
     fn = np.sum((y_true == 1) & (y_pred == 0))
-    return tn / (tn + fn) if (tn + fn) > 0 else 0
+    npvs = np.zeros(len(tn))
+    for i in range(len(tn)):
+        if tn[i] + fn[i]>0:
+            npvs = tn[i] / (tn[i]+fn[i])
+    return npvs
 
 def ppv(y_true, y_pred, average="micro"):
     y_pred = softmax_to_predictions(y_pred) if y_pred.ndim > 1 else y_pred
@@ -33,7 +37,11 @@ def ppv(y_true, y_pred, average="micro"):
 
     tp = np.sum((y_true == 1) & (y_pred == 1))
     fp = np.sum((y_true == 0) & (y_pred == 1))
-    return tp / (tp + fp) if (tp + fp) > 0 else 0
+    ppvs = np.zeros(len(tp))
+    for i in range(len(tp)):
+        if tp[i] + fp[i]>0:
+            ppvs = tp[i] / (tp[i]+fp[i])
+    return ppvs
 
 def precision(y_true, y_pred, average="micro"):
     y_pred = softmax_to_predictions(y_pred) if y_pred.ndim > 1 else y_pred
@@ -51,7 +59,11 @@ def sensitivity(y_true, y_pred, average="micro"):
 
     tp = np.sum((y_true == 1) & (y_pred == 1), axis=0)
     fn = np.sum((y_true == 1) & (y_pred == 0), axis=0)
-    return tp / (tp + fn) if (tp + fn) > 0 else 0
+    sens = np.zeros(len(tp))
+    for i in range(len(tp)):
+        if tp[i] + fn[i]>0:
+            sens = tp[i] / (tp[i]+fn[i])
+    return sens
 
 def specificity(y_true, y_pred, average="micro"):
     y_pred = softmax_to_predictions(y_pred) if y_pred.ndim > 1 else y_pred
@@ -61,7 +73,11 @@ def specificity(y_true, y_pred, average="micro"):
 
     tn = np.sum((y_true == 0) & (y_pred == 0), axis=0)
     fp = np.sum((y_true == 0) & (y_pred == 1), axis=0)
-    return tn / (tn + fp) if (tn + fp) > 0 else 0
+    spec = np.zeros(len(tn))
+    for i in range(len(tn)):
+        if tn[i] + fp[i]>0:
+            spec = tn[i] / (tn[i]+fp[i])
+    return spec
 
 def balanced_accuracy(y_true, y_pred, average="micro"):
     y_pred = softmax_to_predictions(y_pred) if y_pred.ndim > 1 else y_pred
