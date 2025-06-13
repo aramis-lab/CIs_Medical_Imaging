@@ -6,7 +6,9 @@ import os
 
 def extract_df(path, metric, task):
     df = pd.read_csv(path)
-    df = df[(df["score"] == metric) & (df["subtask"] == task)]
+    df = df[df["subtask"] == task]
+    if "score" in df.columns:
+        df = df[df["score"] == metric]
     if "alg_name" in df.columns and "value" in df.columns:
         print(f"Extracting values for metric '{metric}' and task '{task}'")
         return df[["alg_name", "value"]]
