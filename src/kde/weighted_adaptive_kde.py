@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.stats import gaussian_kde
+from kernels import get_sampling_function
 
 # Weighted KDE estimation for 1D data with adaptive bandwidth
 def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndarray, kernel=None, alphas=None):
@@ -55,7 +56,7 @@ def weighted_kde_multivariate(data: np.ndarray, alphas=None):
     return kde
 
 # Sample from multivariate KDE
-def sample_weighted_kde_multivariate(data, labels, n_samples, alphas=None):
+def sample_weighted_kde_multivariate(data, labels, kernel_name, n_samples, alphas=None):
     indices = np.round(np.random.rand(n_samples) * (data.shape[0] - 1)).astype(int)
 
     n, d = data.shape
@@ -68,6 +69,8 @@ def sample_weighted_kde_multivariate(data, labels, n_samples, alphas=None):
     weights = alphas[indices]
     labels = labels[indices]
 
-    norm_samples = np.random.multivariate_normal(np.zeros(d), bandwidth_matrix, size=n_samples)
-    weighted_samples = samples + norm_samples * weights[:, np.newaxis]
+    sampling_function = get_sampling_function(kernel_name)
+
+    norm_samples = sampling_function(n_samples)
+    weighted_samples = samples + norm_samples @ np.linalg.cholesky(bandwidth_matrix).T * weights[:, np.newaxis]
     return weighted_samples, labels
