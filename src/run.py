@@ -24,8 +24,6 @@ def make_kdes_classification(df, task, algo, config):
     values = df[df["alg_name"] == algo]["logits"].to_numpy()
     labels = df[df["alg_name"] == algo]["target"].to_numpy()
 
-    print(values)
-
     values = values[~np.isnan(values)]  # Remove NaN values
     labels = labels[~np.isnan(values)]  # Remove NaN values in labels
     if len(values) < 50:
@@ -38,7 +36,7 @@ def make_kdes_classification(df, task, algo, config):
     # Iterative weighted KDE estimation
     if config.adaptive_bandwidth:
         kde = weighted_kde_multivariate(values, alphas)
-        initial_estimates = kde(values)
+        initial_estimates = kde(values.T)
         log_g = np.mean(np.log(initial_estimates))
         g = np.exp(log_g)
         alphas = (initial_estimates / g) ** (-1/2)
