@@ -21,8 +21,8 @@ def npv(y_true, y_pred, average="micro"):
     y_true = label_binarize(y_true, classes=classes)
     y_pred = label_binarize(y_pred, classes=classes)
 
-    tn = np.sum((y_true == 0) & (y_pred == 0))
-    fn = np.sum((y_true == 1) & (y_pred == 0))
+    tn = np.sum((y_true == 0) & (y_pred == 0), axis=0)
+    fn = np.sum((y_true == 1) & (y_pred == 0), axis=0)
     npvs = np.zeros(len(tn))
     for i in range(len(tn)):
         if tn[i] + fn[i]>0:
@@ -35,8 +35,8 @@ def ppv(y_true, y_pred, average="micro"):
     y_true = label_binarize(y_true, classes=classes)
     y_pred = label_binarize(y_pred, classes=classes)
 
-    tp = np.sum((y_true == 1) & (y_pred == 1))
-    fp = np.sum((y_true == 0) & (y_pred == 1))
+    tp = np.sum((y_true == 1) & (y_pred == 1), axis=0)
+    fp = np.sum((y_true == 0) & (y_pred == 1), axis=0)
     ppvs = np.zeros(len(tp))
     for i in range(len(tp)):
         if tp[i] + fp[i]>0:
