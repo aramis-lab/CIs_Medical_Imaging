@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.stats import gaussian_kde
 from kernels import get_sampling_function
 
 # Weighted KDE estimation for 1D data with adaptive bandwidth
@@ -42,18 +41,6 @@ def sample_weighted_kde(y, x, n_samples):
     inv_cdf = np.clip(inv_cdf, 0, 1)
     
     return inv_cdf
-
-# Weighted KDE estimation for multivariate data
-def weighted_kde_multivariate(data: np.ndarray, alphas=None):
-    """Weighted KDE for multivariate data using scipy's gaussian_kde."""
-
-    if alphas is None:
-        alphas = np.ones(data.shape[0])
-
-    # gaussian_kde expects data as (d, n)
-    kde = gaussian_kde(data.T, weights=alphas)
-    
-    return kde
 
 # Sample from multivariate KDE
 def sample_weighted_kde_multivariate(data, labels, kernel_name, n_samples, alphas=None):

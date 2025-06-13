@@ -1,14 +1,15 @@
 import numpy as np
 from scipy.special import gamma
 
+from . import compute_scaled_differences
+
 def cosine_kernel(x, y, h):
-    if len(np.asarray(x))>0:
-        d = x.shape[0]
-    else:
-        d = 1
-    admissible = np.linalg.norm(x - y) <= h
+    u = compute_scaled_differences(x, y, h)
+    d = u.shape[-1]
+    norms = np.linalg.norm(u, axis=-1)
+    admissible = norms <= 1
     normalization_constant = gamma(d / 2 + 1) / np.pi**(d / 2) * np.pi / 4
-    return admissible * normalization_constant / h**d * np.cos(np.pi/2 * np.linalg.norm((x-y)/h))
+    return admissible * normalization_constant / h**d * np.cos(np.pi/2 * norms)
 
 def sample_cosine_multivariate(n_samples=1, d=1):
     samples = []

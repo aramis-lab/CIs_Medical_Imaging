@@ -1,14 +1,15 @@
 import numpy as np
 from scipy.special import gamma
+from . import compute_scaled_differences
 
 def epanechnikov_kernel(x, y, h):
-    if len(np.asarray(x))>0:
-        d = x.shape[0]
-    else:
-        d = 1
-    admissible = np.abs(np.linalg.norm(x - y)) <= h
+    u = compute_scaled_differences(x, y, h)
+    d = x.shape[1]
+    norms = np.linalg.norm(u, axis=-1)
+    # Check if the points are admissible
+    admissible = norms <= 1
     normalization_constant = (d+2)/ 2 * gamma((d + 2) / 2) / np.pi**(d / 2)
-    return normalization_constant * (1 - np.linalg.norm((x - y) / h) ** 2) / (h**d) * admissible
+    return normalization_constant * (1 - norms ** 2) / (h**d) * admissible
 
 def sample_epanechnikov_multivariate(n_samples=1, d=1):
     samples = []

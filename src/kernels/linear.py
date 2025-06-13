@@ -1,15 +1,15 @@
 import numpy as np
 from scipy.special import gamma
+from . import compute_scaled_differences
 
 def linear_kernel(x, y, h):
-    if len(np.asarray(x))>0:
-        d = x.shape[0]
-    else:
-        d = 1
-    admissible = np.linalg.norm(x - y) <= h
+    u = compute_scaled_differences(x, y, h)
+    d = x.shape[1]
+    norms = np.linalg.norm(u, axis=-1)
+    admissible = norms <= 1
     c_d = gamma((d + 2) / 2) / np.pi**(d / 2)
     normalization_constant = 2**d * gamma(d + 1) / c_d
-    return (1 - np.linalg.norm((x - y) / h)) * admissible / h**d * normalization_constant
+    return (1 - norms) * admissible / h**d * normalization_constant
 
 def sample_linear_multivariate(n_samples=1, d=1):
     directions = np.random.randn(n_samples, d)

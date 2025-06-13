@@ -3,7 +3,7 @@ import numpy as np
 import hydra
 from collections import defaultdict
 from omegaconf import DictConfig
-from kde import weighted_kde, sample_weighted_kde, weighted_kde_multivariate, sample_weighted_kde_multivariate
+from kde import weighted_kde, sample_weighted_kde, sample_weighted_kde_multivariate
 from summary_stats import get_statistic
 from intervals_and_metrics import get_metric, is_continuous, compute_CIs_segmentation, compute_CIs_classification, get_bounds, get_authorized_methods
 from kernels import get_kernel
@@ -30,13 +30,15 @@ def make_kdes_classification(df, task, algo, config):
         print(f"Not enough values for {task} {algo} ({len(values)}), skipping KDE")
         return
 
+    kernel = get_kernel(config.kernel)
+
     # Define the grid for KDE
     alphas = np.ones(len(values))
 
     # Iterative weighted KDE estimation
     if config.adaptive_bandwidth:
-        kde = weighted_kde_multivariate(values, alphas)
-        initial_estimates = kde(values.T)
+        initial_estimates = kernel(values, values, alphas)
+        print(initial_estimates.shape)
         log_g = np.mean(np.log(initial_estimates))
         g = np.exp(log_g)
         alphas = (initial_estimates / g) ** (-1/2)
