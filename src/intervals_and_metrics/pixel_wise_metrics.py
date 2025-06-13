@@ -80,11 +80,6 @@ def specificity(y_true, y_pred, average="micro"):
     return spec
 
 def balanced_accuracy(y_true, y_pred, average="micro"):
-    y_pred = softmax_to_predictions(y_pred) if y_pred.ndim > 1 else y_pred
-    classes = np.unique(y_true)
-    y_true = label_binarize(y_true, classes=classes)
-    y_pred = label_binarize(y_pred, classes=classes)
-
     sensitivity_scores = sensitivity(y_true, y_pred, average="micro")
     specificity_scores = specificity(y_true, y_pred, average="micro")
     
