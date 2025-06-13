@@ -9,6 +9,7 @@ from intervals_and_metrics import get_metric, is_continuous, compute_CIs_segment
 from kernels import get_kernel
 from utils import extract_df
 import os
+from scipy.special import softmax
 
 from tqdm import tqdm
 
@@ -44,6 +45,7 @@ def make_kdes_classification(df, task, algo, config):
         alphas = (initial_estimates / g) ** (-1/2)
     
     samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, 1000000, alphas)
+    samples = softmax(samples, axis=1)  # Convert logits to probabilities
 
     true_value = metric(samples, sim_labels, average=config.average)
     all_rows = defaultdict(dict)
@@ -67,7 +69,7 @@ def make_kdes_classification(df, task, algo, config):
                 batch_end = min(batch_start + batch_size, config.n_samples)
                 batch_samples = samples[batch_start:batch_end]
                 batch_labels = sim_labels[batch_start:batch_end]
-                CIs = compute_CIs_classification(batch_samples, batch_labels, config.metric, method, average=config.average)
+                CIs = compute_CIs_classification(batch_labels, batch_samples, config.metric, method, average=config.average)
 
                 # Precompute vectorized components for speed
                 lower_bounds = CIs[:, 0]

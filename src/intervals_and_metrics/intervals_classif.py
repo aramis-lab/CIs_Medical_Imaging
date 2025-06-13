@@ -16,6 +16,8 @@ def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alp
         raise ValueError(f"Unsupported metric: {metric}")
 
 def CI_accuracy(y_true, y_pred, method, alpha):
+    y_pred = np.argmax(y_pred, axis=1) if y_pred.ndim > 1 else y_pred
+    y_true = np.array(y_true)
     
     if method in ["normal","agresti_coull","beta","wilson"]:
         n_success=np.sum(y_true==y_pred)
