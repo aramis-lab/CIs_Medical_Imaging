@@ -1,9 +1,10 @@
 import numpy as np
 from scipy.special import gamma
 
-from . import compute_scaled_differences
+from .kernels_preprocessing_utils import compute_scaled_differences, preprocess_kernel_inputs
 
 def cosine_kernel(x, y, h):
+    x,y,h = preprocess_kernel_inputs(x, y, h)
     u = compute_scaled_differences(x, y, h)
     d = u.shape[-1]
     norms = np.linalg.norm(u, axis=-1)

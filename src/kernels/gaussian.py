@@ -1,9 +1,10 @@
 import numpy as np
-from . import compute_scaled_differences
+from .kernels_preprocessing_utils import compute_scaled_differences, preprocess_kernel_inputs
 
 def gaussian_kernel(x, y, h):
+    x,y,h = preprocess_kernel_inputs(x, y, h)
     u = compute_scaled_differences(x, y, h)
-    d = x.shape[1]
+    d = u.shape[-1]
     norms = np.linalg.norm(u, axis=-1)
     constant = 1 / (h * np.sqrt(2 * np.pi))**d
     return constant * np.exp(-0.5*norms**2)

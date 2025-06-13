@@ -38,12 +38,12 @@ def make_kdes_classification(df, task, algo, config):
     # Iterative weighted KDE estimation
     if config.adaptive_bandwidth:
         initial_estimates = kernel(values, values, alphas)
-        print(initial_estimates.shape)
+        initial_estimates = np.mean(initial_estimates, axis=1)
         log_g = np.mean(np.log(initial_estimates))
         g = np.exp(log_g)
         alphas = (initial_estimates / g) ** (-1/2)
     
-    samples, sim_labels = sample_weighted_kde_multivariate(values, labels, 1000000, alphas)
+    samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, 1000000, alphas)
 
     true_value = metric(samples, sim_labels, average=config.average)
     all_rows = defaultdict(dict)
