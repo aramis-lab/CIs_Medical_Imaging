@@ -48,7 +48,7 @@ def sample_weighted_kde_multivariate(data, labels, kernel_name, n_samples, alpha
 
     n, d = data.shape
     covariance = np.cov(data, rowvar=False)
-    factor = n ** (-1.0 / (d + 4))
+    factor = 1.06 * n ** (-1.0 / (d + 4))
     bandwidth_matrix = factor * covariance
     if alphas is None:
         alphas = np.ones(data.shape[0])
