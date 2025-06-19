@@ -1,5 +1,5 @@
 import numpy as np
-from ..kernels import get_sampling_function
+from src.kernels import get_sampling_function
 
 # Weighted KDE estimation for 1D data with adaptive bandwidth
 def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndarray, kernel=None, alphas=None):
