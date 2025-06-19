@@ -44,20 +44,32 @@ def sample_weighted_kde(y, x, n_samples):
 
 # Sample from multivariate KDE
 def sample_weighted_kde_multivariate(data, labels, kernel_name, n_samples, alphas=None):
-    indices = np.round(np.random.rand(n_samples) * (data.shape[0] - 1)).astype(int)
-
     n, d = data.shape
+
+    # Select indices with replacement
+    indices = np.round(np.random.rand(n_samples) * (n - 1)).astype(int)
+
+    # Covariance and bandwidth
     covariance = np.cov(data, rowvar=False)
     factor = 1.06 * n ** (-1.0 / (d + 4))
     bandwidth_matrix = factor * covariance
+
+    # Ensure PSD (positive semidefinite)
+    eigvals, eigvecs = np.linalg.eigh(bandwidth_matrix)
+    eigvals[eigvals < 1e-10] = 1e-10  # Replace small/negative eigenvalues
+
+    # Square root of safe_bandwidth
+    bandwidth_sqrt = eigvecs @ np.diag(np.sqrt(eigvals)) @ eigvecs.T
+
+    # Sampling
     if alphas is None:
-        alphas = np.ones(data.shape[0])
+        alphas = np.ones(n)
     samples = data[indices]
     weights = alphas[indices]
-    labels = labels[indices]
+    sampled_labels = labels[indices]
 
     sampling_function = get_sampling_function(kernel_name)
-
     norm_samples = sampling_function(n_samples, d)
-    weighted_samples = samples + norm_samples @ np.linalg.cholesky(bandwidth_matrix).T * weights[:, np.newaxis]
-    return weighted_samples, labels
+
+    weighted_samples = samples + (norm_samples @ bandwidth_sqrt.T) * weights[:, np.newaxis]
+    return weighted_samples, sampled_labels

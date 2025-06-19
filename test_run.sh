@@ -15,7 +15,7 @@ module load python
 conda activate CI
 
 python src/run.py -m \
-  metric=dsc \
+  metric=hd \
   kernel=epanechnikov \
-  summary_stat=trimmed_mean \
-  +task=pancreas_L1 +algo=17111010008
+  summary_stat=mean \
+  +task=Task08_HepaticVessel_L1 +algo=ildoo

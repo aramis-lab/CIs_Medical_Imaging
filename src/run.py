@@ -22,8 +22,13 @@ def make_kdes_classification(df, task, algo, config):
     metric = get_metric(config.metric)
     results = pd.DataFrame()
 
-    values = df[df["alg_name"] == algo]["logits"].to_numpy()
-    labels = df[df["alg_name"] == algo]["target"].to_numpy()
+    logits_str = df[df["alg_name"] == algo]["logits"]
+    values = [list(eval(v, {"nan": np.nan})) for v in logits_str]
+    lengths = np.array([len(v) for v in values])
+    good_length = round(np.mean(lengths))
+    indices = np.where(lengths==good_length)
+    values = np.array([v for v in values if len(v)==good_length])
+    labels = df[df["alg_name"] == algo]["target"].to_numpy()[indices]
 
     values = values[~np.isnan(values)]  # Remove NaN values
     labels = labels[~np.isnan(values)]  # Remove NaN values in labels
@@ -47,11 +52,11 @@ def make_kdes_classification(df, task, algo, config):
     samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, 1000000, alphas)
     samples = softmax(samples, axis=1)  # Convert logits to probabilities
 
-    true_value = metric(samples, sim_labels, average=config.average)
+    true_value = metric(sim_labels, samples, average=config.average)
     all_rows = defaultdict(dict)
     RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
     for n in tqdm(config.sample_sizes):
-        output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv")
+        output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{task}_{algo}_{n}.csv")
         if os.path.exists(output_path):
             existing_results = pd.read_csv(output_path)
             if existing_results.shape[0]>=config.n_samples: # Already computed
@@ -60,7 +65,7 @@ def make_kdes_classification(df, task, algo, config):
             else:
                 print(f"Computing CIs for n = {n}")
             del existing_results
-        samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.n_samples * n, alphas)
+        samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, config.n_samples * n, alphas)
         samples = samples.reshape(config.n_samples, n, -1)
         sim_labels = sim_labels.reshape(config.n_samples, n)
         batch_size = 50
@@ -85,6 +90,7 @@ def make_kdes_classification(df, task, algo, config):
                     "alg_name": algo,
                     "n": n,
                     "sample_index": sample_index,
+                    "true_value" : true_value,
                     f"lower_bound_{method}": lower_bounds[sample_index - batch_start],
                     f"upper_bound_{method}": upper_bounds[sample_index - batch_start],
                     f"contains_true_stat_{method}": contains_true[sample_index - batch_start],
