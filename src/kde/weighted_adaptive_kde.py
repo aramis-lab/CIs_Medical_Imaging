@@ -20,7 +20,7 @@ def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndar
 
     for i in range(n):
         if bandwidths[i]>0 and kernel is not None:
-            current_density = kernel(x_points, data[i], bandwidths[i])
+            current_density = kernel(data[i], x_points, bandwidths[i]).squeeze()
 
             # Ensure total density integrates properly
             density += current_density

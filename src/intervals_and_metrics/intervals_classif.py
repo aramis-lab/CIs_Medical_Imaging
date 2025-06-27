@@ -12,10 +12,17 @@ def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alp
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
+    # If y_true is binary and last dimension is 2, collapse to single binary array
+    if y_true.ndim > 1 and y_true.shape[-1] == 2:
+        # Collapse one-hot or probability to class labels
+        # One-hot encoding
+        y_true = y_true[..., 0]
+        y_pred = y_pred[..., 0]
+
     if y_true.ndim == 1:  # single sample
         y_true = y_true[None, ...]
         y_pred = y_pred[None, ...]
-    elif y_pred.ndim == y_true.ndim + 1 and metric != 'auc':  # shape (B, N, C)
+    elif y_pred.ndim == y_true.ndim + 1:  # shape (B, N, C)
         pass  # already batched
     elif y_pred.ndim == y_true.ndim:  # likely shape (B, N)
         pass
@@ -27,13 +34,12 @@ def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alp
         if metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "fbeta_score", "mcc"]:
             res = CI_accuracy(yt, yp, metric, method, average, alpha)
         elif metric in ['ap', 'auc', 'auroc']:
-            res = CI_AUC(yt, yp, method, alpha, average)
+            res = CI_AUC(yt, yp, metric, method, alpha, average)
         else:
             raise ValueError(f"Unsupported metric: {metric}")
         batch_results.append(res)
 
     return np.stack(batch_results, axis=0)
-
 
 def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
     y_pred = np.array(y_pred)
@@ -44,7 +50,7 @@ def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
         method = "beta"
     
 
-    if method in ["normal","agresti_coull","beta","wilson"] and average=="micro":
+    if method in ["normal","agresti_coull","beta","wilson"] and average=="micro": # If average is micro, we can consider the problem as a binary classification problem
         classes = np.unique(y_true)
         y_pred = np.argmax(y_pred, axis=-1) if y_pred.ndim > y_true.ndim else y_pred
         y_pred_bin = label_binarize(y_pred.ravel(), classes=classes).reshape(y_pred.shape[0], -1)
@@ -73,16 +79,18 @@ def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
             raise ValueError(f"Unknown metric for parametric methods: {metric}")
         return np.array(proportion_confint(value, total, alpha=alpha, method= method)).T
     elif method in ['percentile', 'basic', 'bca']:
-        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=1000, alpha=1-alpha, method=method)
+        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=1000, alpha=alpha, method=method)
     else:
-        raise NotImplementedError(f"The following method is not implemented : {method}. Currently, 'percentile', 'basic', 'bca', 'agresti_coull', 'wilson', 'wald', 'normal', 'param_z', 'cloper_pearson' and 'exact' are implemented.")
+        if average!="micro":
+            raise ValueError("Non-bootstrap CI methods are not defined for multi-class if average is not 'micro'.")
+        else:
+            raise NotImplementedError(f"The following method is not implemented : {method}. Currently, 'percentile', 'basic', 'bca', 'agresti_coull', 'wilson', 'wald', 'normal', 'param_z', 'cloper_pearson' and 'exact' are implemented.")
 
-def CI_AUC(y_true, y_pred, method, alpha, average):
-   
+def CI_AUC(y_true, y_pred, metric, method, alpha, average):
     if method in ['percentile', 'basic', 'bca']: 
-        return stratified_bootstrap_CI(y_true, y_pred, metric_name='auc', average=average, n_bootstrap=1000, alpha=alpha, method=method)
-    else:
-        y_true_bin = label_binarize(y_true, classes=y_pred.shape[1])
+        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=1000, alpha=alpha, method=method)
+    elif y_pred.ndim==1 and metric in ['auc', 'auroc']:
+        y_true_bin = label_binarize(y_true, classes=np.arange(y_pred.shape[1]))
         N=len(y_true_bin)
         n=np.sum(y_true)
         m=N-n
@@ -108,6 +116,8 @@ def CI_AUC(y_true, y_pred, method, alpha, average):
             return el_auc_confidence_interval(Y, X, S,AUC, alpha)
         else:
             raise NotImplementedError(f"The following method is not implemented : {method}. Currently, 'percentile', 'basic', 'bca', 'delong', 'logit_transform' and 'empirical_likelihood' are implemented.")
+    else:
+        raise ValueError("Non-bootstrap CI methods are not defined for multi-class AUC.")
 
 def CI_LT(AUC, m, n, S):
     if AUC !=0 and AUC !=1:
@@ -217,27 +227,14 @@ def el_auc_confidence_interval(Y, X, S,AUC, alpha):
     except Exception as e:
         raise ValueError(f"Failed to compute confidence interval: {e}")
 
-def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro', n_bootstrap=1000, alpha=0.05, method='percentile'):
+def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro', n_bootstrap=9999, alpha=0.05, method='percentile'):
     y_true = np.array(y_true)
    
     y_score = np.array(y_score)
-    
-    classes = np.unique(y_true)
-    n_classes = len(classes)
 
     # Binarize if needed for AUC
-    if metric_name == 'auc':
-        y_true_bin = label_binarize(y_true, classes=np.arange(y_score.shape[1]))
-        if n_classes == 2:
-            y_score = y_score.ravel()
-            y_true_bin = y_true_bin.ravel()
-        original_stat = roc_auc_score(y_true_bin, y_score, average=average, multi_class='ovr')
-    elif metric_name in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "fbeta_score", "mcc"]:
-        metric = get_metric(metric_name)
-        y_pred = np.argmax(y_score, axis=-1) if y_score.ndim > y_true.ndim else y_score
-        original_stat = metric(y_true, y_pred, average=average)
-    else:
-        raise ValueError(f"Unsupported metric: {metric_name}")
+    metric = get_metric(metric_name)
+    original_stat = metric(y_true, y_score, average=average)
 
     stats = []
     original_stat = np.array(original_stat)
@@ -246,7 +243,7 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
     stats = []
 
     # Stratified resampling, per batch
-    for _ in range(99):
+    for _ in range(n_bootstrap):
 
         classes_b = np.unique(y_true)
 
@@ -260,19 +257,9 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
         resample_idx = np.array(resample_idx)
         np.random.shuffle(resample_idx)
 
-        if metric_name == 'auc':
-            y_sample_bin = y_true_bin[resample_idx]
-            y_sample_score = y_score[resample_idx]
-            try:
-                stat = roc_auc_score(y_sample_bin, y_sample_score, average=average, multi_class='ovr')
-            except ValueError:
-                stat = np.nan
-        elif metric_name in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "fbeta_score", "mcc"]:
-            y_sample = y_true[resample_idx]
-            y_sample_score = y_score[resample_idx]
-            stat = metric(y_sample, y_sample_score, average=average)
-        else:
-            raise ValueError(f"Unknown metric: {metric_name}")
+        y_sample = y_true[resample_idx]
+        y_sample_score = y_score[resample_idx]
+        stat = metric(y_sample, y_sample_score, average=average)
 
         stats.append(stat)
 
@@ -296,12 +283,8 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
         for i in range(n_samples):
             jack_idx = np.delete(np.arange(n_samples), i)
 
-            if metric_name == 'auc':
-                y_true_bin_jack = y_true_bin[jack_idx]
-                jack_stat = roc_auc_score(y_true_bin_jack, y_score[jack_idx], average=average, multi_class='ovr')
-            else:
-                y_jack_pred = np.argmax(y_score[jack_idx], axis=1) if y_score.ndim > y_true.ndim else y_score[jack_idx]
-                jack_stat = metric(y_true[jack_idx], y_jack_pred, average=average)
+            y_jack_score = y_score[jack_idx]
+            jack_stat = metric(y_true[jack_idx], y_jack_score, average=average)
 
             jack_stats.append(jack_stat)
 

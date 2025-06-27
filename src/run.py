@@ -22,6 +22,7 @@ def make_kdes_classification(df, task, algo, config):
     metric = get_metric(config.metric)
     results = pd.DataFrame()
 
+    # Convert string representations of sets to 2D numpy array
     logits_str = df[df["alg_name"] == algo]["logits"]
     values = [list(eval(v, {"nan": np.nan})) for v in logits_str]
     lengths = np.array([len(v) for v in values])
@@ -30,10 +31,12 @@ def make_kdes_classification(df, task, algo, config):
     values = np.array([v for v in values if len(v)==good_length])
     labels = df[df["alg_name"] == algo]["target"].to_numpy()[indices]
 
-    values = values[~np.isnan(values)]  # Remove NaN values
-    labels = labels[~np.isnan(values)]  # Remove NaN values in labels
     if len(values) < 50:
         print(f"Not enough values for {task} {algo} ({len(values)}), skipping KDE")
+        return
+
+    if np.any(np.isnan(values)): # There should be no NaNs in the logits, but just in case
+        print("There are NaNs in the data, skipping to next instance")
         return
 
     kernel = get_kernel(config.kernel)
@@ -48,10 +51,10 @@ def make_kdes_classification(df, task, algo, config):
         log_g = np.mean(np.log(initial_estimates))
         g = np.exp(log_g)
         alphas = (initial_estimates / g) ** (-1/2)
-    
-    samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, 1000000, alphas)
-    samples = softmax(samples, axis=1)  # Convert logits to probabilities
+    samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, 100000, alphas) # Shapes (1000000, 5) and (1000000,), not binary
 
+    if (values.shape[1]>2 and config.metric not in ["accuracy", "f1_score","mcc","balanced_accuracy"]): # Multi-class problem, only bootstrap works properly
+        ci_methods = ci_methods.intersection(["basic", "percentile", "bca"])
     true_value = metric(sim_labels, samples, average=config.average)
     all_rows = defaultdict(dict)
     RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
