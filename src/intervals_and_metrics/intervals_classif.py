@@ -4,7 +4,8 @@ from sklearn.metrics import roc_auc_score
 from statsmodels.stats.proportion import proportion_confint
 from scipy.stats import chi2, norm
 from scipy.optimize import root_scalar
-from .pixel_wise_metrics import get_metric
+from .pixel_wise_metrics import get_metric, label_binarize_vectorized
+from numba import njit
 
 from sklearn.preprocessing import label_binarize
 
@@ -29,16 +30,12 @@ def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alp
     else:
         raise ValueError("Input dimension mismatch or unsupported format.")
 
-    batch_results = []
-    for yt, yp in zip(y_true, y_pred):
-        if metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "fbeta_score", "mcc"]:
-            res = CI_accuracy(yt, yp, metric, method, average, alpha)
-        elif metric in ['ap', 'auc', 'auroc']:
-            res = CI_AUC(yt, yp, metric, method, alpha, average)
-        else:
-            raise ValueError(f"Unsupported metric: {metric}")
-        batch_results.append(res)
-
+    if metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "fbeta_score", "mcc"]:
+        batch_results = CI_accuracy(y_true, y_pred, metric, method, average, alpha)
+    elif metric in ['ap', 'auc', 'auroc']:
+        batch_results = CI_AUC(y_true, y_pred, metric, method, alpha, average)
+    else:
+        raise ValueError(f"Unsupported metric: {metric}")
     return np.stack(batch_results, axis=0)
 
 def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
@@ -49,16 +46,15 @@ def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
     elif method in ["cloper_pearson", "exact"]:
         method = "beta"
     
-
     if method in ["normal","agresti_coull","beta","wilson"] and average=="micro": # If average is micro, we can consider the problem as a binary classification problem
         classes = np.unique(y_true)
         y_pred = np.argmax(y_pred, axis=-1) if y_pred.ndim > y_true.ndim else y_pred
         y_pred_bin = label_binarize(y_pred.ravel(), classes=classes).reshape(y_pred.shape[0], -1)
         y_true_bin = label_binarize(y_true.ravel(), classes=classes).reshape(y_true.shape[0], -1)
-        tp = np.sum((y_true_bin == 1) & (y_pred_bin == 1))
-        fn = np.sum((y_true_bin == 1) & (y_pred_bin == 0))
-        tn = np.sum((y_true_bin == 0) & (y_pred_bin == 0))
-        fp = np.sum((y_true_bin == 0) & (y_pred_bin == 1))
+        tp = np.sum((y_true_bin == 1) & (y_pred_bin == 1), axis=1)
+        fn = np.sum((y_true_bin == 1) & (y_pred_bin == 0), axis=1)
+        tn = np.sum((y_true_bin == 0) & (y_pred_bin == 0), axis=1)
+        fp = np.sum((y_true_bin == 0) & (y_pred_bin == 1), axis=1)
 
         if metric == "accuracy":
             value = (tp + tn)
@@ -79,7 +75,7 @@ def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
             raise ValueError(f"Unknown metric for parametric methods: {metric}")
         return np.array(proportion_confint(value, total, alpha=alpha, method= method)).T
     elif method in ['percentile', 'basic', 'bca']:
-        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=1000, alpha=alpha, method=method)
+        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method)
     else:
         if average!="micro":
             raise ValueError("Non-bootstrap CI methods are not defined for multi-class if average is not 'micro'.")
@@ -88,7 +84,7 @@ def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
 
 def CI_AUC(y_true, y_pred, metric, method, alpha, average):
     if method in ['percentile', 'basic', 'bca']: 
-        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=1000, alpha=alpha, method=method)
+        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method)
     elif y_pred.ndim==1 and metric in ['auc', 'auroc']:
         y_true_bin = label_binarize(y_true, classes=np.arange(y_pred.shape[1]))
         N=len(y_true_bin)
@@ -227,91 +223,92 @@ def el_auc_confidence_interval(Y, X, S,AUC, alpha):
     except Exception as e:
         raise ValueError(f"Failed to compute confidence interval: {e}")
 
+@njit
+def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):
+    n_classes = len(class_indices)
+    n_total = sum(class_sizes)
+    result = np.empty((n_bootstrap, n_total), dtype=np.int32)
+
+    for b in range(n_bootstrap):
+        pos = 0
+        for c in range(n_classes):
+            indices = class_indices[c]
+            size = class_sizes[c]
+            for i in range(size):
+                idx = np.random.randint(0, len(indices))
+                result[b, pos] = indices[idx]
+                pos += 1
+    return result
+
+# Timing wrapper for stratified_bootstrap_CI
 def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro', n_bootstrap=9999, alpha=0.05, method='percentile'):
+
     y_true = np.array(y_true)
-   
     y_score = np.array(y_score)
 
-    # Binarize if needed for AUC
     metric = get_metric(metric_name)
-    original_stat = metric(y_true, y_score, average=average)
+    original_stat = metric(y_true, y_score, average)
 
-    stats = []
-    original_stat = np.array(original_stat)
+    y_samples = []
+    y_score_samples = []
+    classes_b = np.arange(y_score.shape[-1])
+    if y_true.ndim == 1:  # single sample
+        y_true = y_true[None, ...]
+        y_score = y_score[None, ...]
+    for i in range(len(y_true)):
+        sample = y_true[i]
+        n_samples = len(sample)
+        
+        class_indices = [np.flatnonzero(sample == c) for c in classes_b]
 
-    n_samples = len(y_true)
-    stats = []
+        # Separate bootstrap resampling from metric calculation (vectorized)
+        resampled_indices = stratified_bootstrap_numba(class_indices, [len(class_indices[cls]) for cls in classes_b], n_bootstrap)
 
-    # Stratified resampling, per batch
-    for _ in range(n_bootstrap):
+        y_samples.append(y_true[i, resampled_indices])
+        y_score_samples.append(y_score[i, resampled_indices])
+    
+    stats = metric(np.array(y_samples), np.array(y_score_samples), average)
 
-        classes_b = np.unique(y_true)
-
-        # Get class indices for the current batch
-        class_indices = {cls: np.where(y_true == cls)[0] for cls in classes_b}
-
-        # Resample with stratification
-        resample_idx = []
-        for cls in classes_b:
-            resample_idx.extend(np.random.choice(class_indices[cls], size=len(class_indices[cls]), replace=True))
-        resample_idx = np.array(resample_idx)
-        np.random.shuffle(resample_idx)
-
-        y_sample = y_true[resample_idx]
-        y_sample_score = y_score[resample_idx]
-        stat = metric(y_sample, y_sample_score, average=average)
-
-        stats.append(stat)
-
-    stats = np.array(stats)  # shape: (n_bootstraps, batch_size)
-
-    # Confidence interval calculation (percentile method)
-    lower = np.percentile(stats, 100 * alpha / 2, axis=0)
-    upper = np.percentile(stats, 100 * (1 - alpha / 2), axis=0)
+    lower = np.percentile(stats, 100 * alpha / 2, axis=-1)
+    upper = np.percentile(stats, 100 * (1 - alpha / 2), axis=-1)
 
     if method == 'percentile':
-        return np.array([lower, upper])
+        return np.stack([lower, upper], axis=1)
 
     elif method == 'basic':
         low = 2 * original_stat - upper
         high = 2 * original_stat - lower
-        return np.array([low, high])
+        return np.stack([low, high], axis=1)
 
     elif method == 'bca':
-
-        jack_stats = []
-        for i in range(n_samples):
-            jack_idx = np.delete(np.arange(n_samples), i)
-
-            y_jack_score = y_score[jack_idx]
-            jack_stat = metric(y_true[jack_idx], y_jack_score, average=average)
-
-            jack_stats.append(jack_stat)
-
-        jack_stats = np.array(jack_stats)
-        jack_mean = np.mean(jack_stats)
-        accel = np.sum((jack_mean - jack_stats) ** 3) / (6 * (np.sum((jack_mean - jack_stats) ** 2) ** 1.5))
-
-        z0 = norm.ppf(np.mean(stats < original_stat))
+        jack_stats_all = []
+        for i in range(len(y_true)):
+            jack_stats = []
+            n_samples = y_true[i].shape[0]
+            for j in range(n_samples):
+                jack_idx = np.delete(np.arange(n_samples), j)
+                y_jack_true = y_true[i][jack_idx]
+                y_jack_score = y_score[i][jack_idx]
+                jack_stat = metric(y_jack_true, y_jack_score, average)
+                jack_stats.append(jack_stat)
+            jack_stats_all.append(jack_stats)
+        jack_stats_all = np.array(jack_stats_all).squeeze()
+        jack_mean = np.mean(jack_stats_all, axis=1, keepdims=True)
+        accel = np.sum((jack_mean - jack_stats_all) ** 3, axis=1) / (6 * (np.sum((jack_mean - jack_stats_all) ** 2, axis=1) ** 1.5)).flatten()
+        z0 = norm.ppf(np.mean(stats < original_stat[:, None], axis=1))
         z_low = norm.ppf(alpha / 2)
         z_high = norm.ppf(1 - alpha / 2)
-
         x_low = z0 + z_low
         x_high = z0 + z_high
-        
-        if np.isnan(accel):
-            return np.array([np.nan, np.nan])
-        elif accel == 0:
-            pct1 = norm.cdf(z0 + x_low)
-            pct2 = norm.cdf(z0 + x_high)
-        else:
-            pct1 = norm.cdf(z0 + 1/accel*(1/(1-accel*x_low) - 1))
-            pct2 = norm.cdf(z0 + 1/accel*(1/(1-accel*x_high) - 1))
-
+        pct1_coeff = np.where((accel == 0)|(np.isnan(accel)), x_low, 1 / accel * (1 / (1 - accel * x_low) - 1))
+        pct2_coeff = np.where((accel == 0)|(np.isnan(accel)), x_high, 1 / accel * (1 / (1 - accel * x_high) - 1))
+        pct1 = norm.cdf(z0 + pct1_coeff)
+        pct2 = norm.cdf(z0 + pct2_coeff)
         bca_low = np.percentile(stats, 100 * pct1)
         bca_high = np.percentile(stats, 100 * pct2)
-
-        return np.array([bca_low, bca_high])
+        bca_low = np.where(np.isnan(accel), np.nan, bca_low)
+        bca_high = np.where(np.isnan(accel), np.nan, bca_high)
+        return np.stack([bca_low, bca_high], axis=1)
 
     else:
         raise ValueError(f"Unknown method: {method}")

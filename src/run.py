@@ -9,7 +9,6 @@ from intervals_and_metrics import get_metric, is_continuous, compute_CIs_segment
 from kernels import get_kernel
 from utils import extract_df
 import os
-from scipy.special import softmax
 
 from tqdm import tqdm
 
@@ -21,15 +20,15 @@ def make_kdes_classification(df, task, algo, config):
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods(None, config.metric))
     metric = get_metric(config.metric)
     results = pd.DataFrame()
-
+    
     # Convert string representations of sets to 2D numpy array
-    logits_str = df[df["alg_name"] == algo]["logits"]
+    logits_str = df[df["alg_name"].astype(str) == algo]["logits"]
     values = [list(eval(v, {"nan": np.nan})) for v in logits_str]
     lengths = np.array([len(v) for v in values])
     good_length = round(np.mean(lengths))
     indices = np.where(lengths==good_length)
     values = np.array([v for v in values if len(v)==good_length])
-    labels = df[df["alg_name"] == algo]["target"].to_numpy()[indices]
+    labels = df[df["alg_name"].astype(str) == algo]["target"].to_numpy()[indices]
 
     if len(values) < 50:
         print(f"Not enough values for {task} {algo} ({len(values)}), skipping KDE")
@@ -73,12 +72,14 @@ def make_kdes_classification(df, task, algo, config):
         sim_labels = sim_labels.reshape(config.n_samples, n)
         batch_size = 50
         for method in ci_methods:
+            print(method)
             for batch_start in range(0, config.n_samples, batch_size):
                 batch_end = min(batch_start + batch_size, config.n_samples)
                 batch_samples = samples[batch_start:batch_end]
                 batch_labels = sim_labels[batch_start:batch_end]
+                
                 CIs = compute_CIs_classification(batch_labels, batch_samples, config.metric, method, average=config.average)
-
+                
                 # Precompute vectorized components for speed
                 lower_bounds = CIs[:, 0]
                 upper_bounds = CIs[:, 1]

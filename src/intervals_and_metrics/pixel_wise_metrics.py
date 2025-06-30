@@ -1,198 +1,179 @@
 import numpy as np
 from sklearn.metrics import roc_auc_score, average_precision_score
-from sklearn.preprocessing import label_binarize
 
 def softmax(x, axis=-1):
     e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
     return e_x / np.sum(e_x, axis=axis, keepdims=True)
 
-def softmax_to_predictions(logits):
-    """Convert logits to predicted class indices using softmax."""
-    return np.argmax(softmax(logits, axis=-1), axis=-1)
+def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binarize
+    """Binarize labels in a vectorized way."""
 
-def apply_metric_batchwise(metric_fn, y_true, y_pred, **kwargs):
-    if y_true.ndim == 3:  # batch
-        return np.array([metric_fn(y_t, y_p, **kwargs) for y_t, y_p in zip(y_true, y_pred)])
-    else:
-        return metric_fn(y_true, y_pred, **kwargs)
+    y = np.asarray(y)
+    if y.ndim < 2 or y.ndim > 4:
+        raise ValueError("y must have 2, 3, or 4 dimensions")
+    n_classes = int(n_classes)
+    shape = y.shape + (n_classes,)
+    y_onehot = np.zeros(shape, dtype=np.int32)
+    # Create indices for all axes except the last (class axis)
+    idx = np.indices(y.shape)
+    y_onehot[(*idx, y)] = 1
+
+    return y_onehot
+
+
+def format_data(y_true, y_pred):
+    """Puts y_true and y_pred in the format (batch_size, n_samples, n_classes) for metric calculations. If n_classes is 2, it will be (batch_size, n_samples, 1)."""
+
+    n_classes = y_pred.shape[-1]
+    y_pred = np.argmax(y_pred, axis=-1) # Convert to class labels because y_pred is (batch_size, n_bootstrap, n_samples, n_classes) or (batch_size, n_samples, n_classes) or (n_samples, n_classes)
+
+    if y_true.ndim == 1:  # single sample
+        y_true = y_true[None, :]
+        y_pred = y_pred[None, :]
+    
+    y_true = label_binarize_vectorized(y_true.astype(np.int32), n_classes)  # Convert to one-hot encoding
+    y_pred = label_binarize_vectorized(y_pred.astype(np.int32), n_classes)  # Convert to one-hot encoding
+    
+    return y_true, y_pred
 
 def accuracy(y_true, y_pred, average="micro"):
-    classes = np.arange(y_pred.shape[-1])
-    if y_pred.ndim > y_true.ndim:
-        y_pred = softmax_to_predictions(y_pred)
+    
+    y_true, y_pred = format_data(y_true, y_pred)
 
-    y_pred = label_binarize(y_pred, classes=classes)
-    y_true = label_binarize(y_true, classes=classes)
-
-    def _accuracy(yt, yp, average):
-        tp = np.sum((yt == 1) & (yp == 1), axis=1)
-        fp = np.sum((yt == 0) & (yp == 1), axis=1)
-        tn = np.sum((yt == 0) & (yp == 0), axis=1)
-        fn = np.sum((yt == 1) & (yp == 0), axis=1)
+    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=-2)
+    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=-2)
+    tn = np.sum(np.bitwise_and(y_true == 0, y_pred == 0), axis=-2)
+    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=-2)
+    
+    if average=="micro":
+        tp = np.sum(tp, axis=-1)
+        fp = np.sum(fp, axis=-1)
+        tn = np.sum(tn, axis=-1)
+        fn = np.sum(fn, axis=-1)
+        total = tp + fp + tn + fn
+        acc = (tp + tn) / total
+        return np.where(total > 0, acc, 0.0)
         
-        if average=="micro":
-            tp = np.sum(tp)
-            fp = np.sum(fp)
-            tn = np.sum(tn)
-            fn = np.sum(fn)
-            return (tp+tn)/(tp+fp+tn+fn) if (tp+fp+tn+fn)>0 else 0.0
-        
-        # Average is 'macro'
-        class_metrics = np.where((tp+fp+tn+fn)>0, (tp+tn)/(tp+fp+tn+fn), 0.0)
-        return np.mean(class_metrics)
-
-    return apply_metric_batchwise(_accuracy, y_true, y_pred, average=average)
+    # Average is 'macro'
+    total = tp + fp + tn + fn
+    acc = (tp + tn) / total
+    
+    class_metrics = np.where((tp+fp+tn+fn)>0, (tp+tn)/(tp+fp+tn+fn), 0.0)
+    return np.mean(class_metrics, axis=-1)
 
 def precision(y_true, y_pred, average="micro"):
-    classes = np.arange(y_pred.shape[-1])
-    if y_pred.ndim > y_true.ndim:
-        y_pred = softmax_to_predictions(y_pred)
+    y_true, y_pred = format_data(y_true, y_pred)
 
-    y_pred = label_binarize(y_pred, classes=classes)
-    y_true = label_binarize(y_true, classes=classes)
+    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
+    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
 
-    def _precision(yt, yp, average):
-        tp = np.sum((yt == 1) & (yp == 1), axis=1)
-        fp = np.sum((yt == 0) & (yp == 1), axis=1)
-        
-        if average=="micro":
-            tp = np.sum(tp)
-            fp = np.sum(fp)
-            return tp/(tp+fp) if (tp+fp)>0 else 0.0
-        
-        # Average is 'macro'
-        class_metrics = np.where((tp+fp)>0, tp/(tp+fp), 0.0)
-        return np.mean(class_metrics)
+    if average == "micro":
+        tp = np.sum(tp, axis=1)
+        fp = np.sum(fp, axis=1)
+        denom = tp + fp
+        prec = tp / denom
+        return np.where(denom > 0, prec, 0.0)
 
-    return apply_metric_batchwise(_precision, y_true, y_pred, average=average)
+    class_metrics = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
+    return np.mean(class_metrics, axis=1)
 
 def recall(y_true, y_pred, average="micro"):
-    classes = np.arange(y_pred.shape[-1])
-    if y_pred.ndim > y_true.ndim:
-        y_pred = softmax_to_predictions(y_pred)
+    y_true, y_pred = format_data(y_true, y_pred)
 
-    y_pred = label_binarize(y_pred, classes=classes)
-    y_true = label_binarize(y_true, classes=classes)
+    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
+    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
 
-    def _recall(yt, yp, average):
-        tp = np.sum((yt == 1) & (yp == 1), axis=1)
-        fn = np.sum((yt == 1) & (yp == 0), axis=1)
+    if average == "micro":
+        tp = np.sum(tp, axis=1)
+        fn = np.sum(fn, axis=1)
+        denom = tp + fn
+        rec = tp / denom
+        return np.where(denom > 0, rec, 0.0)
 
-        if average == "micro":
-            tp = np.sum(tp)
-            fn = np.sum(fn)
-            return tp / (tp + fn) if (tp + fn) > 0 else 0.0
-
-        class_metrics = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
-        return np.mean(class_metrics)
-
-    return apply_metric_batchwise(_recall, y_true, y_pred, average=average)
+    class_metrics = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
+    return np.mean(class_metrics, axis=1)
 
 def f1(y_true, y_pred, average="micro"):
-    classes = np.arange(y_pred.shape[-1])
-    if y_pred.ndim > y_true.ndim:
-        y_pred = softmax_to_predictions(y_pred)
+    y_true, y_pred = format_data(y_true, y_pred)
 
-    y_pred = label_binarize(y_pred, classes=classes)
-    y_true = label_binarize(y_true, classes=classes)
+    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
+    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
+    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
 
-    def _f1(yt, yp, average):
-        tp = np.sum((yt == 1) & (yp == 1), axis=1)
-        fp = np.sum((yt == 0) & (yp == 1), axis=1)
-        fn = np.sum((yt == 1) & (yp == 0), axis=1)
+    if average == "micro":
+        tp = np.sum(tp, axis=1)
+        fp = np.sum(fp, axis=1)
+        fn = np.sum(fn, axis=1)
+        p = tp / (tp + fp)
+        r = tp / (tp + fn)
+        denom = p + r
+        f1_score = 2 * p * r / denom
+        return np.where(denom > 0, f1_score, 0.0)
 
-        if average == "micro":
-            tp = np.sum(tp)
-            fp = np.sum(fp)
-            fn = np.sum(fn)
-            p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-            r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-            return 2 * p * r / (p + r) if (p + r) > 0 else 0.0
-
-        p = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
-        r = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
-        class_metrics = np.where((p + r) > 0, 2 * p * r / (p + r), 0.0)
-        return np.mean(class_metrics)
-
-    return apply_metric_batchwise(_f1, y_true, y_pred, average=average)
+    p = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
+    r = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
+    denom = p + r
+    class_metrics = np.where(denom > 0, 2 * p * r / denom, 0.0)
+    return np.mean(class_metrics, axis=1)
 
 def fbeta(y_true, y_pred, beta=1.0, average="micro"):
-    classes = np.arange(y_pred.shape[-1])
-    if y_pred.ndim > y_true.ndim:
-        y_pred = softmax_to_predictions(y_pred)
+    y_true, y_pred = format_data(y_true, y_pred)
+    beta2 = beta ** 2
 
-    y_pred = label_binarize(y_pred, classes=classes)
-    y_true = label_binarize(y_true, classes=classes)
+    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
+    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
+    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
 
-    def _fbeta(yt, yp, average, beta):
-        tp = np.sum((yt == 1) & (yp == 1), axis=1)
-        fp = np.sum((yt == 0) & (yp == 1), axis=1)
-        fn = np.sum((yt == 1) & (yp == 0), axis=1)
-        beta2 = beta ** 2
-
-        if average == "micro":
-            tp = np.sum(tp)
-            fp = np.sum(fp)
-            fn = np.sum(fn)
-            p = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-            r = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-            denom = beta2 * p + r
-            return (1 + beta2) * p * r / denom if denom > 0 else 0.0
-
-        p = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
-        r = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
+    if average == "micro":
+        tp = np.sum(tp, axis=1)
+        fp = np.sum(fp, axis=1)
+        fn = np.sum(fn, axis=1)
+        p = tp / (tp + fp)
+        r = tp / (tp + fn)
         denom = beta2 * p + r
-        class_metrics = np.where(denom > 0, (1 + beta2) * p * r / denom, 0.0)
-        return np.mean(class_metrics)
+        fbeta_score = (1 + beta2) * p * r / denom
+        return np.where(denom > 0, fbeta_score, 0.0)
 
-    return apply_metric_batchwise(_fbeta, y_true, y_pred, average=average, beta=beta)
+    p = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
+    r = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
+    denom = beta2 * p + r
+    class_metrics = np.where(denom > 0, (1 + beta2) * p * r / denom, 0.0)
+    return np.mean(class_metrics, axis=1)
 
 def npv(y_true, y_pred, average="micro"):
-    classes = np.arange(y_pred.shape[-1])
-    if y_pred.ndim > y_true.ndim:
-        y_pred = softmax_to_predictions(y_pred)
+    y_true, y_pred = format_data(y_true, y_pred)
 
-    y_pred = label_binarize(y_pred, classes=classes)
-    y_true = label_binarize(y_true, classes=classes)
+    tn = np.sum(np.bitwise_and(y_true == 0, y_pred == 0), axis=1)
+    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
 
-    def _npv(yt, yp, average):
-        tn = np.sum((yt == 0) & (yp == 0), axis=1)
-        fn = np.sum((yt == 1) & (yp == 0), axis=1)
+    if average == "micro":
+        tn = np.sum(tn, axis=1)
+        fn = np.sum(fn, axis=1)
+        denom = tn + fn
+        npv_score = tn / denom
+        return np.where(denom > 0, npv_score, 0.0)
 
-        if average == "micro":
-            tn = np.sum(tn)
-            fn = np.sum(fn)
-            return tn / (tn + fn) if (tn + fn) > 0 else 0.0
-
-        class_metrics = np.where((tn + fn) > 0, tn / (tn + fn), 0.0)
-        return np.mean(class_metrics)
-
-    return apply_metric_batchwise(_npv, y_true, y_pred, average=average)
+    class_metrics = np.where((tn + fn) > 0, tn / (tn + fn), 0.0)
+    return np.mean(class_metrics, axis=1)
 
 def sensitivity(y_true, y_pred, average="micro"):
     return recall(y_true, y_pred, average)
 
 def specificity(y_true, y_pred, average="micro"):
-    classes = np.arange(y_pred.shape[-1])
-    if y_pred.ndim > y_true.ndim:
-        y_pred = softmax_to_predictions(y_pred)
+    y_true, y_pred = format_data(y_true, y_pred)
 
-    y_pred = label_binarize(y_pred, classes=classes)
-    y_true = label_binarize(y_true, classes=classes)
+    tn = np.sum(np.bitwise_and(y_true == 0, y_pred == 0), axis=1)
+    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
 
-    def _specificity(yt, yp, average):
-        tn = np.sum((yt == 0) & (yp == 0), axis=1)
-        fp = np.sum((yt == 0) & (yp == 1), axis=1)
+    if average == "micro":
+        tn = np.sum(tn, axis=1)
+        fp = np.sum(fp, axis=1)
+        denom = tn + fp
+        spec = tn / denom
+        return np.where(denom > 0, spec, 0.0)
 
-        if average == "micro":
-            tn = np.sum(tn)
-            fp = np.sum(fp)
-            return tn / (tn + fp) if (tn + fp) > 0 else 0.0
-
-        class_metrics = np.where((tn + fp) > 0, tn / (tn + fp), 0.0)
-        return np.mean(class_metrics)
-
-    return apply_metric_batchwise(_specificity, y_true, y_pred, average=average)
+    class_metrics = np.where((tn + fp) > 0, tn / (tn + fp), 0.0)
+    return np.mean(class_metrics, axis=1)
 
 def balanced_accuracy(y_true, y_pred, average="micro"):
     sens = sensitivity(y_true, y_pred, average)
@@ -200,54 +181,65 @@ def balanced_accuracy(y_true, y_pred, average="micro"):
     return (sens + spec) / 2
 
 def mcc(y_true, y_pred, average="micro"):
-    classes = np.arange(y_pred.shape[-1])
-    if y_pred.ndim > y_true.ndim:
-        y_pred = softmax_to_predictions(y_pred)
+    y_true, y_pred = format_data(y_true, y_pred)
 
-    y_pred = label_binarize(y_pred, classes=classes)
-    y_true = label_binarize(y_true, classes=classes)
+    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
+    tn = np.sum(np.bitwise_and(y_true == 0, y_pred == 0), axis=1)
+    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
+    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
 
-    def _mcc(yt, yp, average):
-        tp = np.sum((yt == 1) & (yp == 1), axis=1)
-        tn = np.sum((yt == 0) & (yp == 0), axis=1)
-        fp = np.sum((yt == 0) & (yp == 1), axis=1)
-        fn = np.sum((yt == 1) & (yp == 0), axis=1)
-
-        if average == "micro":
-            tp = np.sum(tp)
-            tn = np.sum(tn)
-            fp = np.sum(fp)
-            fn = np.sum(fn)
-            numerator = (tp * tn) - (fp * fn)
-            denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-            return numerator / denominator if denominator > 0 else 0.0
-
+    if average == "micro":
+        tp = np.sum(tp, axis=1)
+        tn = np.sum(tn, axis=1)
+        fp = np.sum(fp, axis=1)
+        fn = np.sum(fn, axis=1)
         numerator = (tp * tn) - (fp * fn)
         denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-        class_metrics = np.where(denominator > 0, numerator / denominator, 0.0)
-        return np.mean(class_metrics)
+        mcc_score = numerator / denominator
+        return np.where(denominator > 0, mcc_score, 0.0)
 
-    return apply_metric_batchwise(_mcc, y_true, y_pred, average=average)
+    numerator = (tp * tn) - (fp * fn)
+    denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+    class_metrics = np.where(denominator > 0, numerator / denominator, 0.0)
+    return np.mean(class_metrics, axis=1)
 
 def ap(y_true, y_pred, average="macro"):
-    n_classes = y_pred.shape[-1]
+    # y_pred is expected to be logits or probabilities (batch_size, n_samples, n_classes)
+    # y_true is expected to be (batch_size, n_samples) or (batch_size, n_samples, n_classes)
+    if y_pred.ndim == 2:
+        y_pred = y_pred[None, ...]
+    if y_true.ndim == 1:
+        y_true = y_true[None, ...]
+    if y_true.ndim == 2:
+        y_true = label_binarize_vectorized(y_true, np.arange(y_pred.shape[-1]))
     y_score = softmax(y_pred, axis=-1)
-
-    def _ap(yt, ys):
-        yt_bin = label_binarize(yt, classes=np.arange(n_classes))
-        return average_precision_score(yt_bin, ys, average=average)
-
-    return apply_metric_batchwise(_ap, y_true, y_score)
+    batch_size = y_true.shape[0]
+    scores = []
+    for i in range(batch_size):
+        try:
+            score = average_precision_score(y_true[i], y_score[i], average=average)
+        except Exception:
+            score = 0.0
+        scores.append(score)
+    return np.array(scores)
 
 def auroc(y_true, y_pred, average="macro"):
-    n_classes = y_pred.shape[-1]
+    if y_pred.ndim == 2:
+        y_pred = y_pred[None, ...]
+    if y_true.ndim == 1:
+        y_true = y_true[None, ...]
+    if y_true.ndim == 2:
+        y_true = label_binarize_vectorized(y_true, np.arange(y_pred.shape[-1]))
     y_score = softmax(y_pred, axis=-1)
-
-    def _auroc(yt, ys):
-        yt_bin = label_binarize(yt, classes=np.arange(n_classes))
-        return roc_auc_score(yt_bin, ys, average=average, multi_class='ovr')
-
-    return apply_metric_batchwise(_auroc, y_true, y_score)
+    batch_size = y_true.shape[0]
+    scores = []
+    for i in range(batch_size):
+        try:
+            score = roc_auc_score(y_true[i], y_score[i], average=average, multi_class='ovr')
+        except Exception:
+            score = 0.0
+        scores.append(score)
+    return np.array(scores)
 
 def get_metric(metric):
     metric_dict = {
