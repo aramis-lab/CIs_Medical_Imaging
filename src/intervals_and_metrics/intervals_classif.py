@@ -4,7 +4,7 @@ from sklearn.metrics import roc_auc_score
 from statsmodels.stats.proportion import proportion_confint
 from scipy.stats import chi2, norm
 from scipy.optimize import root_scalar
-from .pixel_wise_metrics import get_metric, label_binarize_vectorized
+from .pixel_wise_metrics import get_metric
 from numba import njit
 
 from sklearn.preprocessing import label_binarize

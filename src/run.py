@@ -70,7 +70,7 @@ def make_kdes_classification(df, task, algo, config):
         samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, config.n_samples * n, alphas)
         samples = samples.reshape(config.n_samples, n, -1)
         sim_labels = sim_labels.reshape(config.n_samples, n)
-        batch_size = 50
+        batch_size = 10
         for method in ci_methods:
             print(method)
             for batch_start in range(0, config.n_samples, batch_size):
@@ -105,7 +105,29 @@ def make_kdes_classification(df, task, algo, config):
         results = pd.DataFrame(data = all_rows.values())
 
         results = results.drop_duplicates(["subtask", "alg_name", "n", "sample_index"])
+
+        # Compute averages for each (task, algo, n) triplet and ci method
+        avg_rows = []
+        group_cols = ["subtask", "alg_name", "n"]
+        for method in ci_methods:
+            avg_df = results.groupby(group_cols).agg({
+            f"contains_true_stat_{method}": "mean",
+            f"width_{method}": "mean",
+            f"proportion_oob_{method}": "mean"
+            }).reset_index()
+            avg_df = avg_df.rename(columns={
+            f"contains_true_stat_{method}": f"coverage_{method}"
+            })
+            avg_rows.append(avg_df)
+        if avg_rows:
+            average_results = avg_rows[0]
+            for df in avg_rows[1:]:
+                average_results = pd.merge(average_results, df, on=group_cols, how="outer")
+        else:
+            average_results = pd.DataFrame()
+
         results.to_csv(output_path, index=False)
+        average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{task}_{algo}_{n}.csv"), index=False)
 
 def make_kdes_segmentation(df, task, algo, config):
     # Retrieve configuration and set up variables
@@ -208,7 +230,29 @@ def make_kdes_segmentation(df, task, algo, config):
         results = pd.DataFrame(data = all_rows.values())
 
         results = results.drop_duplicates(["subtask", "alg_name", "n", "sample_index"])
+        
+        # Compute averages for each (task, algo, n) triplet and ci method
+        avg_rows = []
+        group_cols = ["subtask", "alg_name", "n"]
+        for method in ci_methods:
+            avg_df = results.groupby(group_cols).agg({
+            f"contains_true_stat_{method}": "mean",
+            f"width_{method}": "mean",
+            f"proportion_oob_{method}": "mean"
+            }).reset_index()
+            avg_df = avg_df.rename(columns={
+            f"contains_true_stat_{method}": f"coverage_{method}"
+            })
+            avg_rows.append(avg_df)
+        if avg_rows:
+            average_results = avg_rows[0]
+            for df in avg_rows[1:]:
+                average_results = pd.merge(average_results, df, on=group_cols, how="outer")
+        else:
+            average_results = pd.DataFrame()
+
         results.to_csv(output_path, index=False)
+        average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{task}_{algo}_{n}.csv"), index=False)
 
 @hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
 def main(cfg: DictConfig):

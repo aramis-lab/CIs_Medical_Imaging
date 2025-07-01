@@ -9,8 +9,8 @@ def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binar
     """Binarize labels in a vectorized way."""
 
     y = np.asarray(y)
-    if y.ndim < 2 or y.ndim > 4:
-        raise ValueError("y must have 2, 3, or 4 dimensions")
+    if y.ndim < 2:
+        raise ValueError("y must have more than 2 dimensions")
     n_classes = int(n_classes)
     shape = y.shape + (n_classes,)
     y_onehot = np.zeros(shape, dtype=np.int32)
@@ -20,14 +20,13 @@ def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binar
 
     return y_onehot
 
-
 def format_data(y_true, y_pred):
     """Puts y_true and y_pred in the format (batch_size, n_samples, n_classes) for metric calculations. If n_classes is 2, it will be (batch_size, n_samples, 1)."""
 
     n_classes = y_pred.shape[-1]
-    y_pred = np.argmax(y_pred, axis=-1) # Convert to class labels because y_pred is (batch_size, n_bootstrap, n_samples, n_classes) or (batch_size, n_samples, n_classes) or (n_samples, n_classes)
+    y_pred = np.argmax(y_pred, axis=-1) # Convert to class labels because y_pred is (..., n_samples, n_classes)
 
-    if y_true.ndim == 1:  # single sample
+    if y_true.ndim == 1:  # Single sample
         y_true = y_true[None, :]
         y_pred = y_pred[None, :]
     
@@ -36,74 +35,59 @@ def format_data(y_true, y_pred):
     
     return y_true, y_pred
 
-def accuracy(y_true, y_pred, average="micro"):
+def accuracy(y_true, y_pred, average=None):
     
-    y_true, y_pred = format_data(y_true, y_pred)
+    y_pred = np.argmax(y_pred, axis=-1)
 
-    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=-2)
-    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=-2)
-    tn = np.sum(np.bitwise_and(y_true == 0, y_pred == 0), axis=-2)
-    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=-2)
-    
-    if average=="micro":
-        tp = np.sum(tp, axis=-1)
-        fp = np.sum(fp, axis=-1)
-        tn = np.sum(tn, axis=-1)
-        fn = np.sum(fn, axis=-1)
-        total = tp + fp + tn + fn
-        acc = (tp + tn) / total
-        return np.where(total > 0, acc, 0.0)
-        
-    # Average is 'macro'
-    total = tp + fp + tn + fn
-    acc = (tp + tn) / total
-    
-    class_metrics = np.where((tp+fp+tn+fn)>0, (tp+tn)/(tp+fp+tn+fn), 0.0)
-    return np.mean(class_metrics, axis=-1)
+    if y_true.ndim == 1:  # Single sample
+        y_true = y_true[None, :]
+        y_pred = y_pred[None, :]
+
+    return np.mean(y_pred==y_true, axis=-1)
 
 def precision(y_true, y_pred, average="micro"):
     y_true, y_pred = format_data(y_true, y_pred)
 
-    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
-    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
+    tp = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 1), axis=-2)
+    fp = np.count_nonzero(np.bitwise_and(y_true == 0, y_pred == 1), axis=-2)
 
     if average == "micro":
-        tp = np.sum(tp, axis=1)
-        fp = np.sum(fp, axis=1)
+        tp = np.sum(tp, axis=-1)
+        fp = np.sum(fp, axis=-1)
         denom = tp + fp
         prec = tp / denom
         return np.where(denom > 0, prec, 0.0)
 
     class_metrics = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
-    return np.mean(class_metrics, axis=1)
+    return np.mean(class_metrics, axis=-1)
 
 def recall(y_true, y_pred, average="micro"):
     y_true, y_pred = format_data(y_true, y_pred)
 
-    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
-    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
+    tp = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 1), axis=-2)
+    fn = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 0), axis=-2)
 
     if average == "micro":
-        tp = np.sum(tp, axis=1)
-        fn = np.sum(fn, axis=1)
+        tp = np.sum(tp, axis=-1)
+        fn = np.sum(fn, axis=-1)
         denom = tp + fn
         rec = tp / denom
         return np.where(denom > 0, rec, 0.0)
 
     class_metrics = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
-    return np.mean(class_metrics, axis=1)
+    return np.mean(class_metrics, axis=-1)
 
 def f1(y_true, y_pred, average="micro"):
     y_true, y_pred = format_data(y_true, y_pred)
 
-    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
-    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
-    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
+    tp = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 1), axis=-2)
+    fp = np.count_nonzero(np.bitwise_and(y_true == 0, y_pred == 1), axis=-2)
+    fn = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 0), axis=-2)
 
     if average == "micro":
-        tp = np.sum(tp, axis=1)
-        fp = np.sum(fp, axis=1)
-        fn = np.sum(fn, axis=1)
+        tp = np.sum(tp, axis=-1)
+        fp = np.sum(fp, axis=-1)
+        fn = np.sum(fn, axis=-1)
         p = tp / (tp + fp)
         r = tp / (tp + fn)
         denom = p + r
@@ -114,20 +98,20 @@ def f1(y_true, y_pred, average="micro"):
     r = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
     denom = p + r
     class_metrics = np.where(denom > 0, 2 * p * r / denom, 0.0)
-    return np.mean(class_metrics, axis=1)
+    return np.mean(class_metrics, axis=-1)
 
 def fbeta(y_true, y_pred, beta=1.0, average="micro"):
     y_true, y_pred = format_data(y_true, y_pred)
     beta2 = beta ** 2
 
-    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
-    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
-    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
+    tp = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 1), axis=-2)
+    fp = np.count_nonzero(np.bitwise_and(y_true == 0, y_pred == 1), axis=-2)
+    fn = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 0), axis=-2)
 
     if average == "micro":
-        tp = np.sum(tp, axis=1)
-        fp = np.sum(fp, axis=1)
-        fn = np.sum(fn, axis=1)
+        tp = np.sum(tp, axis=-1)
+        fp = np.sum(fp, axis=-1)
+        fn = np.sum(fn, axis=-1)
         p = tp / (tp + fp)
         r = tp / (tp + fn)
         denom = beta2 * p + r
@@ -138,23 +122,23 @@ def fbeta(y_true, y_pred, beta=1.0, average="micro"):
     r = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
     denom = beta2 * p + r
     class_metrics = np.where(denom > 0, (1 + beta2) * p * r / denom, 0.0)
-    return np.mean(class_metrics, axis=1)
+    return np.mean(class_metrics, axis=-1)
 
 def npv(y_true, y_pred, average="micro"):
     y_true, y_pred = format_data(y_true, y_pred)
 
-    tn = np.sum(np.bitwise_and(y_true == 0, y_pred == 0), axis=1)
-    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
+    tn = np.count_nonzero(np.bitwise_and(y_true == 0, y_pred == 0), axis=-2)
+    fn = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 0), axis=-2)
 
     if average == "micro":
-        tn = np.sum(tn, axis=1)
-        fn = np.sum(fn, axis=1)
+        tn = np.sum(tn, axis=-1)
+        fn = np.sum(fn, axis=-1)
         denom = tn + fn
         npv_score = tn / denom
         return np.where(denom > 0, npv_score, 0.0)
 
     class_metrics = np.where((tn + fn) > 0, tn / (tn + fn), 0.0)
-    return np.mean(class_metrics, axis=1)
+    return np.mean(class_metrics, axis=-1)
 
 def sensitivity(y_true, y_pred, average="micro"):
     return recall(y_true, y_pred, average)
@@ -162,18 +146,18 @@ def sensitivity(y_true, y_pred, average="micro"):
 def specificity(y_true, y_pred, average="micro"):
     y_true, y_pred = format_data(y_true, y_pred)
 
-    tn = np.sum(np.bitwise_and(y_true == 0, y_pred == 0), axis=1)
-    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
+    tn = np.count_nonzero(np.bitwise_and(y_true == 0, y_pred == 0), axis=-2)
+    fp = np.count_nonzero(np.bitwise_and(y_true == 0, y_pred == 1), axis=-2)
 
     if average == "micro":
-        tn = np.sum(tn, axis=1)
-        fp = np.sum(fp, axis=1)
+        tn = np.sum(tn, axis=-1)
+        fp = np.sum(fp, axis=-1)
         denom = tn + fp
         spec = tn / denom
         return np.where(denom > 0, spec, 0.0)
 
     class_metrics = np.where((tn + fp) > 0, tn / (tn + fp), 0.0)
-    return np.mean(class_metrics, axis=1)
+    return np.mean(class_metrics, axis=-1)
 
 def balanced_accuracy(y_true, y_pred, average="micro"):
     sens = sensitivity(y_true, y_pred, average)
@@ -183,16 +167,16 @@ def balanced_accuracy(y_true, y_pred, average="micro"):
 def mcc(y_true, y_pred, average="micro"):
     y_true, y_pred = format_data(y_true, y_pred)
 
-    tp = np.sum(np.bitwise_and(y_true == 1, y_pred == 1), axis=1)
-    tn = np.sum(np.bitwise_and(y_true == 0, y_pred == 0), axis=1)
-    fp = np.sum(np.bitwise_and(y_true == 0, y_pred == 1), axis=1)
-    fn = np.sum(np.bitwise_and(y_true == 1, y_pred == 0), axis=1)
+    tp = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 1), axis=-2)
+    tn = np.count_nonzero(np.bitwise_and(y_true == 0, y_pred == 0), axis=-2)
+    fp = np.count_nonzero(np.bitwise_and(y_true == 0, y_pred == 1), axis=-2)
+    fn = np.count_nonzero(np.bitwise_and(y_true == 1, y_pred == 0), axis=-2)
 
     if average == "micro":
-        tp = np.sum(tp, axis=1)
-        tn = np.sum(tn, axis=1)
-        fp = np.sum(fp, axis=1)
-        fn = np.sum(fn, axis=1)
+        tp = np.sum(tp, axis=-1)
+        tn = np.sum(tn, axis=-1)
+        fp = np.sum(fp, axis=-1)
+        fn = np.sum(fn, axis=-1)
         numerator = (tp * tn) - (fp * fn)
         denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
         mcc_score = numerator / denominator
@@ -201,7 +185,7 @@ def mcc(y_true, y_pred, average="micro"):
     numerator = (tp * tn) - (fp * fn)
     denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
     class_metrics = np.where(denominator > 0, numerator / denominator, 0.0)
-    return np.mean(class_metrics, axis=1)
+    return np.mean(class_metrics, axis=-1)
 
 def ap(y_true, y_pred, average="macro"):
     # y_pred is expected to be logits or probabilities (batch_size, n_samples, n_classes)
