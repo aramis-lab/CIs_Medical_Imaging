@@ -292,7 +292,7 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
                 jack_stat = metric(y_jack_true, y_jack_score, average)
                 jack_stats.append(jack_stat)
             jack_stats_all.append(jack_stats)
-        jack_stats_all = np.array(jack_stats_all).squeeze()
+        jack_stats_all = np.array(jack_stats_all).squeeze(-1)
         jack_mean = np.mean(jack_stats_all, axis=1, keepdims=True)
         accel = np.sum((jack_mean - jack_stats_all) ** 3, axis=1) / (6 * (np.sum((jack_mean - jack_stats_all) ** 2, axis=1) ** 1.5)).flatten()
         z0 = norm.ppf(np.mean(stats < original_stat[:, None], axis=1))

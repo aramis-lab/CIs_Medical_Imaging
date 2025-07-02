@@ -24,6 +24,9 @@ def make_kdes_classification(df, task, algo, config):
     # Convert string representations of sets to 2D numpy array
     logits_str = df[df["alg_name"].astype(str) == algo]["logits"]
     values = [list(eval(v, {"nan": np.nan})) for v in logits_str]
+    if len(values) == 0:
+        print(f"Not enough values for {task} {algo} ({len(values)}), skipping KDE")
+        return
     lengths = np.array([len(v) for v in values])
     good_length = round(np.mean(lengths))
     indices = np.where(lengths==good_length)
@@ -70,15 +73,11 @@ def make_kdes_classification(df, task, algo, config):
         samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, config.n_samples * n, alphas)
         samples = samples.reshape(config.n_samples, n, -1)
         sim_labels = sim_labels.reshape(config.n_samples, n)
-        batch_size = 10
         for method in ci_methods:
             print(method)
-            for batch_start in range(0, config.n_samples, batch_size):
-                batch_end = min(batch_start + batch_size, config.n_samples)
-                batch_samples = samples[batch_start:batch_end]
-                batch_labels = sim_labels[batch_start:batch_end]
+            for sample_index in range(config.n_samples):
                 
-                CIs = compute_CIs_classification(batch_labels, batch_samples, config.metric, method, average=config.average)
+                CIs = compute_CIs_classification(sim_labels[sample_index], samples[sample_index], config.metric, method, average=config.average)
                 
                 # Precompute vectorized components for speed
                 lower_bounds = CIs[:, 0]
@@ -87,20 +86,19 @@ def make_kdes_classification(df, task, algo, config):
                 contains_true = (lower_bounds <= true_value) & (true_value <= upper_bounds)
                 proportion_oob = ((lower_bounds < 0) * (-lower_bounds) + (upper_bounds > 1) * (upper_bounds - 1)) / widths
 
-                for sample_index in range(batch_start, batch_end):
-                    key = (task, algo, n, sample_index)
-                    all_rows[key].update({
-                    "subtask": task,
-                    "alg_name": algo,
-                    "n": n,
-                    "sample_index": sample_index,
-                    "true_value" : true_value,
-                    f"lower_bound_{method}": lower_bounds[sample_index - batch_start],
-                    f"upper_bound_{method}": upper_bounds[sample_index - batch_start],
-                    f"contains_true_stat_{method}": contains_true[sample_index - batch_start],
-                    f"width_{method}": widths[sample_index - batch_start],
-                    f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
-                    })
+                key = (task, algo, n, sample_index)
+                all_rows[key].update({
+                "subtask": task,
+                "alg_name": algo,
+                "n": n,
+                "sample_index": sample_index,
+                "true_value" : true_value,
+                f"lower_bound_{method}": lower_bounds[0],
+                f"upper_bound_{method}": upper_bounds[0],
+                f"contains_true_stat_{method}": contains_true[0],
+                f"width_{method}": widths[0],
+                f"proportion_oob_{method}": proportion_oob[0],
+                })
 
         results = pd.DataFrame(data = all_rows.values())
 

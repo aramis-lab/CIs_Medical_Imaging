@@ -43,7 +43,7 @@ def accuracy(y_true, y_pred, average=None):
         y_true = y_true[None, :]
         y_pred = y_pred[None, :]
 
-    return np.mean(y_pred==y_true, axis=-1)
+    return np.count_nonzero(y_pred==y_true, axis=-1) / y_pred.shape[-1]
 
 def precision(y_true, y_pred, average="micro"):
     y_true, y_pred = format_data(y_true, y_pred)
@@ -195,7 +195,7 @@ def ap(y_true, y_pred, average="macro"):
     if y_true.ndim == 1:
         y_true = y_true[None, ...]
     if y_true.ndim == 2:
-        y_true = label_binarize_vectorized(y_true, np.arange(y_pred.shape[-1]))
+        y_true = label_binarize_vectorized(y_true, y_pred.shape[-1])
     y_score = softmax(y_pred, axis=-1)
     batch_size = y_true.shape[0]
     scores = []
@@ -213,7 +213,7 @@ def auroc(y_true, y_pred, average="macro"):
     if y_true.ndim == 1:
         y_true = y_true[None, ...]
     if y_true.ndim == 2:
-        y_true = label_binarize_vectorized(y_true, np.arange(y_pred.shape[-1]))
+        y_true = label_binarize_vectorized(y_true, y_pred.shape[-1])
     y_score = softmax(y_pred, axis=-1)
     batch_size = y_true.shape[0]
     scores = []
