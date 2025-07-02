@@ -9,7 +9,7 @@ def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binar
 
     y = np.asarray(y)
     if y.ndim < 2:
-        raise ValueError("y must have more than 2 dimensions")
+        raise ValueError("y must have at least 2 dimensions")
     n_classes = int(n_classes)
     shape = y.shape + (n_classes,)
     y_onehot = np.zeros(shape, dtype=np.int32)
@@ -198,6 +198,9 @@ def ap(y_true, y_scores, average="micro"):
 
     n_classes = y_scores.shape[-1]
 
+    if y_true.ndim == 1:
+        y_true = y_true[None, :]
+
     y_true = label_binarize_vectorized(y_true.astype(np.int32), n_classes)  # Convert to one-hot encoding
     y_scores = softmax(y_scores)
     
@@ -265,6 +268,9 @@ def auroc(y_true, y_scores, average="micro"):
     y_true = np.asarray(y_true)
     y_scores = np.asarray(y_scores)
     n_classes = y_scores.shape[-1]
+
+    if y_true.ndim == 1:
+        y_true = y_true[None, :]
 
     y_true = label_binarize_vectorized(y_true.astype(np.int32), n_classes)
     y_scores = softmax(y_scores)
