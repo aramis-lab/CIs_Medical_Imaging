@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.metrics import roc_auc_score, average_precision_score
 
 def softmax(x, axis=-1):
     e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
@@ -187,43 +186,133 @@ def mcc(y_true, y_pred, average="micro"):
     class_metrics = np.where(denominator > 0, numerator / denominator, 0.0)
     return np.mean(class_metrics, axis=-1)
 
-def ap(y_true, y_pred, average="macro"):
-    # y_pred is expected to be logits or probabilities (batch_size, n_samples, n_classes)
-    # y_true is expected to be (batch_size, n_samples) or (batch_size, n_samples, n_classes)
-    if y_pred.ndim == 2:
-        y_pred = y_pred[None, ...]
-    if y_true.ndim == 1:
-        y_true = y_true[None, ...]
-    if y_true.ndim == 2:
-        y_true = label_binarize_vectorized(y_true, y_pred.shape[-1])
-    y_score = softmax(y_pred, axis=-1)
-    batch_size = y_true.shape[0]
-    scores = []
-    for i in range(batch_size):
-        try:
-            score = average_precision_score(y_true[i], y_score[i], average=average)
-        except Exception:
-            score = 0.0
-        scores.append(score)
-    return np.array(scores)
+def ap(y_true, y_scores, average="micro"):
+    """
+    Compute average precision for each sample and label.
+    y_true: array-like of shape (..., n_samples, n_labels), binary {0,1}
+    y_scores: array-like of shape (..., n_samples, n_labels), float
+    Returns: array of shape (..., n_labels)
+    """
+    y_true = np.asarray(y_true)
+    y_scores = np.asarray(y_scores)
 
-def auroc(y_true, y_pred, average="macro"):
-    if y_pred.ndim == 2:
-        y_pred = y_pred[None, ...]
-    if y_true.ndim == 1:
-        y_true = y_true[None, ...]
-    if y_true.ndim == 2:
-        y_true = label_binarize_vectorized(y_true, y_pred.shape[-1])
-    y_score = softmax(y_pred, axis=-1)
-    batch_size = y_true.shape[0]
-    scores = []
-    for i in range(batch_size):
-        try:
-            score = roc_auc_score(y_true[i], y_score[i], average=average, multi_class='ovr')
-        except Exception:
-            score = 0.0
-        scores.append(score)
-    return np.array(scores)
+    n_classes = y_scores.shape[-1]
+
+    y_true = label_binarize_vectorized(y_true.astype(np.int32), n_classes)  # Convert to one-hot encoding
+    y_scores = softmax(y_scores)
+    
+    if average == "micro":
+        orig_shape = y_true.shape[:-2]
+
+        y_true = y_true.reshape(orig_shape + (-1,))
+        y_scores = y_scores.reshape(orig_shape + (-1,))
+        desc_order = np.argsort(y_scores, axis=-1)[..., ::-1]
+
+        y_true_sorted = np.take_along_axis(y_true, desc_order, axis=-1)
+
+        tp_cumsum = np.cumsum(y_true_sorted, axis=-1)
+        total_positives = np.sum(y_true_sorted, axis=-1, keepdims=True)
+
+        mask = (total_positives>0).squeeze(-1)
+
+        precision = tp_cumsum / (np.arange(1, y_true_sorted.shape[-1] + 1))
+        recall = tp_cumsum / total_positives
+
+        recall_diff = np.diff(np.concatenate([np.zeros(recall.shape[:-1]+(1,)), recall], axis=-1), axis=-1)
+
+        ap = np.sum(precision * recall_diff, axis=-1)
+
+        ap[~mask] = 0.0
+
+        return ap
+
+
+    elif average == "macro":
+
+        desc_order = np.argsort(y_scores, axis=-2)[..., ::-1, :]
+
+        y_true_sorted = np.take_along_axis(y_true, desc_order, axis=-2)
+        # Cumulative sum of true positives
+        tp_cumsum = np.cumsum(y_true_sorted, axis=-2)
+        total_positives = np.sum(y_true_sorted, axis=-2, keepdims=True)
+        # Avoid division by zero
+        mask = (total_positives > 0).squeeze(-2)
+
+        # Precision and recall
+        precision = tp_cumsum / (np.arange(1, y_true_sorted.shape[-2] + 1)[..., None])
+        recall = tp_cumsum / total_positives
+
+        recall_shape = np.array(recall.shape)
+        recall_shape[-2] = 1
+        recall_diff = np.diff(np.concatenate([np.zeros(recall_shape), recall], axis=-2), axis=-2)
+
+        ap = np.sum(precision * recall_diff, axis=-2)
+
+        ap[~mask] = 0.0
+
+        return np.mean(ap, axis=-1)
+    
+    else:
+        raise ValueError(f"The averaging method {average} is not supported for this implementation of average precision score.")
+
+def auroc(y_true, y_scores, average="micro"):
+    """
+    Compute AUC for each sample and label.
+    y_true: array-like of shape (..., n_samples, n_labels), binary {0,1}
+    y_scores: array-like of shape (..., n_samples, n_labels), float
+    Returns: array of shape (..., n_labels)
+    """
+    y_true = np.asarray(y_true)
+    y_scores = np.asarray(y_scores)
+    n_classes = y_scores.shape[-1]
+
+    y_true = label_binarize_vectorized(y_true.astype(np.int32), n_classes)
+    y_scores = softmax(y_scores)
+
+    if average == "micro":
+        orig_shape = y_true.shape[:-2]
+        y_true = y_true.reshape(orig_shape + (-1,))
+        y_scores = y_scores.reshape(orig_shape + (-1,))
+        desc_order = np.argsort(y_scores, axis=-1)[..., ::-1]
+        y_true_sorted = np.take_along_axis(y_true, desc_order, axis=-1)
+
+        total_positives = np.sum(y_true_sorted, axis=-1, keepdims=True)
+        total_negatives = y_true_sorted.shape[-1] - total_positives
+
+        tps = np.cumsum(y_true_sorted, axis=-1)
+        fps = np.cumsum(1 - y_true_sorted, axis=-1)
+
+        tpr = tps / np.maximum(total_positives, 1)
+        fpr = fps / np.maximum(total_negatives, 1)
+
+        d_fpr = np.diff(np.concatenate([np.zeros(fpr.shape[:-1] + (1,)), fpr], axis=-1), axis=-1)
+        auc = np.sum(tpr * d_fpr, axis=-1)
+        mask = (total_positives > 0).squeeze(-1) & (total_negatives > 0).squeeze(-1)
+        auc[~mask] = 0.0
+        return auc
+
+    elif average == "macro":
+        desc_order = np.argsort(y_scores, axis=-2)[..., ::-1, :]
+        y_true_sorted = np.take_along_axis(y_true, desc_order, axis=-2)
+
+        total_positives = np.sum(y_true_sorted, axis=-2, keepdims=True)
+        total_negatives = y_true_sorted.shape[-2] - total_positives
+
+        tps = np.cumsum(y_true_sorted, axis=-2)
+        fps = np.cumsum(1 - y_true_sorted, axis=-2)
+
+        tpr = tps / np.maximum(total_positives, 1)
+        fpr = fps / np.maximum(total_negatives, 1)
+
+        recall_shape = np.array(fpr.shape)
+        recall_shape[-2] = 1
+        d_fpr = np.diff(np.concatenate([np.zeros(recall_shape), fpr], axis=-2), axis=-2)
+        auc = np.sum(tpr * d_fpr, axis=-2)
+        mask = (total_positives > 0).squeeze(-2) & (total_negatives > 0).squeeze(-2)
+        auc[~mask] = 0.0
+        return np.mean(auc, axis=-1)
+    else:
+        raise ValueError(f"The averaging method {average} is not supported for this implementation of AUROC.")
 
 def get_metric(metric):
     metric_dict = {
