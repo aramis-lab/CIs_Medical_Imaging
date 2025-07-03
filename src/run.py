@@ -5,7 +5,7 @@ from collections import defaultdict
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde, sample_weighted_kde_multivariate
 from summary_stats import get_statistic
-from intervals_and_metrics import get_metric, is_continuous, compute_CIs_segmentation, compute_CIs_classification, get_bounds, get_authorized_methods
+from intervals_and_metrics import get_metric, is_continuous, compute_CIs_segmentation, compute_CIs_classification, get_bounds, get_authorized_methods, softmax, label_binarize_vectorized
 from kernels import get_kernel
 from utils import extract_df
 import os
@@ -53,11 +53,43 @@ def make_kdes_classification(df, task, algo, config):
         log_g = np.mean(np.log(initial_estimates))
         g = np.exp(log_g)
         alphas = (initial_estimates / g) ** (-1/2)
-    samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, 100000, alphas) # Shapes (1000000, 5) and (1000000,), not binary
+    y_score, y_true = sample_weighted_kde_multivariate(values, labels, config.kernel, 100000, alphas) # Shapes (1000000, n_classes) and (1000000,), not binary
+    y_score = softmax(y_score)
 
     if (values.shape[1]>2 and config.metric not in ["accuracy", "f1_score","mcc","balanced_accuracy"]): # Multi-class problem, only bootstrap works properly
         ci_methods = ci_methods.intersection(["basic", "percentile", "bca"])
-    true_value = metric(sim_labels, samples, average=config.average)
+    
+    n_classes = y_score.shape[-1]
+    classes = np.arange(n_classes)
+    y_pred = np.argmax(y_score, axis=-1)
+
+    correct_pred = (y_pred==y_true)[..., None] # To allow bootstrapping metric arguments
+
+    y_true_bin = label_binarize_vectorized(y_true, n_classes)
+    y_pred_bin = label_binarize_vectorized(y_pred, n_classes)
+
+    tp = (y_true_bin==1) & (y_pred_bin==1)
+    fp = (y_true_bin==0) & (y_pred_bin==1)
+    tn = (y_true_bin==0) & (y_pred_bin==0)
+    fn = (y_true_bin==1) & (y_pred_bin==0)
+
+    metric_arguments = {"accuracy": ["correct_pred"],
+                        "precision" : ["tp", "fp"],
+                        "recall" : ["tp", "fn"],
+                        "f1" : ["tp", "fp", "fn"],
+                        "fbeta" : ["tp", "fp", "fn"],
+                        "npv" : ["tn", "fn"],
+                        "ppv" : ["tp", "fp"],
+                        "sensitivity" : ["tp", "fn"],
+                        "specificity" : ["tn", "fp"],
+                        "balanced_accuracy" : ["tp", "fp", "tn", "fn"],
+                        "mcc" : ["tp", "fp", "tn", "fn"],
+                        "auroc" : ["y_score", "y_true_bin"],
+                        "ap" : []
+    }
+
+    original_arguments = {a : locals()[a] for a in metric_arguments[config.metric]}
+    true_value = metric(average=config.average, **original_arguments)
     all_rows = defaultdict(dict)
     RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
     for n in tqdm(config.sample_sizes):
@@ -72,6 +104,7 @@ def make_kdes_classification(df, task, algo, config):
             del existing_results
         samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, config.n_samples * n, alphas)
         samples = samples.reshape(config.n_samples, n, -1)
+        samples = softmax(samples)
         sim_labels = sim_labels.reshape(config.n_samples, n)
         for method in ci_methods:
             print(method)

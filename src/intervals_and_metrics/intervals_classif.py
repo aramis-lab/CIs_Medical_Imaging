@@ -2,12 +2,11 @@
 import numpy as np
 from sklearn.metrics import roc_auc_score
 from statsmodels.stats.proportion import proportion_confint
-from scipy.stats import chi2, norm
+from scipy.stats import chi2
+from scipy.special import ndtr, ndtri
 from scipy.optimize import root_scalar
-from .pixel_wise_metrics import get_metric
+from .pixel_wise_metrics import get_metric, label_binarize_vectorized
 from numba import njit
-
-from sklearn.preprocessing import label_binarize
 
 def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alpha=0.05):
     y_true = np.array(y_true)
@@ -49,8 +48,8 @@ def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
     if method in ["normal","agresti_coull","beta","wilson"] and average=="micro": # If average is micro, we can consider the problem as a binary classification problem
         classes = np.unique(y_true)
         y_pred = np.argmax(y_pred, axis=-1) if y_pred.ndim > y_true.ndim else y_pred
-        y_pred_bin = label_binarize(y_pred.ravel(), classes=classes).reshape(y_pred.shape[0], -1)
-        y_true_bin = label_binarize(y_true.ravel(), classes=classes).reshape(y_true.shape[0], -1)
+        y_pred_bin = label_binarize_vectorized(y_pred.ravel(), len(classes)).reshape(y_pred.shape[0], -1)
+        y_true_bin = label_binarize_vectorized(y_true.ravel(), len(classes)).reshape(y_true.shape[0], -1)
         tp = np.sum((y_true_bin == 1) & (y_pred_bin == 1), axis=1)
         fn = np.sum((y_true_bin == 1) & (y_pred_bin == 0), axis=1)
         tn = np.sum((y_true_bin == 0) & (y_pred_bin == 0), axis=1)
@@ -86,7 +85,7 @@ def CI_AUC(y_true, y_pred, metric, method, alpha, average):
     if method in ['percentile', 'basic', 'bca']: 
         return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method)
     elif y_pred.ndim==1 and metric in ['auc', 'auroc']:
-        y_true_bin = label_binarize(y_true, classes=np.arange(y_pred.shape[1]))
+        y_true_bin = label_binarize_vectorized(y_true, classes=y_pred.shape[1])
         N=len(y_true_bin)
         n=np.sum(y_true)
         m=N-n
@@ -228,7 +227,6 @@ def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):
     n_classes = len(class_indices)
     n_total = sum(class_sizes)
     result = np.empty((n_bootstrap, n_total), dtype=np.int32)
-
     for b in range(n_bootstrap):
         pos = 0
         for c in range(n_classes):
@@ -244,33 +242,60 @@ def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):
 def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro', n_bootstrap=9999, alpha=0.05, method='percentile'):
 
     y_true = np.array(y_true)
-    y_score = np.array(y_score)
+    n_classes = y_score.shape[-1]
+    classes = np.arange(n_classes)
+    y_pred = np.argmax(y_score, axis=-1)
+
+    correct_pred = (y_pred==y_true)[..., None] # To allow bootstrapping metric arguments
+
+    y_true_bin = label_binarize_vectorized(y_true, n_classes)
+    y_pred_bin = label_binarize_vectorized(y_pred, n_classes)
+
+    tp = (y_true_bin==1) & (y_pred_bin==1)
+    fp = (y_true_bin==0) & (y_pred_bin==1)
+    tn = (y_true_bin==0) & (y_pred_bin==0)
+    fn = (y_true_bin==1) & (y_pred_bin==0)
+
+    metric_arguments = {"accuracy": ["correct_pred"],
+                        "precision" : ["tp", "fp"],
+                        "recall" : ["tp", "fn"],
+                        "f1" : ["tp", "fp", "fn"],
+                        "fbeta" : ["tp", "fp", "fn"],
+                        "npv" : ["tn", "fn"],
+                        "ppv" : ["tp", "fp"],
+                        "sensitivity" : ["tp", "fn"],
+                        "specificity" : ["tn", "fp"],
+                        "balanced_accuracy" : ["tp", "fp", "tn", "fn"],
+                        "mcc" : ["tp", "fp", "tn", "fn"],
+                        "auroc" : ["y_score", "y_true_bin"],
+                        "ap" : []
+    }
 
     metric = get_metric(metric_name)
-    original_stat = metric(y_true, y_score, average)
+    original_arguments = {a : locals()[a] for a in metric_arguments[metric_name]}
+    original_stat = metric(average=average, **original_arguments)
 
-    y_samples = []
-    y_score_samples = []
-    classes_b = np.arange(y_score.shape[-1])
-    if y_true.ndim == 1:  # single sample
-        y_true = y_true[None, ...]
-        y_score = y_score[None, ...]
+    bootstrapped_arguments = {a : [] for a in metric_arguments[metric_name]}
+    
     for i in range(len(y_true)):
         sample = y_true[i]
         n_samples = len(sample)
         
-        class_indices = [np.flatnonzero(sample == c) for c in classes_b]
+        class_indices = [np.flatnonzero(sample == c) for c in classes]
 
         # Separate bootstrap resampling from metric calculation (vectorized)
-        resampled_indices = stratified_bootstrap_numba(class_indices, [len(class_indices[cls]) for cls in classes_b], n_bootstrap)
+        resampled_indices = stratified_bootstrap_numba(class_indices, [len(class_indices[cls]) for cls in classes], n_bootstrap)
 
-        y_samples.append(y_true[i, resampled_indices])
-        y_score_samples.append(y_score[i, resampled_indices])
-    
-    stats = metric(np.array(y_samples), np.array(y_score_samples), average)
+        for a in bootstrapped_arguments:
+            value = locals()[a][i]
+            bootstrapped_arguments[a].append(value[resampled_indices])
+        
+    bootstrapped_arguments = {a : np.array(bootstrapped_arguments[a]) for a in bootstrapped_arguments}
 
-    lower = np.percentile(stats, 100 * alpha / 2, axis=-1)
-    upper = np.percentile(stats, 100 * (1 - alpha / 2), axis=-1)
+    bootstrap_distribution = metric(average=average, **bootstrapped_arguments)
+
+    lower = np.percentile(bootstrap_distribution, 100 * alpha / 2, axis=-1)
+    upper = np.percentile(bootstrap_distribution, 100 * (1 - alpha / 2), axis=-1)
 
     if method == 'percentile':
         return np.stack([lower, upper], axis=1)
@@ -283,30 +308,37 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
     elif method == 'bca':
         jack_stats_all = []
         for i in range(len(y_true)):
-            jack_stats = []
             n_samples = y_true[i].shape[0]
-            for j in range(n_samples):
-                jack_idx = np.delete(np.arange(n_samples), j)
-                y_jack_true = y_true[i][jack_idx]
-                y_jack_score = y_score[i][jack_idx]
-                jack_stat = metric(y_jack_true, y_jack_score, average)
-                jack_stats.append(jack_stat)
-            jack_stats_all.append(jack_stats)
-        jack_stats_all = np.array(jack_stats_all).squeeze(-1)
+            jack_idx = np.array([np.delete(np.arange(n_samples), i) for i in range(n_samples)])
+            jackknife_arguments = {a : [] for a in metric_arguments[metric_name]}
+            for a in jackknife_arguments:
+                value = locals()[a][i]
+                jackknife_arguments[a] = value[jack_idx]
+            jack_stat = metric(average=average, **jackknife_arguments)
+            jack_stats_all.append(jack_stat)
+        jack_stats_all = np.array(jack_stats_all)
         jack_mean = np.mean(jack_stats_all, axis=1, keepdims=True)
-        accel = np.sum((jack_mean - jack_stats_all) ** 3, axis=1) / (6 * (np.sum((jack_mean - jack_stats_all) ** 2, axis=1) ** 1.5)).flatten()
-        z0 = norm.ppf(np.mean(stats < original_stat[:, None], axis=1))
-        z_low = norm.ppf(alpha / 2)
-        z_high = norm.ppf(1 - alpha / 2)
+        accel = np.sum((jack_mean - jack_stats_all) ** 3, axis=1) / (6 * (np.sum((jack_mean - jack_stats_all) ** 2, axis=1) ** 1.5))
+        z0 = ndtri(np.mean(bootstrap_distribution < original_stat[:, None], axis=1))
+
+        z_low = ndtri(alpha / 2)
+        z_high = - z_low
         x_low = z0 + z_low
         x_high = z0 + z_high
+
+        # Define coefficients to compute percentiles, account for 0 acceleration to prevent 0 division error
         pct1_coeff = np.where((accel == 0)|(np.isnan(accel)), x_low, 1 / accel * (1 / (1 - accel * x_low) - 1))
         pct2_coeff = np.where((accel == 0)|(np.isnan(accel)), x_high, 1 / accel * (1 / (1 - accel * x_high) - 1))
-        pct1 = norm.cdf(z0 + pct1_coeff)
-        pct2 = norm.cdf(z0 + pct2_coeff)
-        bca_low = np.percentile(stats, 100 * pct1)
-        bca_high = np.percentile(stats, 100 * pct2)
-        bca_low = np.where(np.isnan(accel), np.nan, bca_low)
+
+        # Define percentiles to take for BCa interval
+        pct1 = ndtr(z0 + pct1_coeff)
+        pct2 = ndtr(z0 + pct2_coeff)
+
+        # Take percentiles for each sample in batch
+        bca_low = [np.percentile(bootstrap_distribution[i], 100 * pct1[i]) for i in range(len(bootstrap_distribution))]
+        bca_high = [np.percentile(bootstrap_distribution[i], 100 * pct2[i]) for i in range(len(bootstrap_distribution))]
+
+        bca_low = np.where(np.isnan(accel), np.nan, bca_low) # Correct for acceleration error
         bca_high = np.where(np.isnan(accel), np.nan, bca_high)
         return np.stack([bca_low, bca_high], axis=1)
 
