@@ -85,6 +85,7 @@ def make_kdes_classification(df, task, algo, config):
                         "balanced_accuracy" : ["tp", "fp", "tn", "fn"],
                         "mcc" : ["tp", "fp", "tn", "fn"],
                         "auroc" : ["y_score", "y_true_bin"],
+                        "auc" : ["y_score", "y_true_bin"],
                         "ap" : []
     }
 

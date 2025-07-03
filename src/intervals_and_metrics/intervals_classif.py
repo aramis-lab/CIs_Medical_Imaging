@@ -268,6 +268,7 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
                         "balanced_accuracy" : ["tp", "fp", "tn", "fn"],
                         "mcc" : ["tp", "fp", "tn", "fn"],
                         "auroc" : ["y_score", "y_true_bin"],
+                        "auc" : ["y_score", "y_true_bin"],
                         "ap" : []
     }
 
