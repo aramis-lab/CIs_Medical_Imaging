@@ -8,7 +8,7 @@ from scipy.optimize import root_scalar
 from .pixel_wise_metrics import get_metric, label_binarize_vectorized
 from numba import njit
 
-def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alpha=0.05):
+def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alpha=0.05, stratified=False):
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
@@ -30,14 +30,14 @@ def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alp
         raise ValueError("Input dimension mismatch or unsupported format.")
 
     if metric in ["accuracy", "npv", "ppv", "precision", "recall", "sensitivity", "specificity", "balanced_accuracy", "f1_score", "fbeta_score", "mcc"]:
-        batch_results = CI_accuracy(y_true, y_pred, metric, method, average, alpha)
+        batch_results = CI_accuracy(y_true, y_pred, metric, method, alpha, average, stratified)
     elif metric in ['ap', 'auc', 'auroc']:
-        batch_results = CI_AUC(y_true, y_pred, metric, method, alpha, average)
+        batch_results = CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified)
     else:
         raise ValueError(f"Unsupported metric: {metric}")
     return np.stack(batch_results, axis=0)
 
-def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
+def CI_accuracy(y_true, y_pred, metric, method, alpha, average, stratified):
     y_pred = np.array(y_pred)
     y_true = np.array(y_true)
     if method in ["wald", "param_z"]:
@@ -74,16 +74,16 @@ def CI_accuracy(y_true, y_pred, metric, method, average, alpha):
             raise ValueError(f"Unknown metric for parametric methods: {metric}")
         return np.array(proportion_confint(value, total, alpha=alpha, method= method)).T
     elif method in ['percentile', 'basic', 'bca']:
-        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method)
+        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, stratified=stratified, method=method)
     else:
         if average!="micro":
             raise ValueError("Non-bootstrap CI methods are not defined for multi-class if average is not 'micro'.")
         else:
             raise NotImplementedError(f"The following method is not implemented : {method}. Currently, 'percentile', 'basic', 'bca', 'agresti_coull', 'wilson', 'wald', 'normal', 'param_z', 'cloper_pearson' and 'exact' are implemented.")
 
-def CI_AUC(y_true, y_pred, metric, method, alpha, average):
+def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified):
     if method in ['percentile', 'basic', 'bca']: 
-        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method)
+        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, stratified=stratified, method=method)
     elif y_pred.ndim==1 and metric in ['auc', 'auroc']:
         y_true_bin = label_binarize_vectorized(y_true, classes=y_pred.shape[1])
         N=len(y_true_bin)
@@ -239,7 +239,7 @@ def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):
     return result
 
 # Timing wrapper for stratified_bootstrap_CI
-def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro', n_bootstrap=9999, alpha=0.05, method='percentile'):
+def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro', n_bootstrap=9999, alpha=0.05, stratified=False, method='percentile'):
 
     y_true = np.array(y_true)
     n_classes = y_score.shape[-1]
@@ -281,11 +281,15 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
     for i in range(len(y_true)):
         sample = y_true[i]
         n_samples = len(sample)
+        if stratified:
         
-        class_indices = [np.flatnonzero(sample == c) for c in classes]
+            class_indices = [np.flatnonzero(sample == c) for c in classes]
 
-        # Separate bootstrap resampling from metric calculation (vectorized)
-        resampled_indices = stratified_bootstrap_numba(class_indices, [len(class_indices[cls]) for cls in classes], n_bootstrap)
+            # Separate bootstrap resampling from metric calculation (vectorized)
+            resampled_indices = stratified_bootstrap_numba(class_indices, [len(class_indices[cls]) for cls in classes], n_bootstrap)
+        
+        else:
+            resampled_indices = np.random.randint(0, n_samples, (n_bootstrap, n_samples))
 
         for a in bootstrapped_arguments:
             value = locals()[a][i]
