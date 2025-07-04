@@ -9,8 +9,8 @@ def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binar
     """Binarize labels in a vectorized way."""
 
     y = np.asarray(y)
-    if y.ndim < 2:
-        raise ValueError("y must have at least 2 dimensions")
+    if y.ndim == 0:
+        raise ValueError("y must be at least a vector.")
     n_classes = int(n_classes)
     shape = y.shape + (n_classes,)
     y_onehot = np.zeros(shape, dtype=np.int32)
