@@ -278,24 +278,28 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
 
     bootstrapped_arguments = {a : [] for a in metric_arguments[metric_name]}
     
-    for i in range(len(y_true)):
-        sample = y_true[i]
-        n_samples = len(sample)
-        if stratified:
+    if stratified :
+        for i in range(len(y_true)):
+            sample = y_true[i]
+            n_samples = len(sample)
         
             class_indices = [np.flatnonzero(sample == c) for c in classes]
 
             # Separate bootstrap resampling from metric calculation (vectorized)
             resampled_indices = stratified_bootstrap_numba(class_indices, [len(class_indices[cls]) for cls in classes], n_bootstrap)
+
+            for a in bootstrapped_arguments:
+                value = locals()[a][i]
+                bootstrapped_arguments[a].append(value[resampled_indices])
         
-        else:
-            resampled_indices = np.random.randint(0, n_samples, (n_bootstrap, n_samples))
+        bootstrapped_arguments = {a : np.array(bootstrapped_arguments[a]) for a in bootstrapped_arguments}
+        
+    else:
+        resampled_indices = np.random.randint(0, n_samples, size=(len(y_true), n_bootstrap, n_samples))
 
         for a in bootstrapped_arguments:
-            value = locals()[a][i]
-            bootstrapped_arguments[a].append(value[resampled_indices])
-        
-    bootstrapped_arguments = {a : np.array(bootstrapped_arguments[a]) for a in bootstrapped_arguments}
+            value = locals()[a]
+            bootstrapped_arguments[a] = np.take_along_axis(value, resampled_indices, 1)
 
     bootstrap_distribution = metric(average=average, **bootstrapped_arguments)
 
