@@ -9,8 +9,8 @@ def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binar
     """Binarize labels in a vectorized way."""
 
     y = np.asarray(y)
-    if y.ndim == 0:
-        raise ValueError("y must be a vector")
+    if y.ndim < 2:
+        raise ValueError("y must have at least 2 dimensions")
     n_classes = int(n_classes)
     shape = y.shape + (n_classes,)
     y_onehot = np.zeros(shape, dtype=np.int32)
@@ -26,49 +26,48 @@ def accuracy(correct_pred, average=None):
 
 def precision(tp, fp, average="micro"):
 
-    tp = np.count_nonzero(tp, axis=-2)
-    fp = np.count_nonzero(fp, axis=-2)
-
     if average == "micro":
-        tp = np.sum(tp, axis=-1)
-        fp = np.sum(fp, axis=-1)
+        tp = np.count_nonzero(tp, axis=(-2, -1))
+        fp = np.count_nonzero(fp, axis=(-2, -1))
         denom = tp + fp
         prec = tp / denom
         return np.where(denom > 0, prec, 0.0)
+    
+    tp = np.count_nonzero(tp, axis=-2)
+    fp = np.count_nonzero(fp, axis=-2)
 
     class_prec = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
     return np.mean(class_prec, axis=-1)
 
 def recall(tp, fn, average="micro"):
 
-    tp = np.count_nonzero(tp, axis=-2)
-    fn = np.count_nonzero(fn, axis=-2)
-
     if average == "micro":
-        tp = np.sum(tp, axis=-1)
-        fn = np.sum(fn, axis=-1)
+        tp = np.count_nonzero(tp, axis=(-2, -1))
+        fn = np.count_nonzero(fn, axis=(-2, -1))
         denom = tp + fn
         rec = tp / denom
         return np.where(denom > 0, rec, 0.0)
 
+    tp = np.count_nonzero(tp, axis=-2)
+    fn = np.count_nonzero(fn, axis=-2)
     class_recall = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
     return np.mean(class_recall, axis=-1)
 
 def f1(tp, fp, fn, average="micro"):
 
-    tp = np.count_nonzero(tp, axis=-2)
-    fp = np.count_nonzero(fp, axis=-2)
-    fn = np.count_nonzero(fn, axis=-2)
-
     if average == "micro":
-        tp = np.sum(tp, axis=-1)
-        fp = np.sum(fp, axis=-1)
-        fn = np.sum(fn, axis=-1)
+        tp = np.count_nonzero(tp, axis=(-2, -1))
+        fp = np.count_nonzero(fp, axis=(-2, -1))
+        fn = np.count_nonzero(fn, axis=(-2, -1))
         p = tp / (tp + fp)
         r = tp / (tp + fn)
         denom = p + r
         f1_score = 2 * p * r / denom
         return np.where(denom > 0, f1_score, 0.0)
+    
+    tp = np.count_nonzero(tp, axis=-2)
+    fp = np.count_nonzero(fp, axis=-2)
+    fn = np.count_nonzero(fn, axis=-2)
 
     p = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
     r = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
@@ -79,19 +78,19 @@ def f1(tp, fp, fn, average="micro"):
 def fbeta(tp, fp, fn, beta=1.0, average="micro"):
     beta2 = beta ** 2
 
-    tp = np.count_nonzero(tp, axis=-2)
-    fp = np.count_nonzero(fp, axis=-2)
-    fn = np.count_nonzero(fn, axis=-2)
-
     if average == "micro":
-        tp = np.sum(tp, axis=-1)
-        fp = np.sum(fp, axis=-1)
-        fn = np.sum(fn, axis=-1)
+        tp = np.count_nonzero(tp, axis=(-2, -1))
+        fp = np.count_nonzero(fp, axis=(-2, -1))
+        fn = np.count_nonzero(fn, axis=(-2, -1))
         p = tp / (tp + fp)
         r = tp / (tp + fn)
         denom = beta2 * p + r
         fbeta_score = (1 + beta2) * p * r / denom
         return np.where(denom > 0, fbeta_score, 0.0)
+    
+    tp = np.count_nonzero(tp, axis=-2)
+    fp = np.count_nonzero(fp, axis=-2)
+    fn = np.count_nonzero(fn, axis=-2)
 
     p = np.where((tp + fp) > 0, tp / (tp + fp), 0.0)
     r = np.where((tp + fn) > 0, tp / (tp + fn), 0.0)
@@ -101,15 +100,15 @@ def fbeta(tp, fp, fn, beta=1.0, average="micro"):
 
 def npv(tn, fn, average="micro"):
 
-    tn = np.count_nonzero(tn, axis=-2)
-    fn = np.count_nonzero(fn, axis=-2)
-
     if average == "micro":
-        tn = np.sum(tn, axis=-1)
-        fn = np.sum(fn, axis=-1)
+        tn = np.count_nonzero(tn, axis=(-2, -1))
+        fn = np.count_nonzero(fn, axis=(-2, -1))
         denom = tn + fn
         npv_score = tn / denom
         return np.where(denom > 0, npv_score, 0.0)
+    
+    tn = np.count_nonzero(tn, axis=-2)
+    fn = np.count_nonzero(fn, axis=-2)
 
     class_npv = np.where((tn + fn) > 0, tn / (tn + fn), 0.0)
     return np.mean(class_npv, axis=-1)
@@ -119,30 +118,26 @@ def sensitivity(tp, fn, average="micro"):
 
 def specificity(tn, fp, average="micro"):
 
-    tn = np.count_nonzero(tn, axis=-2)
-    fp = np.count_nonzero(fp, axis=-2)
-
     if average == "micro":
-        tn = np.sum(tn, axis=-1)
-        fp = np.sum(fp, axis=-1)
+        tn = np.count_nonzero(tn, axis=(-2, -1))
+        fp = np.count_nonzero(fp, axis=(-2, -1))
         denom = tn + fp
         spec = tn / denom
         return np.where(denom > 0, spec, 0.0)
+    
+    tn = np.count_nonzero(tn, axis=-2)
+    fp = np.count_nonzero(fp, axis=-2)
 
     class_spec = np.where((tn + fp) > 0, tn / (tn + fp), 0.0)
     return np.mean(class_spec, axis=-1)
 
 def balanced_accuracy(tp, fp, tn, fn, average="micro"):
-    tp = np.count_nonzero(tp, axis=-2)
-    fp = np.count_nonzero(fp, axis=-2)
-    fn = np.count_nonzero(fn, axis=-2)
-    tn = np.count_nonzero(tn, axis=-2)
     
     if average == "micro":
-        tp = np.sum(tp, axis=-1)
-        fp = np.sum(fp, axis=-1)
-        tn = np.sum(tn, axis=-1)
-        fn = np.sum(fn, axis=-1)
+        tp = np.count_nonzero(tp, axis=(-2, -1))
+        fp = np.count_nonzero(fp, axis=(-2, -1))
+        tn = np.count_nonzero(tn, axis=(-2, -1))
+        fn = np.count_nonzero(fn, axis=(-2, -1))
         denom_spec = tn + fp
         spec = tn / denom_spec
         denom_sens = tp + fn
@@ -150,26 +145,31 @@ def balanced_accuracy(tp, fp, tn, fn, average="micro"):
         bal_acc = (spec + sens) / 2
         return np.where((denom_spec > 0) & (denom_sens > 0), bal_acc, 0.0)
     
+    tp = np.count_nonzero(tp, axis=-2)
+    fp = np.count_nonzero(fp, axis=-2)
+    fn = np.count_nonzero(fn, axis=-2)
+    tn = np.count_nonzero(tn, axis=-2)
+    
     class_bal_acc = np.where(((tn + fp) > 0) & ((tp + fn) > 0), (tn/(tn+fp) + tp/(tp+fn))/2, 0.0)
     
     return np.mean(class_bal_acc, axis=-1)
 
 def mcc(tp, fp, tn, fn, average="micro"):
 
-    tp = np.count_nonzero(tp, axis=-2)
-    fp = np.count_nonzero(fp, axis=-2)
-    fn = np.count_nonzero(fn, axis=-2)
-    tn = np.count_nonzero(tn, axis=-2)
-
     if average == "micro":
-        tp = np.sum(tp, axis=-1)
-        tn = np.sum(tn, axis=-1)
-        fp = np.sum(fp, axis=-1)
-        fn = np.sum(fn, axis=-1)
+        tp = np.count_nonzero(tp, axis=(-2, -1))
+        tn = np.count_nonzero(tn, axis=(-2, -1))
+        fp = np.count_nonzero(fp, axis=(-2, -1))
+        fn = np.count_nonzero(fn, axis=(-2, -1))
         numerator = (tp * tn) - (fp * fn)
         denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
         mcc_score = numerator / denominator
         return np.where(denominator > 0, mcc_score, 0.0)
+    
+    tp = np.count_nonzero(tp, axis=-2)
+    fp = np.count_nonzero(fp, axis=-2)
+    fn = np.count_nonzero(fn, axis=-2)
+    tn = np.count_nonzero(tn, axis=-2)
 
     numerator = (tp * tn) - (fp * fn)
     denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
