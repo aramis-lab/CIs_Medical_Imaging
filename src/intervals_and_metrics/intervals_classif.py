@@ -2,11 +2,10 @@
 import numpy as np
 from sklearn.metrics import roc_auc_score
 from statsmodels.stats.proportion import proportion_confint
-from scipy.stats import chi2, bootstrap
+from scipy.stats import chi2
 from scipy.special import ndtr, ndtri
 from scipy.optimize import root_scalar
 from .pixel_wise_metrics import get_metric, label_binarize_vectorized
-from .scipy_compatible_metrics import get_metric_scipy_compatible
 from numba import njit
 
 def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alpha=0.05, stratified=False):
@@ -84,10 +83,7 @@ def CI_accuracy(y_true, y_pred, metric, method, alpha, average, stratified):
 
 def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified):
     if method in ['percentile', 'basic', 'bca']:
-        if stratified :
-            return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method)
-        else:
-            scipy_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method)
+        return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method, stratified=stratified)
     elif y_pred.ndim==1 and metric in ['auc', 'auroc']:
         y_true_bin = label_binarize_vectorized(y_true, classes=y_pred.shape[1])
         N=len(y_true_bin)
@@ -225,49 +221,6 @@ def el_auc_confidence_interval(Y, X, S,AUC, alpha):
         return np.array([ci_low, ci_high])
     except Exception as e:
         raise ValueError(f"Failed to compute confidence interval: {e}")
-
-def scipy_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro', n_bootstrap=9999, alpha=0.05, method='percentile'):
-
-    y_true = np.array(y_true)
-    n_classes = y_score.shape[-1]
-    classes = np.arange(n_classes)
-    y_pred = np.argmax(y_score, axis=-1)
-
-    correct_pred = (y_pred==y_true) # To allow bootstrapping metric arguments
-
-    y_true_bin = label_binarize_vectorized(y_true, n_classes)
-    y_pred_bin = label_binarize_vectorized(y_pred, n_classes)
-
-    tp = (y_true_bin==1) & (y_pred_bin==1)
-    fp = (y_true_bin==0) & (y_pred_bin==1)
-    tn = (y_true_bin==0) & (y_pred_bin==0)
-    fn = (y_true_bin==1) & (y_pred_bin==0)
-
-    metric_arguments = {"accuracy": ["correct_pred"],
-                        "precision" : ["tp", "fp"],
-                        "recall" : ["tp", "fn"],
-                        "f1_score" : ["tp", "fp", "fn"],
-                        "fbeta_score" : ["tp", "fp", "fn"],
-                        "npv" : ["tn", "fn"],
-                        "ppv" : ["tp", "fp"],
-                        "sensitivity" : ["tp", "fn"],
-                        "specificity" : ["tn", "fp"],
-                        "balanced_accuracy" : ["tp", "fp", "tn", "fn"],
-                        "mcc" : ["tp", "fp", "tn", "fn"],
-                        "auroc" : ["y_score", "y_true_bin"],
-                        "auc" : ["y_score", "y_true_bin"],
-                        "ap" : []
-    }
-
-    metric = get_metric_scipy_compatible(metric_name)
-
-    statistic = lambda *args, axis : metric(*args, average=average, axis=axis)
-
-    # for i in range(y_true.shape[0]):
-    cis_scipy = bootstrap([locals()[a] for a in metric_arguments[metric_name]], statistic=statistic, paired=True, method=method, confidence_level=1-alpha, n_resamples=n_bootstrap, axis=1, vectorized=True).confidence_interval
-    cis = np.stack([cis_scipy.low, cis_scipy.high],axis=1)
-    
-    return np.array(cis)
 
 @njit
 def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):

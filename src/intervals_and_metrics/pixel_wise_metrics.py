@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import rankdata
 
 def softmax(x, axis=-1):
-    e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
+    e_x = np.exp(x)
     return e_x / np.sum(e_x, axis=axis, keepdims=True)
 
 def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binarize
