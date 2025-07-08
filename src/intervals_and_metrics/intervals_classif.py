@@ -1,11 +1,10 @@
 
 import numpy as np
-from sklearn.metrics import roc_auc_score
 from statsmodels.stats.proportion import proportion_confint
-from scipy.stats import chi2
+from scipy.stats import chi2, rankdata
 from scipy.special import ndtr, ndtri
 from scipy.optimize import root_scalar
-from .pixel_wise_metrics import get_metric, label_binarize_vectorized
+from .pixel_wise_metrics import get_metric, label_binarize_vectorized, auroc
 from numba import njit
 
 def compute_CIs_classification(y_true, y_pred, metric, method, average=None, alpha=0.05, stratified=False):
@@ -46,14 +45,15 @@ def CI_accuracy(y_true, y_pred, metric, method, alpha, average, stratified):
         method = "beta"
     
     if method in ["normal","agresti_coull","beta","wilson"] and average=="micro": # If average is micro, we can consider the problem as a binary classification problem
-        classes = np.unique(y_true)
-        y_pred = np.argmax(y_pred, axis=-1) if y_pred.ndim > y_true.ndim else y_pred
-        y_pred_bin = label_binarize_vectorized(y_pred.ravel(), len(classes)).reshape(y_pred.shape[0], -1)
-        y_true_bin = label_binarize_vectorized(y_true.ravel(), len(classes)).reshape(y_true.shape[0], -1)
-        tp = np.sum((y_true_bin == 1) & (y_pred_bin == 1), axis=1)
-        fn = np.sum((y_true_bin == 1) & (y_pred_bin == 0), axis=1)
-        tn = np.sum((y_true_bin == 0) & (y_pred_bin == 0), axis=1)
-        fp = np.sum((y_true_bin == 0) & (y_pred_bin == 1), axis=1)
+        n_classes = y_pred.shape[-1]
+        y_pred = np.argmax(y_pred, axis=-1)
+        y_pred_bin = label_binarize_vectorized(y_pred, n_classes)
+        y_true_bin = label_binarize_vectorized(y_true, n_classes)
+
+        tp = np.count_nonzero((y_true_bin == 1) & (y_pred_bin == 1), axis=(-2,-1))
+        fn = np.count_nonzero((y_true_bin == 1) & (y_pred_bin == 0), axis=(-2,-1))
+        tn = np.count_nonzero((y_true_bin == 0) & (y_pred_bin == 0), axis=(-2,-1))
+        fp = np.count_nonzero((y_true_bin == 0) & (y_pred_bin == 1), axis=(-2,-1))
 
         if metric == "accuracy":
             value = (tp + tn)
@@ -84,70 +84,68 @@ def CI_accuracy(y_true, y_pred, metric, method, alpha, average, stratified):
 def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified):
     if method in ['percentile', 'basic', 'bca']:
         return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=9999, alpha=alpha, method=method, stratified=stratified)
-    elif y_pred.ndim==1 and metric in ['auc', 'auroc']:
-        y_true_bin = label_binarize_vectorized(y_true, classes=y_pred.shape[1])
-        N=len(y_true_bin)
-        n=np.sum(y_true)
-        m=N-n
-        AUC=roc_auc_score(y_true_bin, y_pred, average=average, multi_class="ovr")
-        sorted_indices = np.argsort(y_pred)
-        y_sorted = y_true[sorted_indices]
-        positive_in_sorted = np.where(y_sorted == 1)[0]
-        negative_in_sorted=np.where(y_sorted == 0)[0]
-        bar_R=np.mean(negative_in_sorted)
-        bar_S=np.mean(positive_in_sorted)
-        ideal_R = np.arange(1, len(negative_in_sorted) + 1)
-        ideal_S=np.arange(1, len(positive_in_sorted) + 1)
-        S_10=(1/((m-1)*n**2))*(np.sum((negative_in_sorted-ideal_R)**2)-m*(bar_R-(m+1)/2)**2)
-        S_01=(1/((n-1)*n**2))*(np.sum((positive_in_sorted-ideal_S)**2)-n*(bar_S-(n+1)/2)**2)
+    elif method in ["delong", "logit_transform", "empirical_likelihood"] and metric in ['auc', 'auroc'] and average=="micro":
+        y_true = label_binarize_vectorized(y_true, n_classes=y_pred.shape[-1]) # Shape (batch_size, n_samples, n_classes)
+        AUC = auroc(y_pred, y_true)
+        y_pred = y_pred.reshape(y_pred.shape[:-2] + (-1,))
+        y_true = y_true.reshape(y_true.shape[:-2] + (-1,)) # Shape (batch_size, n_samples*n_classes)
+        N = y_true.shape[-1]
+        n = np.count_nonzero(y_true, axis=-1)
+        m = N-n
+        ranks = rankdata(y_pred, axis=-1)
+        rank_pos = ranks*y_true
+        rank_neg = ranks*(1-y_true)
+
+        bar_R=np.sum(rank_neg, axis=-1)/m
+        bar_S=np.sum(rank_pos, axis=-1)/n
+        ideal_R = np.zeros_like(rank_neg)
+        ideal_S = np.zeros_like(rank_pos)
+
+        for i in range(y_true.shape[0]):
+            ideal_R[i, y_true[i] == 0] = np.arange(1, m[i] + 1)
+            ideal_S[i, y_true[i] == 1] = np.arange(1, n[i] + 1)
+        S_10=(1/((m-1)*n**2))*(np.sum((rank_neg-ideal_R)**2,axis=-1)-m*(bar_R-(m+1)/2)**2)
+        S_01=(1/((n-1)*n**2))*(np.sum((rank_pos-ideal_S)**2,axis=-1)-n*(bar_S-(n+1)/2)**2)
         S=np.sqrt((m*S_01+n*S_10)/(m+n))
-        Y = y_pred[y_true == 1]  # diseased
-        X = y_pred[y_true == 0] 
         if method == "delong": 
             return CI_DL(y_pred, y_true,AUC, m,n)
         elif method == "logit_transform":
             return CI_LT(AUC, m, n, S)
         elif method == "empirical_likelihood":
-            return el_auc_confidence_interval(Y, X, S,AUC, alpha)
+            intervals = []
+            for i in range(y_true.shape[0]):
+                Y = y_pred[i][y_true[i]]  # diseased
+                X = y_pred[i][1-y_true[i]]
+                intervals.append(el_auc_confidence_interval(Y, X, S[i],AUC[i], alpha))
+            return np.array(intervals)
         else:
             raise NotImplementedError(f"The following method is not implemented : {method}. Currently, 'percentile', 'basic', 'bca', 'delong', 'logit_transform' and 'empirical_likelihood' are implemented.")
     else:
         raise ValueError("Non-bootstrap CI methods are not defined for multi-class AUC.")
 
 def CI_LT(AUC, m, n, S):
-    if AUC !=0 and AUC !=1:
-        LL=np.log(AUC/(1-AUC))-1.96*np.sqrt((m+n)*S**2/(m*n))/(AUC*(1-AUC))
-        UL=np.log(AUC/(1-AUC))+1.96*np.sqrt((m+n)*S**2/(m*n))/(AUC*(1-AUC))
-        LT_low=np.exp(LL)/(1+np.exp(LL))
-        LT_high=np.exp(UL)/(1+np.exp(UL))
-        return(np.array([LT_low, LT_high]))
-    else:
-        return( np.array([np.nan, np.nan]))
+    LL=np.log(AUC/(1-AUC))-1.96*np.sqrt((m+n)*S**2/(m*n))/(AUC*(1-AUC))
+    UL=np.log(AUC/(1-AUC))+1.96*np.sqrt((m+n)*S**2/(m*n))/(AUC*(1-AUC))
+    LT_low=np.exp(LL)/(1+np.exp(LL))
+    LT_high=np.exp(UL)/(1+np.exp(UL))
+    LT_low = np.where((AUC==0)|(AUC==1), np.nan, LT_low)
+    LT_high = np.where((AUC==0)|(AUC==1), np.nan, LT_high)
+    return np.array([LT_low, LT_high]).T
 
 def CI_DL(y_pred, y,AUC, m,n):
-    positive_preds = y_pred[y == 1]
-    negative_preds = y_pred[y == 0]
-   
-    # Get indices of negative samples
-    negative_indices = np.where(y == 0)[0]
-    positive_indices= np.where(y == 1)[0]
-    # Compute proportion for each negative
-    D10 = []
-    D01=[]
-    for idx in negative_indices:
-        pred = y_pred[idx]
-        proportion = np.mean(positive_preds >= pred)
-        D10.append( proportion)
-    for idx in positive_indices:
-        pred = y_pred[idx]
-        proportion = np.mean(negative_preds <= pred)
-        D01.append(proportion)
-   
-    var=(1/(m*(m-1)))*np.sum((D10-AUC)**2) + (1/(n*(n-1)))*np.sum((D01-AUC)**2)
+
+    X = y_pred * (1-y)
+    Y = y_pred * y
+
+    binary_comp = 1 - (Y[...,None,:] < X[...,None])
+    D10 = (np.count_nonzero(binary_comp, axis=-1) - m[...,None])/n[...,None]
+    D01 = (np.count_nonzero(binary_comp, axis=-2) - n[...,None])/m[...,None]
+    
+    var=(1/(m*(m-1)))*(np.sum((D10-AUC[...,None])**2,axis=-1)-n*AUC**2) + (1/(n*(n-1)))*(np.sum((D01-AUC[...,None])**2,axis=-1)-m*AUC**2)
     
     DL_low=AUC-1.96*np.sqrt(var)
     DL_high=AUC+1.96*np.sqrt(var)
-    return(np.array([DL_low, DL_high]))
+    return np.array([DL_low, DL_high]).T
 
 def el_auc_confidence_interval(Y, X, S,AUC, alpha):
     n, m = len(Y), len(X)
@@ -206,21 +204,10 @@ def el_auc_confidence_interval(Y, X, S,AUC, alpha):
         return (low + high) / 2
 
     # Bracket the confidence region
-    try:
-        # Find feasible region by coarse search
-        # coarse_grid = np.linspace(0, 1, 100)
-        # feasible = [delta for delta in coarse_grid if in_conf(delta) <= 0]
-        # if not feasible:
-        #     raise ValueError("No valid confidence interval found.")
 
-        # delta_low_start = min(feasible)
-        # delta_high_start = max(feasible)
-
-        ci_low = find_bound(0.0, AUC, increasing=True)
-        ci_high = find_bound(AUC, 1.0, increasing=False)
-        return np.array([ci_low, ci_high])
-    except Exception as e:
-        raise ValueError(f"Failed to compute confidence interval: {e}")
+    ci_low = find_bound(0.0, AUC, increasing=True)
+    ci_high = find_bound(AUC, 1.0, increasing=False)
+    return np.array([ci_low, ci_high]).T
 
 @njit
 def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):
@@ -270,7 +257,7 @@ def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro',
                         "mcc" : ["tp", "fp", "tn", "fn"],
                         "auroc" : ["y_score", "y_true_bin"],
                         "auc" : ["y_score", "y_true_bin"],
-                        "ap" : []
+                        "ap" : ["y_score", "y_true_bin"]
     }
 
     metric = get_metric(metric_name)

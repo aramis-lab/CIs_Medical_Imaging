@@ -56,7 +56,7 @@ def make_kdes_classification(df, task, algo, config):
     y_score, y_true = sample_weighted_kde_multivariate(values, labels, config.kernel, 100000, alphas) # Shapes (1000000, n_classes) and (1000000,), not binary
     y_score = softmax(y_score)
 
-    if (values.shape[1]>2 and config.metric not in ["accuracy", "f1_score","mcc","balanced_accuracy"]): # Multi-class problem, only bootstrap works properly
+    if (values.shape[1]>2 and config.metric not in ["accuracy","precision","recall","npv","auc","auroc"]): # Multi-class problem, only bootstrap works properly
         ci_methods = ci_methods.intersection(["basic", "percentile", "bca"])
     
     n_classes = y_score.shape[-1]
@@ -76,8 +76,8 @@ def make_kdes_classification(df, task, algo, config):
     metric_arguments = {"accuracy": ["correct_pred"],
                         "precision" : ["tp", "fp"],
                         "recall" : ["tp", "fn"],
-                        "f1" : ["tp", "fp", "fn"],
-                        "fbeta" : ["tp", "fp", "fn"],
+                        "f1_score" : ["tp", "fp", "fn"],
+                        "fbeta_score" : ["tp", "fp", "fn"],
                         "npv" : ["tn", "fn"],
                         "ppv" : ["tp", "fp"],
                         "sensitivity" : ["tp", "fn"],
@@ -86,7 +86,7 @@ def make_kdes_classification(df, task, algo, config):
                         "mcc" : ["tp", "fp", "tn", "fn"],
                         "auroc" : ["y_score", "y_true_bin"],
                         "auc" : ["y_score", "y_true_bin"],
-                        "ap" : []
+                        "ap" : ["y_score", "y_true_bin"]
     }
 
     original_arguments = {a : locals()[a] for a in metric_arguments[config.metric]}
@@ -107,7 +107,7 @@ def make_kdes_classification(df, task, algo, config):
         samples = samples.reshape(config.n_samples, n, -1)
         samples = softmax(samples)
         sim_labels = sim_labels.reshape(config.n_samples, n)
-        batch_size = 50
+        batch_size = 5
         for method in ci_methods:
             print(method)
             for batch_start in range(0, config.n_samples, batch_size):

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.stats import rankdata
 
 def softmax(x, axis=-1):
-    e_x = np.exp(x)
+    e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
     return e_x / np.sum(e_x, axis=axis, keepdims=True)
 
 def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binarize
@@ -131,26 +131,14 @@ def specificity(tn, fp, average="micro"):
     class_spec = np.where((tn + fp) > 0, tn / (tn + fp), 0.0)
     return np.mean(class_spec, axis=-1)
 
-def balanced_accuracy(tp, fp, tn, fn, average="micro"):
-    
-    if average == "micro":
-        tp = np.count_nonzero(tp, axis=(-2, -1))
-        fp = np.count_nonzero(fp, axis=(-2, -1))
-        tn = np.count_nonzero(tn, axis=(-2, -1))
-        fn = np.count_nonzero(fn, axis=(-2, -1))
-        denom_spec = tn + fp
-        spec = tn / denom_spec
-        denom_sens = tp + fn
-        sens = tp / denom_sens
-        bal_acc = (spec + sens) / 2
-        return np.where((denom_spec > 0) & (denom_sens > 0), bal_acc, 0.0)
+def balanced_accuracy(tp, fp, tn, fn, average=None):
     
     tp = np.count_nonzero(tp, axis=-2)
     fp = np.count_nonzero(fp, axis=-2)
     fn = np.count_nonzero(fn, axis=-2)
     tn = np.count_nonzero(tn, axis=-2)
     
-    class_bal_acc = np.where(((tn + fp) > 0) & ((tp + fn) > 0), (tn/(tn+fp) + tp/(tp+fn))/2, 0.0)
+    class_bal_acc = np.where((tp + fn) > 0, tp/(tp+fn), 0.0)
     
     return np.mean(class_bal_acc, axis=-1)
 
@@ -176,32 +164,26 @@ def mcc(tp, fp, tn, fn, average="micro"):
     class_mcc = np.where(denominator > 0, numerator / denominator, 0.0)
     return np.mean(class_mcc, axis=-1)
 
-def ap(y_true, y_scores, average="micro"):
+def ap(y_score, y_true_bin, average="micro"):
     """
     Compute average precision for each sample and label.
-    y_true: array-like of shape (..., n_samples, n_labels), binary {0,1}
-    y_scores: array-like of shape (..., n_samples, n_labels), float
+    y_true_bin: array-like of shape (..., n_samples, n_labels), binary {0,1}
+    y_score: array-like of shape (..., n_samples, n_labels), float
     Returns: array of shape (..., n_labels)
     """
-    y_true = np.asarray(y_true)
-    y_scores = np.asarray(y_scores)
+    y_true_bin = np.asarray(y_true_bin)
+    y_score = np.asarray(y_score)
 
-    n_classes = y_scores.shape[-1]
-
-    if y_true.ndim == 1:
-        y_true = y_true[None, :]
-
-    y_true = label_binarize_vectorized(y_true.astype(np.int32), n_classes)  # Convert to one-hot encoding
-    y_scores = softmax(y_scores)
+    y_score = softmax(y_score)
     
     if average == "micro":
-        orig_shape = y_true.shape[:-2]
+        orig_shape = y_true_bin.shape[:-2]
 
-        y_true = y_true.reshape(orig_shape + (-1,))
-        y_scores = y_scores.reshape(orig_shape + (-1,))
-        desc_order = np.argsort(y_scores, axis=-1)[..., ::-1]
+        y_true_bin = y_true_bin.reshape(orig_shape + (-1,))
+        y_score = y_score.reshape(orig_shape + (-1,))
+        desc_order = np.argsort(-y_score, axis=-1)
 
-        y_true_sorted = np.take_along_axis(y_true, desc_order, axis=-1)
+        y_true_sorted = np.take_along_axis(y_true_bin, desc_order, axis=-1)
 
         tp_cumsum = np.cumsum(y_true_sorted, axis=-1)
         total_positives = np.sum(y_true_sorted, axis=-1, keepdims=True)
@@ -211,20 +193,21 @@ def ap(y_true, y_scores, average="micro"):
         precision = tp_cumsum / (np.arange(1, y_true_sorted.shape[-1] + 1))
         recall = tp_cumsum / total_positives
 
-        recall_diff = np.diff(np.concatenate([np.zeros(recall.shape[:-1]+(1,)), recall], axis=-1), axis=-1)
+        precision = np.concatenate([np.ones(precision.shape[:-1]+(1,)), precision], axis=-1)
+        recall = np.concatenate([np.zeros(recall.shape[:-1]+(1,)), recall], axis=-1)
 
-        ap = np.sum(precision * recall_diff, axis=-1)
+        recall_diff = np.diff(recall, axis=-1)
 
-        ap[~mask] = 0.0
+        ap = np.sum(precision[...,1:] * recall_diff, axis=-1)
 
-        return ap
+        return np.where(mask, ap, 0)
 
 
     elif average == "macro":
 
-        desc_order = np.argsort(y_scores, axis=-2)[..., ::-1, :]
+        desc_order = np.argsort(-y_score, axis=-2)
 
-        y_true_sorted = np.take_along_axis(y_true, desc_order, axis=-2)
+        y_true_sorted = np.take_along_axis(y_true_bin, desc_order, axis=-2)
         # Cumulative sum of true positives
         tp_cumsum = np.cumsum(y_true_sorted, axis=-2)
         total_positives = np.sum(y_true_sorted, axis=-2, keepdims=True)
@@ -237,11 +220,15 @@ def ap(y_true, y_scores, average="micro"):
 
         recall_shape = np.array(recall.shape)
         recall_shape[-2] = 1
-        recall_diff = np.diff(np.concatenate([np.zeros(recall_shape), recall], axis=-2), axis=-2)
 
-        ap = np.sum(precision * recall_diff, axis=-2)
+        precision = np.concatenate([np.ones(recall_shape), precision], axis=-2)
+        recall = np.concatenate([np.zeros(recall_shape), recall], axis=-2)
 
-        ap[~mask] = 0.0
+        recall_diff = np.diff(recall, axis=-2)
+
+        ap = np.sum(precision[...,1:,:] * recall_diff, axis=-2)
+
+        ap = np.where(mask, ap, 0)
 
         return np.mean(ap, axis=-1)
     
