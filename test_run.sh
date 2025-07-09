@@ -15,7 +15,7 @@ module load python
 conda activate CI
 
 python src/run.py -m \
-  metric=hd \
+  metric=hd_perc \
   kernel=epanechnikov \
-  summary_stat=mean \
-  +task=Task08_HepaticVessel_L1 +algo=ildoo
+  summary_stat=iqr_length \
+  +task=Task03_Liver_L1 +algo=EdwardMa12593

@@ -147,67 +147,95 @@ def CI_DL(y_pred, y,AUC, m,n):
     DL_high=AUC+1.96*np.sqrt(var)
     return np.array([DL_low, DL_high]).T
 
-def el_auc_confidence_interval(Y, X, S,AUC, alpha):
-    n, m = len(Y), len(X)
-    tol=1e-8
-    # Compute U_hat
-    U_hat = 1 - np.array([np.mean(X <= yj) for yj in Y])
-    
-    if np.sum(U_hat) == 0:
+def el_auc_confidence_interval(Y, X, S, AUC, alpha=0.05, tol=1e-8):
+    """
+    Compute empirical likelihood-based confidence interval for AUC.
+
+    Parameters:
+    Y : array-like, shape (n,)
+        Scores for positive class.
+    X : array-like, shape (m,)
+        Scores for negative class.
+    S : float
+        Standard error estimate of AUC.
+    AUC : float
+        Observed AUC.
+    alpha : float, optional
+        Significance level (default 0.05).
+    tol : float, optional
+        Tolerance for root finding and bisection (default 1e-8).
+
+    Returns:
+    ci_low, ci_high : float
+        Lower and upper confidence limits.
+    """
+    Y = np.asarray(Y)
+    X = np.asarray(X)
+    n = Y.size
+    m = X.size
+
+    # Sort X once and compute empirical CDF values for Y
+    X_sorted = np.sort(X)
+    # Fhat_X(y) = proportion of X <= y
+    idx = np.searchsorted(X_sorted, Y, side='right')
+    F = idx / m       # Fhat_X(Y)
+    U = 1 - F        # U_hat
+    v = F            # rename for consistency
+
+    # Edge cases: all U's are 0 or 1
+    sumU = U.sum()
+    if sumU == 0:
         return np.array([1.0, 1.0])
-    if np.sum(U_hat) == len(U_hat):
+    if sumU == n:
         return np.array([0.0, 0.0])
 
-    def test_stat(delta):
-        def estimating_equation(lmbda):
-            denom = 1 + lmbda * (1 - U_hat - delta)
-            if np.any(denom <= 0):
-                return np.nan
-            return np.mean((1 - U_hat - delta) / denom)
-        
-        # Find lambda via root finding
-        grid = np.linspace(-1000, 1000, 10000)
-        f_vals = np.array([estimating_equation(lmbda) for lmbda in grid])
-        valid = ~np.isnan(f_vals)
-        sign_change = np.where(np.diff(np.sign(f_vals[valid])))[0]
-        
-        if len(sign_change) == 0:
-            return np.inf  # invalid delta
-
-        idx = sign_change[0]
-        lam_left = grid[valid][idx]
-        lam_right = grid[valid][idx + 1]
-        
-        sol = root_scalar(estimating_equation, bracket=[lam_left, lam_right], method='brentq')
-        if not sol.converged:
-            return np.inf
-
-        lmbda = sol.root
-        l_val = 2 * np.sum(np.log(1 + lmbda * (1 - U_hat - delta)))
-        r_delta = (m / (m + n)) * np.sum((1 - U_hat - delta)**2) / (n * S**2)
-        return r_delta * l_val
-
+    # Precompute constants
+    c_const = m / ((m + n) * n * S * S)
     chi2_crit = chi2.ppf(1 - alpha, df=1)
 
-    def in_conf(delta):
-        return test_stat(delta) - chi2_crit
+    def test_stat(delta):
+        # Solve mean((v - delta)/(1 + lambda*(v - delta))) = 0 for lambda
+        dev = v - delta
+        # Bracket for lambda: avoid zeros in denom
+        max_dev = np.max(dev)
+        # Denominator >0 => lambda > -1/max_dev and lambda < -1/min_dev
+        lower = -1.0 / (max_dev + 1e-12)
+        upper = 1.0 / (max_dev + 1e-12)
 
-    # Bisection to find lower bound
-    def find_bound(low, high, increasing):
-        while high - low > tol:
-            mid = (low + high) / 2
-            val = in_conf(mid)
-            if (val <= 0)==increasing:
-                high = mid
+        def eq_fn(lmbda):
+            denom = 1.0 + lmbda * dev
+            return np.sum(dev / denom)
+
+        sol = root_scalar(eq_fn, bracket=[lower, upper], method='brentq', xtol=tol)
+        if not sol.converged:
+            return np.inf
+        lam = sol.root
+
+        l_val = 2.0 * np.sum(np.log1p(lam * dev))
+        # Test statistic
+        return c_const * (dev @ dev) * l_val
+
+    # Function to find bound via bisection
+    def find_bound(a, b, increasing):
+        fa = test_stat(a) - chi2_crit
+        fb = test_stat(b) - chi2_crit
+        # Ensure root exists
+        if fa * fb > 0:
+            return a if fa < fb else b
+        while b - a > tol:
+            mid = 0.5 * (a + b)
+            fm = test_stat(mid) - chi2_crit
+            if (fm <= 0) == increasing:
+                b = mid
             else:
-                low = mid
-        return (low + high) / 2
+                a = mid
+        return 0.5 * (a + b)
 
-    # Bracket the confidence region
-
+    # Compute confidence bounds
     ci_low = find_bound(0.0, AUC, increasing=True)
     ci_high = find_bound(AUC, 1.0, increasing=False)
-    return np.array([ci_low, ci_high]).T
+
+    return np.array([ci_low, ci_high])
 
 @njit
 def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):
