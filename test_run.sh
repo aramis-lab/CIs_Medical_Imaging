@@ -18,4 +18,4 @@ python src/run.py -m \
   metric=hd_perc \
   kernel=epanechnikov \
   summary_stat=iqr_length \
-  +task=Task03_Liver_L1 +algo=EdwardMa12593
+  +task=Task03_Liver_L1 +algo=Isensee
