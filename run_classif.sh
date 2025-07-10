@@ -8,7 +8,7 @@ METRICS=(accuracy)
 metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 
 # Preprocess instance lists
-python src/utils/extract_df_and_make_instance_list.py --config_name=config_classif \
+python src/utils/extract_df_and_make_instance_list.py --config-name=config_classif \
   metric="$metrics_csv" \
   kernel=epanechnikov
 
