@@ -15,7 +15,8 @@ module load python
 conda activate CI
 
 # Load all task-algo pairs
-METRICS=(accuracy f1_score balanced_accuracy mcc auc ap)
+# METRICS=(accuracy f1_score balanced_accuracy mcc auc ap)
+METRICS=(accuracy)
 AVERAGE=micro
 ALL_PAIRS=()
 
