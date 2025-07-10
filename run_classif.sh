@@ -8,10 +8,9 @@ METRICS=(accuracy)
 metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 
 # Preprocess instance lists
-python src/utils/extract_df_and_make_instance_list.py config_name=config_classif -m \
+python src/utils/extract_df_and_make_instance_list.py config_name=config_classif \
   metric="$metrics_csv" \
-  kernel=epanechnikov \
-  summary_stat=mean,median,trimmed_mean,std,iqr_length
+  kernel=epanechnikov
 
 # Count total task-algo pairs
 count=0
