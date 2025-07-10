@@ -8,7 +8,7 @@ METRICS=(cldice)
 metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 
 # Preprocess instance lists
-python src/utils/extract_df_and_make_instance_list.py -m \
+python src/utils/extract_df_and_make_instance_list.py config_name=config_segm -m \
   metric="$metrics_csv" \
   kernel=epanechnikov \
   summary_stat=mean,median,trimmed_mean,std,iqr_length
@@ -25,4 +25,4 @@ done
 
 # Submit SLURM array job
 echo "Submitting array job with $count tasks..."
-sbatch --array=0-$((count - 1)) array_job.sh
+sbatch --array=0-$((count - 1)) array_job_segm.sh

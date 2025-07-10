@@ -5,7 +5,7 @@ from collections import defaultdict
 from omegaconf import DictConfig
 from kde import weighted_kde, sample_weighted_kde, sample_weighted_kde_multivariate
 from summary_stats import get_statistic
-from intervals_and_metrics import get_metric, is_continuous, compute_CIs_segmentation, compute_CIs_classification, get_bounds, get_authorized_methods, softmax, label_binarize_vectorized
+from intervals_and_metrics import get_metric, is_continuous, compute_CIs_segmentation, compute_CIs_classification, get_bounds, get_authorized_methods_classification, get_authorized_methods_segmentation, softmax, label_binarize_vectorized
 from kernels import get_kernel
 from utils import extract_df
 import os
@@ -17,7 +17,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 def make_kdes_classification(df, task, algo, config):
 
     # Retrieve configuration and set up variables
-    ci_methods = set(config.ci_methods).intersection(get_authorized_methods(None, config.metric))
+    ci_methods = set(config.ci_methods).intersection(get_authorized_methods_classification(config.metric, config.average))
     metric = get_metric(config.metric)
     results = pd.DataFrame()
     
@@ -55,12 +55,8 @@ def make_kdes_classification(df, task, algo, config):
         alphas = (initial_estimates / g) ** (-1/2)
     y_score, y_true = sample_weighted_kde_multivariate(values, labels, config.kernel, 100000, alphas) # Shapes (1000000, n_classes) and (1000000,), not binary
     y_score = softmax(y_score)
-
-    if (values.shape[1]>2 and config.metric not in ["accuracy","precision","recall","npv","auc","auroc"]): # Multi-class problem, only bootstrap works properly
-        ci_methods = ci_methods.intersection(["basic", "percentile", "bca"])
     
     n_classes = y_score.shape[-1]
-    classes = np.arange(n_classes)
     y_pred = np.argmax(y_score, axis=-1)
 
     correct_pred = (y_pred==y_true)[..., None] # To allow bootstrapping metric arguments
@@ -166,7 +162,7 @@ def make_kdes_classification(df, task, algo, config):
 
 def make_kdes_segmentation(df, task, algo, config):
     # Retrieve configuration and set up variables
-    ci_methods = set(config.ci_methods).intersection(get_authorized_methods(config.summary_stat, config.metric))
+    ci_methods = set(config.ci_methods).intersection(get_authorized_methods_segmentation(config.summary_stat, config.metric))
     def statistic(x, axis=None):
         return get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
     results = pd.DataFrame(columns=["subtask", "alg_name", "n", "sample_index"] + [f"{stat}_{method}" for method in ci_methods for stat in ["lower_bound", "upper_bound", "contains_true_stat", "width", "proportion_oob"]])
@@ -289,7 +285,7 @@ def make_kdes_segmentation(df, task, algo, config):
         results.to_csv(output_path, index=False)
         average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv"), index=False)
 
-@hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
+@hydra.main(config_path="cfg", version_base="1.3.2")
 def main(cfg: DictConfig):
 
     print(f"Running KDE for metric {cfg.metric}, subtask {cfg.task} and algorithm {cfg.algo}")

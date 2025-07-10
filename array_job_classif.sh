@@ -15,8 +15,8 @@ module load python
 conda activate CI
 
 # Load all task-algo pairs
-# METRICS=(boundary_iou assd cldice hd hd_perc iou masd)
-METRICS=(cldice)
+METRICS=(accuracy f1_score balanced_accuracy mcc auc ap)
+AVERAGE=micro
 ALL_PAIRS=()
 
 for METRIC in "${METRICS[@]}"; do
@@ -33,8 +33,7 @@ PAIR="${ALL_PAIRS[$SLURM_ARRAY_TASK_ID]}"
 IFS=";" read -r METRIC TASK_ALGO <<< "$PAIR"
 read -r TASK ALGO <<< "$TASK_ALGO"
 
-python src/run.py -m \
+python src/run.py config_name=config_classif -m \
   metric="$METRIC" \
   kernel=epanechnikov \
-  summary_stat=mean,median,trimmed_mean,std,iqr_length \
   +task="$TASK" +algo="$ALGO"
