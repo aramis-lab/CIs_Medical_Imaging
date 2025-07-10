@@ -142,98 +142,72 @@ def balanced_accuracy(tp, fp, tn, fn, average=None):
     
     return np.mean(class_bal_acc, axis=-1)
 
-def mcc(tp, fp, tn, fn, average="micro"):
-
-    if average == "micro":
-        tp = np.count_nonzero(tp, axis=(-2, -1))
-        tn = np.count_nonzero(tn, axis=(-2, -1))
-        fp = np.count_nonzero(fp, axis=(-2, -1))
-        fn = np.count_nonzero(fn, axis=(-2, -1))
-        numerator = (tp * tn) - (fp * fn)
-        denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-        mcc_score = numerator / denominator
-        return np.where(denominator > 0, mcc_score, 0.0)
+def mcc(tp, fp, tn, fn, average=None):
     
+    N = tp.shape[-2]
     tp = np.count_nonzero(tp, axis=-2)
     fp = np.count_nonzero(fp, axis=-2)
     fn = np.count_nonzero(fn, axis=-2)
     tn = np.count_nonzero(tn, axis=-2)
 
-    numerator = (tp * tn) - (fp * fn)
-    denominator = np.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
-    class_mcc = np.where(denominator > 0, numerator / denominator, 0.0)
-    return np.mean(class_mcc, axis=-1)
+    S = np.sum(tp, axis=-1)
+    T = tp + fn
+    P = tp + fp
+
+    numerator = S * N - np.sum(T*P, axis=-1)
+    denom = np.sqrt((N**2 - np.sum(P**2, axis=-1)) * (N**2 - np.sum(T**2, axis=-1)))
+    return np.where(denom>0, numerator/denom, 0.0)
+
 
 def ap(y_score, y_true_bin, average="micro"):
     """
-    Compute average precision for each sample and label.
-    y_true_bin: array-like of shape (..., n_samples, n_labels), binary {0,1}
-    y_score: array-like of shape (..., n_samples, n_labels), float
-    Returns: array of shape (..., n_labels)
+    Compute average precision (AP) for each sample and label.
+    y_score : scores, shape (..., N, D)
+    y_true_bin : one_hot encoding of labels, shape (..., N, D)
+    average : "micro" or "macro"
+
+    Returns:
+      - micro: AP with flattened labels, shape (...)
+      - macro: AP averaged over classes, shape (...)
     """
-    y_true_bin = np.asarray(y_true_bin)
-    y_score = np.asarray(y_score)
 
-    y_score = softmax(y_score)
-    
+    def _ap_binary(scores, targets, axis=-1):
+        # Sort scores descending along axis
+        sorted_indices = np.argsort(-scores, axis=axis)
+        sorted_targets = np.take_along_axis(targets, sorted_indices, axis=axis)
+
+        # Cumulative sum of true labels: precision numerator
+        cumsum = np.cumsum(sorted_targets, axis=axis)
+
+        # Create a broadcasted index for position (1-based)
+        idx = np.arange(1, scores.shape[axis]+1)
+        idx = np.expand_dims(idx, tuple(range(sorted_targets.ndim - 1)))
+
+        # Precision at each threshold
+        precision = cumsum / idx
+
+        # Multiply precision by sorted_targets to zero-out non-relevant positions
+        precision_at_hits = precision * sorted_targets
+
+        # Sum precision at relevant positions and normalize by number of positives
+        total_positives = np.sum(targets, axis=axis)
+        ap = np.sum(precision_at_hits, axis=axis) / np.clip(total_positives, a_min=1, a_max=None)
+
+        # If no positives, set AP to NaN (optional: could also be 0)
+        ap = np.where(total_positives > 0, ap, np.nan)
+        return ap
+
     if average == "micro":
-        orig_shape = y_true_bin.shape[:-2]
-
-        y_true_bin = y_true_bin.reshape(orig_shape + (-1,))
-        y_score = y_score.reshape(orig_shape + (-1,))
-        desc_order = np.argsort(-y_score, axis=-1)
-
-        y_true_sorted = np.take_along_axis(y_true_bin, desc_order, axis=-1)
-
-        tp_cumsum = np.cumsum(y_true_sorted, axis=-1)
-        total_positives = np.sum(y_true_sorted, axis=-1, keepdims=True)
-
-        mask = (total_positives>0).squeeze(-1)
-
-        precision = tp_cumsum / (np.arange(1, y_true_sorted.shape[-1] + 1))
-        recall = tp_cumsum / total_positives
-
-        precision = np.concatenate([np.ones(precision.shape[:-1]+(1,)), precision], axis=-1)
-        recall = np.concatenate([np.zeros(recall.shape[:-1]+(1,)), recall], axis=-1)
-
-        recall_diff = np.diff(recall, axis=-1)
-
-        ap = np.sum(precision[...,1:] * recall_diff, axis=-1)
-
-        return np.where(mask, ap, 0)
-
+        flat_scores = y_score.reshape(*y_score.shape[:-2], -1)
+        flat_targets = y_true_bin.reshape(*y_true_bin.shape[:-2], -1)
+        return _ap_binary(flat_scores, flat_targets, axis=-1)
 
     elif average == "macro":
+        class_ap = _ap_binary(y_score, y_true_bin, axis=-2)
+        return np.mean(class_ap, axis=-1)
 
-        desc_order = np.argsort(-y_score, axis=-2)
-
-        y_true_sorted = np.take_along_axis(y_true_bin, desc_order, axis=-2)
-        # Cumulative sum of true positives
-        tp_cumsum = np.cumsum(y_true_sorted, axis=-2)
-        total_positives = np.sum(y_true_sorted, axis=-2, keepdims=True)
-        # Avoid division by zero
-        mask = (total_positives > 0).squeeze(-2)
-
-        # Precision and recall
-        precision = tp_cumsum / (np.arange(1, y_true_sorted.shape[-2] + 1)[..., None])
-        recall = tp_cumsum / total_positives
-
-        recall_shape = np.array(recall.shape)
-        recall_shape[-2] = 1
-
-        precision = np.concatenate([np.ones(recall_shape), precision], axis=-2)
-        recall = np.concatenate([np.zeros(recall_shape), recall], axis=-2)
-
-        recall_diff = np.diff(recall, axis=-2)
-
-        ap = np.sum(precision[...,1:,:] * recall_diff, axis=-2)
-
-        ap = np.where(mask, ap, 0)
-
-        return np.mean(ap, axis=-1)
-    
     else:
-        raise ValueError(f"The averaging method {average} is not supported for this implementation of average precision score.")
+        raise ValueError(f"Unsupported average method '{average}' for AP calculation.")
 
 def auroc(y_score, y_true_bin, average="micro"):
     """
@@ -242,21 +216,20 @@ def auroc(y_score, y_true_bin, average="micro"):
     y_true_bin : one_hot encoding of labels, shape (...,N,D)
     """
 
+    def _auroc_binary(scores, targets, axis=-1):
+        ranks = rankdata(scores, axis=axis)
+        rank_sum = np.sum(ranks*targets, axis=axis)
+        P = np.count_nonzero(targets, axis=axis)
+        N = targets.shape[axis]
+        return np.where(P*(N-P)>0, (rank_sum - P * (P + 1) / 2)/(P*(N-P)), np.nan)
+
     if average == "micro":
         y_score = y_score.reshape(*y_score.shape[:-2], -1)
         y_true_bin = y_true_bin.reshape(*y_true_bin.shape[:-2], -1)
-        ranks = rankdata(y_score, axis=-1)
-        rank_sum = np.sum(ranks*y_true_bin, axis=-1)
-        n_pos = np.count_nonzero(y_true_bin, axis=-1)
-        n_neg = y_true_bin.shape[-1] - n_pos
-        return (rank_sum - n_pos * (n_pos + 1) / 2)/(n_pos * n_neg)
+        return _auroc_binary(y_score, y_true_bin, axis=-1)
     
     elif average == "macro":
-        ranks = rankdata(y_score, axis=-2)
-        rank_sum = np.sum(ranks*y_true_bin, axis=-2)
-        n_pos = np.count_nonzero(y_true_bin, axis=-2)
-        n_neg = y_true_bin.shape[-2] - n_pos
-        class_AUCs = (rank_sum - n_pos * (n_pos + 1) / 2)/(n_pos * n_neg)
+        class_AUCs = _auroc_binary(y_score, y_true_bin, axis=-2)
         return np.mean(class_AUCs, axis=-1)
     
     else:

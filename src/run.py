@@ -287,7 +287,7 @@ def make_kdes_segmentation(df, task, algo, config):
             average_results = pd.DataFrame()
 
         results.to_csv(output_path, index=False)
-        average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{task}_{algo}_{n}.csv"), index=False)
+        average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv"), index=False)
 
 @hydra.main(config_path="cfg", config_name="config", version_base="1.3.2")
 def main(cfg: DictConfig):
