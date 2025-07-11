@@ -56,8 +56,9 @@ def CI_accuracy(y_true, y_pred, metric, method, alpha, average, stratified):
         fp = np.count_nonzero((y_true_bin == 0) & (y_pred_bin == 1), axis=(-2,-1))
 
         if metric == "accuracy":
-            value = (tp + tn)
-            total = tp + fp + fn + tn
+            correct_pred = y_pred==y_true
+            value = np.count_nonzero(correct_pred, axis=-1)
+            total = correct_pred.shape[-1]
         elif metric in ["precision", "ppv"]:
             value = tp
             total = np.where((tp + fp) > 0, tp + fp, 1)
