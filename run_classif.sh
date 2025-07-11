@@ -8,7 +8,7 @@ METRICS=(f1_score balanced_accuracy mcc auc ap)
 metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 
 # Preprocess instance lists
-python src/utils/extract_df_and_make_instance_list.py --config-name=config_classif \
+python src/utils/extract_df_and_make_instance_list.py --config-name=config_classif -m\
   metric="$metrics_csv" \
   kernel=epanechnikov
 
