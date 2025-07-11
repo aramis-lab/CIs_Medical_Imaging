@@ -11,5 +11,5 @@ def get_bounds(metric):
     
 def is_continuous(metric):
     continuous_metrics = ["dsc", "nsd", "boundary_iou", "iou", "cldice", "accuracy", "auc", "auroc", "ap", "balanced_accuracy", "f1_score", "npv", "ppv", "sensitivity", 
-                          "specificity", "precision", "recall", "mcc"]
+                          "specificity", "precision", "recall", "mcc", "masd", "assd"]
     return metric.lower() in continuous_metrics
