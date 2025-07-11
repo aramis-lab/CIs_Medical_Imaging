@@ -33,7 +33,7 @@ PAIR="${ALL_PAIRS[$SLURM_ARRAY_TASK_ID]}"
 IFS=";" read -r METRIC TASK_ALGO <<< "$PAIR"
 read -r TASK ALGO <<< "$TASK_ALGO"
 
-python src/run.py config_name=config_segm -m \
+python src/run.py --config-name=config_segm -m \
   metric="$METRIC" \
   kernel=epanechnikov \
   summary_stat=mean,median,trimmed_mean,std,iqr_length \

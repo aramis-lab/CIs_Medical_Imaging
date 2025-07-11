@@ -8,7 +8,7 @@ METRICS=(assd masd)
 metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 
 # Preprocess instance lists
-python src/utils/extract_df_and_make_instance_list.py config_name=config_segm \
+python src/utils/extract_df_and_make_instance_list.py -m --config-name=config_segm \
   metric="$metrics_csv" \
   kernel=epanechnikov
 
