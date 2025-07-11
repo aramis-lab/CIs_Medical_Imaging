@@ -16,7 +16,7 @@ conda activate CI
 
 # Load all task-algo pairs
 # METRICS=(boundary_iou assd cldice hd hd_perc iou masd)
-METRICS=(cldice)
+METRICS=(assd masd)
 ALL_PAIRS=()
 
 for METRIC in "${METRICS[@]}"; do
