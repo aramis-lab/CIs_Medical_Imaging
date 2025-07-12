@@ -145,12 +145,12 @@ def balanced_accuracy(tp, fp, tn, fn, average=None):
 def mcc(tp, fp, tn, fn, average=None):
     
     N = tp.shape[-2]
+    S = np.count_nonzero(tp, axis=(-2, -1))
     tp = np.count_nonzero(tp, axis=-2)
     fp = np.count_nonzero(fp, axis=-2)
     fn = np.count_nonzero(fn, axis=-2)
     tn = np.count_nonzero(tn, axis=-2)
 
-    S = np.sum(tp, axis=-1)
     T = tp + fn
     P = tp + fp
 
