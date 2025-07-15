@@ -10,6 +10,7 @@ metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 # Preprocess instance lists
 python src/utils/extract_df_and_make_instance_list.py --config-name=config_classif -m\
   metric="$metrics_csv" \
+  +task=chexpert_pleural_effusion \
   kernel=epanechnikov
 
 # Count total task-algo pairs
