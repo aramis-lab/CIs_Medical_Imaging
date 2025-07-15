@@ -206,7 +206,7 @@ def make_kdes_segmentation(df, task, algo, config):
             alphas = (initial_estimates / g) ** (-1/2)
             y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
 
-        samples = sample_weighted_kde(y, x, 1000000)
+        samples = sample_weighted_kde(y, x, 1000000, a, b)
 
     # Compute true statistic
     true_value = statistic(samples)
@@ -228,7 +228,7 @@ def make_kdes_segmentation(df, task, algo, config):
         if not is_continuous(config.metric): # For discrete metrics, KDE makes no sense, we sample uniformly
             samples = np.random.choice(values, size=config.n_samples * n, replace=True).reshape(config.n_samples, n)
         else:
-            samples = sample_weighted_kde(y, x, config.n_samples * n).reshape(config.n_samples, n)
+            samples = sample_weighted_kde(y, x, config.n_samples * n, a, b).reshape(config.n_samples, n)
 
         batch_size = 50
         for method in ci_methods:

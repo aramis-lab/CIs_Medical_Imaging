@@ -33,7 +33,7 @@ def weighted_kde(data: np.ndarray, x_points: np.ndarray, dist_to_bounds: np.ndar
     return density / n
 
 # Sampling from KDE with adaptive bandwidth
-def sample_weighted_kde(y, x, n_samples):
+def sample_weighted_kde(y, x, n_samples, a=0, b=1):
     """Samples from KDE with adaptive bandwidth."""
     cdf = np.cumsum(y) / np.sum(y)
     values = np.random.rand(n_samples)
@@ -41,7 +41,7 @@ def sample_weighted_kde(y, x, n_samples):
     indices = np.searchsorted(cdf, values)
     inv_cdf = x[indices]
 
-    inv_cdf = np.clip(inv_cdf, 0, 1)
+    inv_cdf = np.clip(inv_cdf, a, b)
     
     return inv_cdf
 
