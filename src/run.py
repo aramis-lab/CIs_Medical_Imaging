@@ -79,7 +79,7 @@ def make_kdes_classification(df, task, algo, config):
                         "sensitivity" : ["tp", "fn"],
                         "specificity" : ["tn", "fp"],
                         "balanced_accuracy" : ["tp", "fp", "tn", "fn"],
-                        "mcc" : ["tp", "fp", "tn", "fn"],
+                        "mcc" : ["tp", "fp", "fn"],
                         "auroc" : ["y_score", "y_true_bin"],
                         "auc" : ["y_score", "y_true_bin"],
                         "ap" : ["y_score", "y_true_bin"]
