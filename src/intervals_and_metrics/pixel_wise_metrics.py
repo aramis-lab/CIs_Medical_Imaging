@@ -150,11 +150,11 @@ def mcc(tp, fp, fn, average=None):
     fp = np.count_nonzero(fp, axis=-2)
     fn = np.count_nonzero(fn, axis=-2)
 
-    T = tp + fn
-    P = tp + fp
+    T = (tp + fn)/N
+    P = (tp + fp)/N
 
-    numerator = S * N - np.sum(T*P, axis=-1)
-    denom = np.sqrt((N**2 - np.sum(P**2, axis=-1))) * np.sqrt((N**2 - np.sum(T**2, axis=-1)))
+    numerator = S - np.sum(T*P*N, axis=-1)
+    denom = np.sqrt((1 - np.sum(P**2, axis=-1)) * (1 - np.sum(T**2, axis=-1)))
     return np.where(denom>0, numerator/denom, 0.0)
 
 
