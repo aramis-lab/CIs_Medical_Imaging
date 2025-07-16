@@ -109,9 +109,9 @@ def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified):
         S_01=(1/((n-1)*n**2))*(np.sum((rank_pos-ideal_S)**2,axis=-1)-n*(bar_S-(n+1)/2)**2)
         S=np.sqrt((m*S_01+n*S_10)/(m+n))
         if method == "delong": 
-            return CI_DL(y_pred, y_true,AUC, m,n)
+            return CI_DL(y_pred, y_true,AUC, m,n,alpha)
         elif method == "logit_transform":
-            return CI_LT(AUC, m, n, S)
+            return CI_LT(AUC, m, n, S, alpha)
         elif method == "empirical_likelihood":
             intervals = []
             for i in range(y_true.shape[0]):
@@ -124,16 +124,19 @@ def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified):
     else:
         raise ValueError("Non-bootstrap CI methods are not defined for multi-class AUC.")
 
-def CI_LT(AUC, m, n, S):
-    LL=np.log(AUC/(1-AUC))-1.96*np.sqrt((m+n)*S**2/(m*n))/(AUC*(1-AUC))
-    UL=np.log(AUC/(1-AUC))+1.96*np.sqrt((m+n)*S**2/(m*n))/(AUC*(1-AUC))
+def CI_LT(AUC, m, n, S, alpha):
+    z_alpha = ndtri(1-alpha/2)
+    center_term = np.log(AUC/(1-AUC))
+    variance_term = np.sqrt((m+n)*(S**2)/(m*n))/(AUC*(1-AUC))
+    LL=center_term-z_alpha*variance_term
+    UL=center_term+z_alpha*variance_term
     LT_low=np.exp(LL)/(1+np.exp(LL))
     LT_high=np.exp(UL)/(1+np.exp(UL))
     LT_low = np.where((AUC==0)|(AUC==1), np.nan, LT_low)
     LT_high = np.where((AUC==0)|(AUC==1), np.nan, LT_high)
     return np.array([LT_low, LT_high]).T
 
-def CI_DL(y_pred, y,AUC, m,n):
+def CI_DL(y_pred, y,AUC, m,n,alpha):
 
     X = y_pred * (1-y)
     Y = y_pred * y
@@ -142,10 +145,10 @@ def CI_DL(y_pred, y,AUC, m,n):
     D10 = (np.count_nonzero(binary_comp, axis=-1) - m[...,None])/n[...,None]
     D01 = (np.count_nonzero(binary_comp, axis=-2) - n[...,None])/m[...,None]
     
-    var=(1/(m*(m-1)))*(np.sum((D10-AUC[...,None])**2,axis=-1)-n*AUC**2) + (1/(n*(n-1)))*(np.sum((D01-AUC[...,None])**2,axis=-1)-m*AUC**2)
-    
-    DL_low=AUC-1.96*np.sqrt(var)
-    DL_high=AUC+1.96*np.sqrt(var)
+    var=(1/(m*(m-1)))*(np.sum((D10-AUC[...,None])**2,axis=-1)-n*(AUC**2)) + (1/(n*(n-1)))*(np.sum((D01-AUC[...,None])**2,axis=-1)-m*(AUC**2))
+    z_alpha = ndtri(1-alpha/2)
+    DL_low=AUC-z_alpha*np.sqrt(var)
+    DL_high=AUC+z_alpha*np.sqrt(var)
     return np.array([DL_low, DL_high]).T
 
 def el_auc_confidence_interval(Y, X, S, AUC, alpha=0.05, tol=1e-8):
