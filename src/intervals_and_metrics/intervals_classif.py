@@ -103,8 +103,17 @@ def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified):
         ideal_S = np.zeros_like(rank_pos)
 
         for i in range(y_true.shape[0]):
-            ideal_R[i, y_true[i] == 0] = np.arange(1, m[i] + 1)
-            ideal_S[i, y_true[i] == 1] = np.arange(1, n[i] + 1)
+            # For negatives
+            neg_indices = np.where(y_true[i] == 0)[0]
+            neg_ranks = rank_neg[i, neg_indices]
+            sorted_neg_indices = neg_indices[np.argsort(neg_ranks)]
+            ideal_R[i, sorted_neg_indices] = np.arange(1, m[i] + 1)
+
+            # For positives
+            pos_indices = np.where(y_true[i] == 1)[0]
+            pos_ranks = rank_pos[i, pos_indices]
+            sorted_pos_indices = pos_indices[np.argsort(pos_ranks)]
+            ideal_S[i, sorted_pos_indices] = np.arange(1, n[i] + 1)
         S_10=(1/((m-1)*n**2))*(np.sum((rank_neg-ideal_R)**2,axis=-1)-m*(bar_R-(m+1)/2)**2)
         S_01=(1/((n-1)*n**2))*(np.sum((rank_pos-ideal_S)**2,axis=-1)-n*(bar_S-(n+1)/2)**2)
         S=np.sqrt((m*S_01+n*S_10)/(m+n))
@@ -142,8 +151,10 @@ def CI_DL(y_pred, y,AUC, m,n,alpha):
     Y = y_pred * y
 
     binary_comp = 1 - (Y[...,None,:] < X[...,None])
-    D10 = (np.count_nonzero(binary_comp, axis=-1) - m[...,None])/n[...,None]
-    D01 = (np.count_nonzero(binary_comp, axis=-2) - n[...,None])/m[...,None]
+    valid_comp = binary_comp & y[..., None, :] & (1-y[..., None])
+
+    D10 = (np.count_nonzero(valid_comp, axis=-1)) / n[..., None]
+    D01 = (np.count_nonzero(valid_comp, axis=-2)) / m[..., None]
     
     var=(1/(m*(m-1)))*(np.sum((D10-AUC[...,None])**2,axis=-1)-n*(AUC**2)) + (1/(n*(n-1)))*(np.sum((D01-AUC[...,None])**2,axis=-1)-m*(AUC**2))
     z_alpha = ndtri(1-alpha/2)
