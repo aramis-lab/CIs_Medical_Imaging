@@ -22,6 +22,8 @@ def get_benchmark_instances(BASE_DIR, cfg):
     benchmark_instances = []
     df_all = pd.read_csv(os.path.join(BASE_DIR, cfg.relative_data_path))
     tasks = df_all["subtask"].unique()
+    if "task" in cfg:
+        tasks = [task for task in tasks if task in cfg.task]
     for task in tasks:
         df_task = extract_df(os.path.join(BASE_DIR, cfg.relative_data_path), cfg.metric, task)
         algos = df_task["alg_name"].unique()
@@ -38,12 +40,6 @@ def get_benchmark_instances(BASE_DIR, cfg):
 def export_benchmark_list(cfg: DictConfig):
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     instances = get_benchmark_instances(BASE_DIR, cfg)
-    if "task" in cfg:
-        task_filter = cfg.task
-        # Ensure task_filter is a list
-        if isinstance(task_filter, str):
-            task_filter = [task_filter]
-        instances = np.array([inst for inst in instances if inst[0] in task_filter])
     if not os.path.exists(os.path.join(BASE_DIR, "instances_list")):
         os.makedirs(os.path.join(BASE_DIR, "instances_list"))
     if not os.path.exists(os.path.join(BASE_DIR, f"instances_list/{cfg.metric}.txt")):
