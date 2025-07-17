@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH -A zcd@cpu
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=8
 #SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
 #SBATCH --hint=nomultithread
@@ -14,8 +14,7 @@
 module load python
 conda activate CI
 
-python src/run.py -m \
-  metric=hd_perc \
+python src/run.py --config-name=config_classif -m \
+  metric=ap \
   kernel=epanechnikov \
-  summary_stat=iqr_length \
-  +task=Task03_Liver_L1 +algo=Isensee
+  +task=chexpert_pleural_effusion +algo=alg_10

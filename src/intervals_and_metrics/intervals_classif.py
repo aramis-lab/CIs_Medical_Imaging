@@ -117,7 +117,8 @@ def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified):
         S_10=(1/((m-1)*n**2))*(np.sum((rank_neg-ideal_R)**2,axis=-1)-m*(bar_R-(m+1)/2)**2)
         S_01=(1/((n-1)*n**2))*(np.sum((rank_pos-ideal_S)**2,axis=-1)-n*(bar_S-(n+1)/2)**2)
         S=np.sqrt((m*S_01+n*S_10)/(m+n))
-        if method == "delong": 
+        print(y_pred, y_true)
+        if method == "delong":
             return CI_DL(y_pred, y_true,AUC, m,n,alpha)
         elif method == "logit_transform":
             return CI_LT(AUC, m, n, S, alpha)
