@@ -1,5 +1,4 @@
-# ci_methods: ["basic", "percentile", "bca", "agresti_coull", "wilson", "exact", "wald", "logit_transform", "delong"]
-ci_methods: ["logit_transform", "delong"]
+ci_methods: ["basic", "percentile", "bca", "agresti_coull", "wilson", "exact", "wald", "logit_transform", "delong"]
 
 # Possible values for metrics (for reference, you will use one at a time)
 metric:
