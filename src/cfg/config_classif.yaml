@@ -30,7 +30,7 @@ sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
 relative_data_path : "../data_matrix_classification.csv"
 
 # Path to the output directory for saving results, relative to the repository root
-relative_output_dir: "../results_classif_auc"
+relative_output_dir: "../results_classif"
 
 # Number of samples to draw from KDE
 n_samples: 10000

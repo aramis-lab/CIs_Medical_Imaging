@@ -153,7 +153,7 @@ def mcc(tp, fp, fn, average=None):
     T = (tp + fn)/N
     P = (tp + fp)/N
 
-    numerator = S - np.sum(T*P*N, axis=-1)
+    numerator = S/N - np.sum(T*P, axis=-1)
     denom = np.sqrt((1 - np.sum(P**2, axis=-1)) * (1 - np.sum(T**2, axis=-1)))
     return np.where(denom>0, numerator/denom, 0.0)
 
