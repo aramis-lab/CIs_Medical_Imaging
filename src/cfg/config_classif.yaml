@@ -9,7 +9,7 @@ metric:
   - "auc"
   - "ap"
 
-average: "micro"
+average: ["macro", "micro"]
 # Possible values for summary_stat (choose one from here)
 
 kernel:

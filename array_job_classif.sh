@@ -16,8 +16,8 @@ conda activate CI
 
 # Load all task-algo pairs
 # METRICS=(accuracy f1_score balanced_accuracy mcc auc ap)
-METRICS=(mcc)
-AVERAGE=micro
+METRICS=(auc ap f1_score)
+AVERAGE=macro
 ALL_PAIRS=()
 
 for METRIC in "${METRICS[@]}"; do
