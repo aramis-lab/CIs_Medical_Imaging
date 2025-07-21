@@ -180,7 +180,10 @@ def ap(y_score, y_true_bin, average="micro"):
 
         # Create a broadcasted index for position (1-based)
         idx = np.arange(1, scores.shape[axis]+1)
-        idx = np.expand_dims(idx, tuple(range(sorted_targets.ndim - 1)))
+        if axis==-1:
+            idx = np.expand_dims(idx, tuple(range(sorted_targets.ndim - 1)))
+        elif axis ==-2:
+            idx = np.expand_dims(idx, tuple(range(sorted_targets.ndim - 2)) + (sorted_targets.ndim-1,))
 
         # Precision at each threshold
         precision = cumsum / idx
