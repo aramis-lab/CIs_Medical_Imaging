@@ -196,7 +196,7 @@ def ap(y_score, y_true_bin, average="micro"):
         ap = np.sum(precision_at_hits, axis=axis) / np.clip(total_positives, a_min=1, a_max=None)
 
         # If no positives, set AP to NaN (optional: could also be 0)
-        ap = np.where(total_positives > 0, ap, np.nan)
+        ap = np.where(total_positives > 0, ap, 0)
         return ap
 
     if average == "micro":
@@ -223,7 +223,7 @@ def auroc(y_score, y_true_bin, average="micro"):
         rank_sum = np.sum(ranks*targets, axis=axis)
         P = np.count_nonzero(targets, axis=axis)
         N = targets.shape[axis]
-        return np.where(P*(N-P)>0, (rank_sum - P * (P + 1) / 2)/(P*(N-P)), np.nan)
+        return np.where(P*(N-P)>0, (rank_sum - P * (P + 1) / 2)/(P*(N-P)), 0)
 
     if average == "micro":
         y_score = y_score.reshape(*y_score.shape[:-2], -1)
