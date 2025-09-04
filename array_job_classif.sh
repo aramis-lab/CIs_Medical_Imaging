@@ -37,5 +37,4 @@ read -r TASK ALGO <<< "$TASK_ALGO"
 python src/run.py --config-name=config_classif -m \
   metric="$METRIC" \
   kernel=epanechnikov \
-  +task="$TASK" +algo="$ALGO" average="$AVERAGE" \
-  sample_sizes="[500,]"\
+  +task="$TASK" +algo="$ALGO" average="$AVERAGE" 
