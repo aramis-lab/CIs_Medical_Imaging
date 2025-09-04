@@ -109,7 +109,8 @@ def make_kdes_classification(df, task, algo, config):
             for batch_start in range(0, config.n_samples, batch_size):
                 batch_end = min(batch_start + batch_size, config.n_samples)
                 
-                CIs = compute_CIs_classification(sim_labels[batch_start:batch_end], samples[batch_start:batch_end], config.metric, method, average=config.average)
+                CIs = compute_CIs_classification(sim_labels[batch_start:batch_end], samples[batch_start:batch_end], 
+                                                 config.metric, method, average=config.average, n_bootstrap=config.n_bootstrap)
                 
                 # Precompute vectorized components for speed
                 lower_bounds = CIs[:, 0]

@@ -16,7 +16,7 @@ conda activate CI
 
 # Load all task-algo pairs
 # METRICS=(accuracy f1_score balanced_accuracy mcc auc ap)
-METRICS=(auc ap f1_score)
+METRICS=(auc f1_score balanced_accuracy)
 AVERAGE=macro
 ALL_PAIRS=()
 
@@ -37,4 +37,5 @@ read -r TASK ALGO <<< "$TASK_ALGO"
 python src/run.py --config-name=config_classif -m \
   metric="$METRIC" \
   kernel=epanechnikov \
-  +task="$TASK" +algo="$ALGO" average="$AVERAGE"
+  +task="$TASK" +algo="$ALGO" average="$AVERAGE" \
+  sample_sizes="[500,]"\
