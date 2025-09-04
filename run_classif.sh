@@ -4,7 +4,7 @@ module load python
 conda activate CI
 
 # METRICS=(accuracy f1_score balanced_accuracy mcc auc ap)
-METRICS=(auc ap f1_score)
+METRICS=(auc f1_score balanced_accuracy)
 metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 
 # Preprocess instance lists
