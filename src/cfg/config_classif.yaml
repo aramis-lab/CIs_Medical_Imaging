@@ -25,7 +25,7 @@ adaptive_bandwidth: true
 # Trimmed mean thresholds (adjustable)
 
 # sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
-sample_sizes: [1000]
+sample_sizes: [5000]
 
 # Path to the data file, relative to the repository root
 relative_data_path : "../data_matrix_classification.csv"
