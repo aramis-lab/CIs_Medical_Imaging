@@ -236,7 +236,7 @@ def make_kdes_segmentation(df, task, algo, config):
             for batch_start in range(0, config.n_samples, batch_size):
                 batch_end = min(batch_start + batch_size, config.n_samples)
                 batch_samples = samples[batch_start:batch_end]
-                CIs = compute_CIs_segmentation(batch_samples, method, config.summary_stat, statistic, config.trimmed_mean_threshold)
+                CIs = compute_CIs_segmentation(batch_samples, method, config.summary_stat, statistic, config.trimmed_mean_threshold, a, b)
 
                 # Precompute vectorized components for speed
                 lower_bounds = CIs[:, 0]
