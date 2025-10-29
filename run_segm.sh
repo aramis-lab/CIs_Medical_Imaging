@@ -3,7 +3,7 @@
 module load python
 conda activate CI
 
-METRICS=(boundary_iou cldice hd hd_perc iou)
+METRICS=(boundary_iou cldice dsc nsd iou)
 # METRICS=(masd assd)
 metrics_csv=$(IFS=','; echo "${METRICS[*]}")
 
