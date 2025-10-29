@@ -15,8 +15,8 @@ module load python
 conda activate CI
 
 # Load all task-algo pairs
-# METRICS=(boundary_iou assd cldice hd hd_perc iou masd)
-METRICS=(assd masd)
+METRICS=(boundary_iou cldice hd hd_perc iou)
+# METRICS=(assd masd)
 ALL_PAIRS=()
 
 for METRIC in "${METRICS[@]}"; do
@@ -36,5 +36,5 @@ read -r TASK ALGO <<< "$TASK_ALGO"
 python src/run.py --config-name=config_segm -m \
   metric="$METRIC" \
   kernel=epanechnikov \
-  summary_stat=mean,median,trimmed_mean,std,iqr_length \
+  summary_stat=mean \
   +task="$TASK" +algo="$ALGO"

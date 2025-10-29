@@ -1,5 +1,5 @@
-ci_methods: ["param_t", "param_z", "basic", "percentile", "bca", "agresti_coull", "wilson", "exact"]
-
+# ci_methods: ["param_t", "param_z", "basic", "percentile", "bca", "agresti_coull", "wilson", "exact", "hoeffding", "benett"]
+ci_methods: ["hoeffding", "benett"]
 # Possible values for metrics (for reference, you will use one at a time)
 metric:
   - "dsc"
@@ -32,7 +32,7 @@ sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
 relative_data_path : "../data_matrix_grandchallenge_all.csv"
 
 # Path to the output directory for saving results, relative to the repository root
-relative_output_dir: "../results"  
+relative_output_dir: "../results_concentration" 
 
 # Number of samples to draw from KDE
 n_samples: 10000
