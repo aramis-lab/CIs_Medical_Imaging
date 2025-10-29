@@ -14,6 +14,7 @@ def compute_CIs_segmentation(samples, method, summary_stat_name, statistic, thre
     elif (summary_stat_name == "mean") and (method in ["hoeffding", "benett"]) and np.isfinite(a) and np.isfinite(b):
         return concentration_interval(samples, method, alpha, a, b)
     else:
+        print(summary_stat_name, method, a, b)
         return np.empty((samples.shape[0], 2))
 
 def param_z_interval(data, summary_stat_name, threshold, alpha=0.05):
