@@ -47,7 +47,6 @@ def h_inv(x):
     return np.exp(1+np.real(lambertw((x-1)/np.e)))
 
 def concentration_interval(data, method, alpha=0.05, a=-np.inf, b=np.inf):
-    print("Computing interval with method:", method)
     n = data.shape[1]
     M = (b - a)
     if method == "hoeffding":
@@ -58,7 +57,6 @@ def concentration_interval(data, method, alpha=0.05, a=-np.inf, b=np.inf):
         radius = (M**2) / 4 * h_inv(4/(n*M**2) * np.log(2/alpha))
     else:
         raise ValueError(f"Unknown concentration inequality method: {method}")
-    print("Radius:", radius)
     return np.vstack([means - radius, means + radius]).T
 
 def compute_bootstrap_CI(data, statistic, alpha=0.05, method="percentile"):

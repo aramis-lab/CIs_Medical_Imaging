@@ -1,7 +1,7 @@
 def get_authorized_methods_segmentation(summary_stat, metric):
     if metric in ["nsd", "boundary_iou", "cldice", "dsc", "iou"]:
         if summary_stat in ["mean"]:
-            return {"param_t", "param_z", "percentile", "basic", "bca"}
+            return {"param_t", "param_z", "percentile", "basic", "bca", "hoeffding", "benett"}
         elif summary_stat in ["median", "iqr_length", "std", "trimmed_mean"]:
             return {"percentile", "basic", "bca"}
     elif metric in ["assd", "hd", "hd_perc", "masd"]:
