@@ -1,5 +1,5 @@
-ci_methods: ["param_t", "param_z", "basic", "percentile", "bca", "studentized", "agresti_coull", "wilson", "wald", "param_z", "cloper_pearson", "exact"]
-
+# ci_methods: ["param_t", "param_z", "basic", "percentile", "bca", "agresti_coull", "wilson", "exact", "hoeffding", "benett"]
+ci_methods: ["hoeffding", "benett"]
 # Possible values for metrics (for reference, you will use one at a time)
 metric:
   - "dsc"
@@ -13,9 +13,6 @@ summary_stat:
   - "std"
   - "iqr_length"
 
-# List of tasks (subtasks for processing)
-tasks: ["BRATS_L1", "BRATS_L2", "BRATS_L3", "colon_L1", "hepaticvessel_L1", "hepaticvessel_L2", "hippocampus_L1", "hippocampus_L2", "liver_L1", "liver_L2", "pancreas_L1", "pancreas_L2"]
-
 kernel:
   - "gaussian"
   - "tophat"
@@ -24,17 +21,18 @@ kernel:
   - "cosine"
   - "linear"
 
+adaptive_bandwidth: true
+
 # Trimmed mean thresholds (adjustable)
-trimmed_mean_threshold:
-  - 0.25
+trimmed_mean_threshold: 0.25
 
 sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
 
 # Path to the data file, relative to the repository root
-relative_data_path : "../data_matrix_grandchallenge.csv"
+relative_data_path : "../data_matrix_grandchallenge_all.csv"
 
 # Path to the output directory for saving results, relative to the repository root
-relative_output_dir: "../results"
+relative_output_dir: "../results_concentration" 
 
 # Number of samples to draw from KDE
 n_samples: 10000
