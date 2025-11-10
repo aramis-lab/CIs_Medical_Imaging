@@ -181,3 +181,4 @@ logs/
 # Data and results Files
 src/data/*
 src/results/*
+.DS_Store
