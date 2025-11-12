@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
-from scipy.stats import binomtest
+from scipy.stats import kstest
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import ListedColormap
@@ -71,47 +71,88 @@ def extract_coverage_data(folder_path, file_prefix, metrics, stats, methods):
     df_segm=pd.DataFrame(all_values)
     return df_segm
 
-def perform_pairwise_tests(df_segm, metrics):
+def perform_fits(df_segm):
+    results = []
+    for task in df_segm['task'].unique():
+        df_task = df_segm[df_segm['task'] == task]
+        for algo in df_task['algo'].unique():
+            df_algo = df_task[df_task['algo'] == algo]
+            for metric in df_algo['metric'].unique():
+                df_metric_stat = df_algo[(df_algo['metric'] == metric) & (df_algo['stat']=='mean')]
+                for method in df_metric_stat['method'].unique():
+                    df_metric_stat_method = df_metric_stat[df_metric_stat['method'] == method]
+                    df_metric_stat_method = df_metric_stat_method.sort_values(by='n')
+                    n_values = df_metric_stat_method['n'].to_numpy()
+                    coverages = df_metric_stat_method['coverage'].to_numpy()
+                    Y = 0.95 - coverages
+                    X = np.vstack([1/n_values]).T
+                    beta2, res = np.linalg.lstsq(X, Y, rcond=None)[:2]
+                    R2 = 1 - res/np.sum((Y - np.mean(Y))**2)
+                    new_row = {
+                        'task': task,
+                        'algo': algo,
+                        'metric': metric,
+                        'stat': "mean",
+                        'method': method,
+                        'beta2': beta2[0],
+                        'R2': R2[0]
+                    }
+                    results.append(new_row)
+    df_fit_results = pd.DataFrame(results)
+    return df_fit_results
+
+def permutation_test(x, y, n_permutations=10000, alternative='two-sided'):
+    obs_diff = np.mean(x) - np.mean(y)
+    combined = np.concatenate([x, y])
+    count = 0
+
+    for _ in range(n_permutations):
+        np.random.shuffle(combined)
+        new_x = combined[:len(x)]
+        new_y = combined[len(x):]
+        perm_diff = np.mean(new_x) - np.mean(new_y)
+
+        if alternative == 'two-sided':
+            count += abs(perm_diff) >= abs(obs_diff)
+        elif alternative == 'greater':
+            count += perm_diff >= obs_diff
+        else:
+            count += perm_diff <= obs_diff
+
+    p_value = count / n_permutations
+    return obs_diff, p_value
+
+def perform_pairwise_tests(df_fit_results, metrics):
     
-    n_values = df_segm['n'].unique()
-    p_values = {n: {m : {m2: None for m2 in metrics} for m in metrics} for n in n_values}
+    p_values = {m : {m2: None for m2 in metrics} for m in metrics}
 
-    for n in n_values:
-        for i in range(len(metrics)):
-            for j in range(i + 1, len(metrics)):
-                metric1 = metrics[i]
-                metric2 = metrics[j]
+    for i in range(len(metrics)):
+        for j in range(i + 1, len(metrics)):
+            metric1 = metrics[i]
+            metric2 = metrics[j]
 
-                data_metric1 = df_segm[(df_segm['metric'] == metric1) & (df_segm['n'] == n)]
-                data_metric2 = df_segm[(df_segm['metric'] == metric2) & (df_segm['n'] == n)]
+            data_metric1 = df_fit_results[df_fit_results['metric'] == metric1]
+            data_metric2 = df_fit_results[df_fit_results['metric'] == metric2]
 
-                methods = df_segm['method'].unique()
-                for method in methods:
-                    # Pair by task and algo: aggregate coverage per (task, algo) then run paired test across those pairs
-                    grp1 = data_metric1[data_metric1['method'] == method].groupby(['task', 'algo'])['coverage'].mean().reset_index(name='cov1')
-                    grp2 = data_metric2[data_metric2['method'] == method].groupby(['task', 'algo'])['coverage'].mean().reset_index(name='cov2')
+            methods = df_fit_results['method'].unique()
+            for method in methods:
 
-                    merged = pd.merge(grp1, grp2, on=['task', 'algo'], how='inner')
+                data_metric1_method = data_metric1[data_metric1['method'] == method]
+                data_metric2_method = data_metric2[data_metric2['method'] == method]
 
-                    diff = merged['cov1'] - merged['cov2']
+                dist1 = data_metric1_method['beta2'].to_numpy()
+                dist2 = data_metric2_method['beta2'].to_numpy()
 
-                    diff = diff[diff != 0].dropna()
-
-                    n_pos  = np.sum(diff > 0)
-                    n_tot = len(diff)
-
-                    res = binomtest(n_pos, n_tot, p=0.5, alternative='two-sided')
-
-                    p_values[n][metric1][metric2] = res.pvalue
-                    p_values[n][metric2][metric1] = res.pvalue
+                _, p_val = permutation_test(dist1, dist2, n_permutations=100000, alternative='two-sided')
+                p_values[metric1][metric2] = p_val
+                p_values[metric2][metric1] = p_val
     
     return p_values
 
 def tell_significance(p_vals, alphas=np.array([0.001, 0.01, 0.05]), bonferroni_correction=True):
     
-    n_values = len(p_vals)
-    m = len(next(iter(p_vals.values())))
-    num_comparisons = n_values * (m - 1) / 2
+    m = len(p_vals)
+    num_comparisons = m - 1
 
     if bonferroni_correction:
         alphas_corrected = alphas / num_comparisons
@@ -119,74 +160,31 @@ def tell_significance(p_vals, alphas=np.array([0.001, 0.01, 0.05]), bonferroni_c
         alphas_corrected = alphas
 
     significance = {}
-    for n, metrics_dict in p_vals.items():
-        significance[n] = {}
-        for metric1, metric2_dict in metrics_dict.items():
-            significance[n][metric1] = {}
-            for metric2, p_val in metric2_dict.items():
-                if p_val is not None:
-                    significance[n][metric1][metric2] = np.sum(p_val < alphas_corrected)
-                else:
-                    significance[n][metric1][metric2] = 0
+    for metric1, metric2_dict in p_vals.items():
+        significance[metric1] = {}
+        for metric2, p_val in metric2_dict.items():
+            if p_val is not None:
+                significance[metric1][metric2] = np.sum(p_val < alphas_corrected)
+            else:
+                significance[metric1][metric2] = 0
     return significance
 
 def plot_significance_matrix(significance, output_folder):
-
-    n_values = list(significance.keys())
 
     annot_mapping = {-1: "", 0: 'ns', 1: '*', 2: '**', 3: '***'}
 
     # define a discrete colormap for the four significance levels (ns, *, **, ***)
     cmap = ListedColormap(['#000000', '#d9d9d9', '#fee08b', '#fdae61', '#d73027'])  # grey -> yellow -> orange -> red
-    for n in n_values:
-        metrics = list(significance[n].keys())
-        matrix = np.zeros((len(metrics), len(metrics)))
-
-        for i, metric1 in enumerate(metrics):
-            for j, metric2 in enumerate(metrics):
-                matrix[i, j] = significance[n][metric1][metric2]
-        
-            matrix[i, i] = -1
-        
-        annot_matrix = np.vectorize(annot_mapping.get)(matrix)
-        plt.figure(figsize=(11, 8))
-        # use friendly metric names for ticks
-        labels = [metric_labels.get(m, m) for m in metrics]
-        sns.heatmap(matrix, xticklabels=labels, yticklabels=labels, annot=annot_matrix, cmap=cmap, cbar=False, fmt="")
-        plt.xticks(rotation=45, ha='right')
-        plt.yticks(rotation=45, va='center')
-
-        # update the heatmap image to use the new colormap and fixed color limits
-        ax = plt.gca()
-        images = ax.get_images()
-        if images:
-            img = images[0]
-            img.set_cmap(cmap)
-            img.set_clim(0, 3)
-
-        # add a legend explaining the star annotations and their significance levels
-        labels = ['ns', '* (5%)', '** (1%)', '*** (0.1%)']
-        patches = [mpatches.Patch(color=cmap.colors[i+1], label=labels[i]) for i in range(len(labels))]
-        ax.legend(handles=patches, title='Significance', bbox_to_anchor=(1.02, 1), loc='upper left')
-
-        # make room for the legend and avoid clipping
-        plt.tight_layout(rect=[0, 0, 0.85, 1])
-        plt.title(f'Paired tests for coverage difference between metrics for n={n} w/o Bonferroni correction')
-        plt.tight_layout()
-        plt.savefig(os.path.join(output_folder, f'significance_matrix_n{n}.png'))
-        plt.close()
 
     # Build global significance matrix: True only if significance is True for all values of n
-    first_n_key = next(iter(significance))
-    metrics_all = list(significance[first_n_key].keys())
+    metrics_all = list(significance.keys())
     global_matrix = np.zeros((len(metrics_all), len(metrics_all)))
 
     for i, metric1 in enumerate(metrics_all):
         for j, metric2 in enumerate(metrics_all):
             all_sig = 3
-            for n_key in significance.keys():
-                val = significance[n_key].get(metric1, {}).get(metric2, None)
-                all_sig = min(all_sig, val)
+            val = significance.get(metric1, {}).get(metric2, None)
+            all_sig = min(all_sig, val)
             global_matrix[i, j] = all_sig
         global_matrix[i, i] = -1
 
@@ -209,9 +207,9 @@ def plot_significance_matrix(significance, output_folder):
     labels = ['ns', '* (5%)', '** (1%)', '*** (0.1%)']
     patches = [mpatches.Patch(color=cmap.colors[i+1], label=labels[i]) for i in range(len(labels))]
     ax.legend(handles=patches, title='Significance', bbox_to_anchor=(1.02, 1), loc='upper left')
-    plt.title('Paired tests for coverage difference between metrics (all n values) w/o Bonferroni correction')
+    plt.title('Metric CCP equality tests w/ Bonferroni correction')
     plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, 'significance_matrix_global.png'))
+    plt.savefig(os.path.join(output_folder, 'significance_matrix_CCP_corrected.png'))
     plt.close()
     
 if __name__ == "__main__":
@@ -222,10 +220,12 @@ if __name__ == "__main__":
     stats=['mean']
     
     df_segm = extract_coverage_data(folder_path, file_prefix, metrics, stats, methods)
-    
-    p_vals = perform_pairwise_tests(df_segm, metrics)
 
-    significance = tell_significance(p_vals, bonferroni_correction=False)
+    df_fit_results = perform_fits(df_segm)
+    
+    p_vals = perform_pairwise_tests(df_fit_results, metrics)
+
+    significance = tell_significance(p_vals, bonferroni_correction=True)
 
     output_folder = "../significance_matrices"
     plot_significance_matrix(significance, output_folder=output_folder)
