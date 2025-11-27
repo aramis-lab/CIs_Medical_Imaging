@@ -1,45 +1,72 @@
-import math
+import os
+import matplotlib.pyplot as plt
+import argparse
 
-metrics = df_segm['metric'].unique()
-CI_segm_stat = df_segm[df_segm['stat'].isin(['mean', 'std'])]
+from ..df_loaders import extract_df_segm_cov
+from ..plot_utils import metric_labels, stat_labels
 
-n_cols = 3
-n_rows = math.ceil(len(metrics) / n_cols)
 
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 6 * n_rows), sharex=False)
-axes = axes.flatten()  # flatten to 1D for easy indexing
+def plot_central_vs_dispersion(root_folder: str, output_path:str):
+    
+    folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
+    file_prefix_segm = "aggregated_results"
+    metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
+    stats_segm = ["mean", "std"]
 
-for i, metric in enumerate(metrics):
-    df_all_metric = CI_segm_stat[CI_segm_stat['metric'] == metric]
-    data_method = df_all_metric[df_all_metric['method'] == 'percentile']
+    df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
+    df_segm = df_segm[df_segm["method"] == "percentile"]
 
-    ax = axes[i]
+    fig, axes = plt.subplots(3, 3, figsize=(21, 18), sharex=False)
+    axes = axes.flatten()  # flatten to 1D for easy indexing
 
-    # central plot
-    for stat, df_stat in data_method.groupby('stat'):
-        grouped = df_stat.groupby('n')
-        n_vals = grouped['coverage'].median().index.values
-        medians = grouped['coverage'].median().values
-        q1 = grouped['coverage'].quantile(0.25).values
-        q3 = grouped['coverage'].quantile(0.75).values
+    for i, metric in enumerate(metrics_segm):
+        df_all_metric = df_segm[df_segm['metric'] == metric]
+        data_method = df_all_metric[df_all_metric['method'] == 'percentile']
 
-        ax.plot(n_vals, medians, marker='o', label=stat_labels[stat],
-                linewidth=2, markersize=8)
-        ax.fill_between(n_vals, q1, q3, alpha=0.2)
+        ax = axes[i]
 
-    ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold')
-    ax.set_xlabel('Sample size', weight='bold', fontsize=14)
-    ax.set_ylabel('Coverage', weight='bold', fontsize=14)
-    ax.tick_params(axis='y', labelsize=12)
-    ax.tick_params(axis='x', labelsize=12)
-    ax.set_ylim(0.5, 1)
-    ax.grid(True, axis='y')
-    ax.legend(prop={'weight': 'bold'}, fontsize=12)
+        # central plot
+        for stat, df_stat in data_method.groupby('stat'):
+            grouped = df_stat.groupby('n')
+            n_vals = grouped['coverage'].median().index.values
+            medians = grouped['coverage'].median().values
+            q1 = grouped['coverage'].quantile(0.25).values
+            q3 = grouped['coverage'].quantile(0.75).values
 
-# hide unused subplots
-for j in range(i + 1, len(axes)):
-    axes[j].set_visible(False)
+            ax.plot(n_vals, medians, marker='o', label=stat_labels[stat],
+                    linewidth=2, markersize=8)
+            ax.fill_between(n_vals, q1, q3, alpha=0.2)
 
-plt.tight_layout()
-plt.savefig("../../../../journal paper plots/segmentation/message 3 stats/spread_vs_central_all.pdf")
-plt.show()
+        ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=30)
+        ax.set_xlabel('Sample size', weight='bold', fontsize=14)
+        ax.set_ylabel('Coverage', weight='bold', fontsize=14)
+        ax.tick_params(axis='y', labelsize=12)
+        ax.tick_params(axis='x', labelsize=12)
+        ax.set_ylim(0.5, 1)
+        ax.grid(True, axis='y')
+        ax.legend(prop={'weight': 'bold'}, fontsize=12)
+
+        # hide unused subplots
+        for j in range(i + 1, len(axes)):
+            axes[j].set_visible(False)
+
+    plt.suptitle("CI Comparison: Central tendency statistics vs dispersion statistics", fontsize=30, weight='bold')
+    plt.tight_layout()
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+    plt.savefig(output_path)
+    plt.close()
+
+def main():
+    parser = argparse.ArgumentParser(description="Plot central vs dispersion statistics for medical imaging CIs.")
+    parser.add_argument('--root_folder', type=str, required=True, help='Root folder containing results.')
+    parser.add_argument('--output_path', type=str, required=False, help='Output path for the plot.')
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/central_vs_dispersion.pdf")
+
+    plot_central_vs_dispersion(root_folder, output_path)
+
+if __name__ == "__main__":
+    main()

@@ -1,9 +1,15 @@
-tick_fontsize=14
-title_fontsize=18
-label_fontsize=16
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.patches as mpatches
+from matplotlib.colors import ListedColormap
+from scipy.stats import permutation_test
+import argparse
 
-metric_order = ['dsc', 'iou', 'nsd', 'boundary_iou', 'cldice', 'hd', 'hd_perc', 'assd', 'masd']
-stats = ["mean"]
+from ..df_loaders import extract_df_segm_cov
+from ..plot_utils import metric_labels, stat_labels, method_labels
 
 def perform_fits(df_segm, stats):
     results = []
@@ -119,14 +125,15 @@ def tell_significance(p_vals, alphas=np.array([0.01, 0.05, 0.1]), bonferroni_cor
                         significance[method][stat][metric1][metric2] = 0
     return significance
 
-def plot_significance_matrix(significance, p_vals, output_folder, title_fontsize=18, tick_fontsize=14):
+def plot_significance_matrix(significance, p_vals, output_path):
 
+    metric_order = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
     methods = list(significance.keys())
     stats = list(next(iter(significance.values())).keys())
     metrics_all = list(next(iter(next(iter(significance.values())).values())).keys())
     metrics_all = [m for m in metric_order if m in metrics_all]
 
-    fig, axes = plt.subplots(len(stats), len(methods), figsize=(11 * len(methods), 8 * len(stats)))
+    fig, axes = plt.subplots(len(stats), len(methods), figsize=(15 * len(methods), 12 * len(stats)))
 
     for row, stat in enumerate(stats):
         for col, method in enumerate(methods):
@@ -183,13 +190,13 @@ def plot_significance_matrix(significance, p_vals, output_folder, title_fontsize
                 cmap=cmap,
                 cbar=False,
                 ax=ax,
-                annot_kws={"fontsize": label_fontsize}
+                annot_kws={"fontsize": 16}
             )
-            ax.tick_params(axis='x', rotation=45, labelsize=tick_fontsize)
+            ax.tick_params(axis='x', rotation=45, labelsize=14)
 
-            ax.tick_params(axis='y', rotation=45, labelsize=tick_fontsize)
+            ax.tick_params(axis='y', rotation=45, labelsize=14)
 
-            ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=title_fontsize)
+            ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
 
     legend_elements = [
         mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1% (Red)'),
@@ -201,19 +208,41 @@ def plot_significance_matrix(significance, p_vals, output_folder, title_fontsize
         handles=legend_elements,
         bbox_to_anchor=(1.01, 0.5),
         ncol=1,
-        fontsize=label_fontsize,
+        fontsize=16,
         frameon=True,
         title="Significance levels with Bonferroni correction",
-        title_fontsize=label_fontsize
+        title_fontsize=16
     )
     plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, 'pairwise_comp_segm_segm.pdf'))
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+    plt.savefig(output_path)
     plt.close()
 
-df_fit_results = perform_fits(df_segm, stats)
-print("Fitting completed.")
-p_values = perform_pairwise_tests(df_fit_results)
-print("Pairwise tests completed.")
-significance = tell_significance(p_values, bonferroni_correction=True)
-output_folder = '../../../clean_figs'
-plot_significance_matrix(significance, p_values, output_folder)
+def main():
+    parser = argparse.ArgumentParser(description="Perform pairwise significance tests on segmentation CI coverage fits.")
+    parser.add_argument('--root_folder', type=str, required=True, help='Root folder containing results_metrics_segm')
+    parser.add_argument('--output_path', type=str, required=False, help='Output path for the significance matrix plot.')
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/tests_CCP_segm.pdf")
+
+    folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
+    file_prefix_segm = "aggregated_results"
+    metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
+    stats = ["mean"]
+
+    df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats)
+
+    print("Data loaded. Performing fits...")
+
+    df_fit_results = perform_fits(df_segm, stats)
+    print("Fitting completed.")
+    p_values = perform_pairwise_tests(df_fit_results)
+    print("Pairwise tests completed.")
+    significance = tell_significance(p_values, bonferroni_correction=True)
+    plot_significance_matrix(significance, p_values, output_path)
+
+if __name__ == "__main__":
+    main()
