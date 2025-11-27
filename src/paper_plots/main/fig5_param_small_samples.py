@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 import os
+import argparse
 
 from ..plot_utils import method_labels, method_colors, metric_labels
 from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov
@@ -212,8 +213,21 @@ def plot_fig5_param_small_samples(root_folder:str, output_path:str):
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
     plt.savefig(output_path)
+    plt.close()
 
-if __name__=="__main__":
-    root_folder = "C:/Users/Charles/Desktop/ICM"
-    output_path = os.path.join(root_folder, "clean_figs/main/fig5_param_small_samples.pdf")
+def main():
+    parser = argparse.ArgumentParser(description="Generate Figure 5 parametric methods on very small samples.")
+    parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
+    parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    # If output_path not provided, default inside root_folder
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig5_param_small_samples.pdf")
+
+    # Call your plotting function
     plot_fig5_param_small_samples(root_folder, output_path)
+
+if __name__ == "__main__":
+    main()

@@ -6,12 +6,10 @@ import seaborn as sns
 import numpy as np
 from scipy.stats import skew, kurtosis
 import os
+import argparse
 
 from ..plot_utils import metric_labels, stat_labels
-from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov, extract_df_segm_width, extract_df_classif_width
-
-
-
+from ..df_loaders import extract_df_segm_cov
 
 def plot_fig7_metrics(root_folder:str, output_path:str):
 
@@ -30,7 +28,7 @@ def plot_fig7_metrics(root_folder:str, output_path:str):
         "cldice": (1/255, 104/255, 4/255)         # #016804 -> RGB normalized
     })
 
-    fig = plt.figure(figsize=(24,10))
+    fig = plt.figure(figsize=(36,15))
     gs = gridspec.GridSpec(2, 2, width_ratios=[2, 1])
 
     ax_left = fig.add_subplot(gs[:, 0])
@@ -52,9 +50,9 @@ def plot_fig7_metrics(root_folder:str, output_path:str):
     .index
     )
 
-    ax_left.set_title(f'Stat : {stat_labels["mean"]}', weight='bold', fontsize=14)
-    ax_left.set_xlabel('Sample size', weight='bold', fontsize=13)
-    ax_left.set_ylabel('Coverage', weight='bold',fontsize=13)
+    ax_left.set_title(f'Stat : {stat_labels["mean"]}', weight='bold', fontsize=28)
+    ax_left.set_xlabel('Sample size', weight='bold', fontsize=26)
+    ax_left.set_ylabel('Coverage', weight='bold',fontsize=26)
     ax_left.grid(True, axis='y')
     # Sort the legend by median value at n=125
     legend_order = (
@@ -69,9 +67,9 @@ def plot_fig7_metrics(root_folder:str, output_path:str):
     handles, labels = ax_left.get_legend_handles_labels()
     sorted_handles_labels = sorted(zip(handles, labels), key=lambda x: legend_order.get_loc(x[1]))
     sorted_handles, sorted_labels = zip(*sorted_handles_labels)
-    ax_left.legend(sorted_handles, sorted_labels, fontsize=20, loc="lower right")
-    ax_left.tick_params(axis='x', labelsize=14)
-    ax_left.tick_params(axis='y', labelsize=14)
+    ax_left.legend(sorted_handles, sorted_labels, fontsize=25, loc="lower right")
+    ax_left.tick_params(axis='x', labelsize=28)
+    ax_left.tick_params(axis='y', labelsize=28)
 
     data= pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
     results=[]
@@ -216,8 +214,21 @@ def plot_fig7_metrics(root_folder:str, output_path:str):
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
     plt.savefig(output_path)
+    plt.close()
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate Figure 7 segmentation metrics.")
+    parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
+    parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    # If output_path not provided, default inside root_folder
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig7_metrics.pdf")
+
+    # Call your plotting function
+    plot_fig7_metrics(root_folder, output_path)
 
 if __name__=="__main__":
-    root_folder = "C:/Users/Charles/Desktop/ICM"
-    output_path = os.path.join(root_folder, "clean_figs/main/fig7_metrics.pdf")
-    plot_fig7_metrics(root_folder, output_path)
+    main()

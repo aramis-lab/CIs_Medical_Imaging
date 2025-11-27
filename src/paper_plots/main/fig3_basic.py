@@ -1,5 +1,7 @@
 import os
 import matplotlib.pyplot as plt
+import argparse
+
 from ..df_loaders import extract_df_segm_cov, extract_df_classif_cov
 from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels
 
@@ -17,7 +19,7 @@ def plot_fig3_basic(root_folder: str, output_path: str):
 
     df_classif = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
 
-    fig, axs = plt.subplots(1, 2, figsize=(20, 10), sharey=True)
+    fig, axs = plt.subplots(1, 2, figsize=(30, 15), sharey=True)
 
     ax = axs[0]
     metric = "dsc"
@@ -44,11 +46,11 @@ def plot_fig3_basic(root_folder: str, output_path: str):
             color=method_colors[method],
             alpha=0.2)
 
-    ax.set_title(f'Metric: {metric_labels[metric]}, Stat: {stat_labels[stat]}', weight='bold', fontsize=20)
-    ax.set_xlabel('Sample size',weight='bold', fontsize=16)
-    ax.set_ylabel('Coverage', weight='bold', fontsize=16)
-    ax.tick_params(axis='y', labelsize=14)
-    ax.tick_params(axis='x', labelsize=14)
+    ax.set_title(f'Metric: {metric_labels[metric]}, Stat: {stat_labels[stat]}', weight='bold', fontsize=40)
+    ax.set_xlabel('Sample size',weight='bold', fontsize=32)
+    ax.set_ylabel('Coverage', weight='bold', fontsize=32)
+    ax.tick_params(axis='y', labelsize=28)
+    ax.tick_params(axis='x', labelsize=28)
     ax.set_ylim(0.8,1)
 
     ax.grid(True, axis='y')
@@ -82,11 +84,11 @@ def plot_fig3_basic(root_folder: str, output_path: str):
             alpha=0.2)
         # ax.hline(0.95, alpha=0.7, linestyle="--")
 
-    ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=20)
-    ax.set_xlabel('Sample size',weight='bold', fontsize=16)
-    ax.set_ylabel('Coverage', weight='bold', fontsize=16)
-    ax.tick_params(axis='y', labelsize=14)
-    ax.tick_params(axis='x', labelsize=14)
+    ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=40)
+    ax.set_xlabel('Sample size',weight='bold', fontsize=32)
+    ax.set_ylabel('Coverage', weight='bold', fontsize=32)
+    ax.tick_params(axis='y', labelsize=28)
+    ax.tick_params(axis='x', labelsize=28)
     ax.set_ylim(0.8,1)
     ax.grid(True, axis='y')
 
@@ -100,8 +102,21 @@ def plot_fig3_basic(root_folder: str, output_path: str):
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
     plt.savefig(output_path)
+    plt.close()
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate Figure 3 basic is the worst bootstrap.")
+    parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
+    parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    # If output_path not provided, default inside root_folder
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig3_basic.pdf")
+
+    # Call your plotting function
+    plot_fig3_basic(root_folder, output_path)
 
 if __name__ == "__main__":
-    root_folder = "C:/Users/Charles/Desktop/ICM"
-    output_path = os.path.join(root_folder, 'clean_figs/main/fig3_basic.pdf')
-    plot_fig3_basic(root_folder, output_path)
+    main()

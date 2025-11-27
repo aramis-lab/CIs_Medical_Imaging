@@ -1,56 +1,23 @@
-tick_fontsize=14
-title_fontsize=18
-label_fontsize=16
+import os
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.patches as mpatches
+from matplotlib.colors import ListedColormap
+from scipy.stats import permutation_test
+import argparse
 
-segm_metrics=["boundary_iou", "iou", "cldice", "dsc", "nsd"]
-classif_metrics=["balanced_accuracy", "ap", "auc", "f1_score"]
-stats=['mean', "median", "trimmed_mean", "std", "iqr_length"]
+from ..df_loaders import extract_df_segm_cov, extract_df_classif_cov
+from ..plot_utils import metric_labels, stat_labels, method_labels
 
-def extract_coverage_data_classif(folder_path, file_prefix, metrics, methods):
-    all_values=[]
-    for metric in metrics:
-
-        file_path = os.path.join(folder_path, f"{file_prefix}_{metric}.csv")
-        data = pd.read_csv(file_path)
-        n_subset=data['n'].unique()
-        tasks=data['subtask'].unique()
-
-        algos=data['alg_name'].unique()
-        for task in tasks: 
-            data_task=data[data['subtask']==task]
-            for algo in algos: 
-                data_algo=data_task[data_task['alg_name']==algo]
-
-                for n in n_subset:  # Show only selected n values
-                    data_n = data_algo[data_algo['n'] == n]
-                    method_dict = {
-                        'basic': 'contains_true_stat_basic',
-                        'bca': 'contains_true_stat_bca',
-                        'percentile': 'contains_true_stat_percentile',
-                    }
-
-                    for method, col in method_dict.items():
-                        if method in methods:
-                            for val in data_n[col]:
-
-                                all_values.append({
-                                    'metric': metric,
-                                    'task':task, 
-                                    'algo':algo,
-                                    'n': n,
-                                    'method': method,
-                                    'coverage': val
-                                })
-    df_classif=pd.DataFrame(all_values)
-    return df_classif
-
-def perform_fits_segm(df_segm, stats):
+def perform_fits_segm(df_segm, metrics, stats):
     results = []
     for task in df_segm['task'].unique():
         df_task = df_segm[df_segm['task'] == task]
         for algo in df_task['algo'].unique():
             df_algo = df_task[df_task['algo'] == algo]
-            for metric in segm_metrics:
+            for metric in metrics:
                 for stat in stats:
                     df_metric_stat = df_algo[(df_algo['metric'] == metric) & (df_algo['stat']==stat)]
                     for method in df_metric_stat['method'].unique():
@@ -162,14 +129,14 @@ def tell_significance(p_vals, alphas=np.array([0.001, 0.01, 0.05]), bonferroni_c
                         significance[method][stat][metric1][metric2] = 0
     return significance
 
-def plot_significance_matrix(significance, p_vals, output_folder, title_fontsize=18, tick_fontsize=14):
+def plot_significance_matrix(significance, p_vals, output_path):
 
     methods = list(significance.keys())
     stats = list(next(iter(significance.values())).keys())
     metrics_classif = list(next(iter(next(iter(significance.values())).values())).keys())
     metrics_segm = list(next(iter(next(iter(next(iter(significance.values())).values())).values())).keys())
 
-    fig, axes = plt.subplots(len(methods), len(stats), figsize=(11 * len(stats), 8 * len(methods)))
+    fig, axes = plt.subplots(len(methods), len(stats), figsize=(15 * len(stats), 12 * len(methods)))
 
     for col, stat in enumerate(stats):
         for row, method in enumerate(methods):
@@ -230,13 +197,13 @@ def plot_significance_matrix(significance, p_vals, output_folder, title_fontsize
                 cmap=cmap,
                 cbar=False,
                 ax=ax,
-                annot_kws={"fontsize": label_fontsize}
+                annot_kws={"fontsize": 16}
             )
-            ax.tick_params(axis='x', rotation=45, labelsize=tick_fontsize)
+            ax.tick_params(axis='x', rotation=45, labelsize=14)
 
-            ax.tick_params(axis='y', rotation=45, labelsize=tick_fontsize)
+            ax.tick_params(axis='y', rotation=45, labelsize=14)
 
-            ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=title_fontsize)
+            ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
 
     legend_elements = [
         mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1% (Red)'),
@@ -249,21 +216,46 @@ def plot_significance_matrix(significance, p_vals, output_folder, title_fontsize
         loc='center left',
         bbox_to_anchor=(1.01, 0.5),
         ncol=1,
-        fontsize=label_fontsize,
+        fontsize=16,
         frameon=True,
         title="Significance levels with Bonferroni correction",
-        title_fontsize=label_fontsize
+        title_fontsize=16
     )
     plt.tight_layout()
-    plt.savefig(os.path.join(output_folder, 'pairwise_comp_segm_classif.pdf'))
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+    plt.savefig(output_path)
     plt.close()
 
-df_classif = extract_coverage_data_classif("../../../results_metrics_classif_macro", "aggregated_results", ["balanced_accuracy", "ap", "auc", "f1_score"], ["percentile"])
-df_fit_results_segm = perform_fits_segm(df_segm, stats)
-df_fit_results_classif = perform_fits_classif(df_classif)
-print("Fitting completed.")
-p_values = perform_pairwise_tests(df_fit_results_segm, df_fit_results_classif)
-print("Pairwise tests completed.")
-significance = tell_significance(p_values, bonferroni_correction=True)
-output_folder = '../../../clean_figs'
-plot_significance_matrix(significance, p_values, output_folder)
+def main():
+    parser = argparse.ArgumentParser(description="Perform pairwise significance tests on segmentation CI coverage fits vs classification macro CI coverage fits.")
+    parser.add_argument('--root_folder', type=str, required=True, help='Root folder containing results_metrics_segm and results_metrics_classif_macro')
+    parser.add_argument('--output_path', type=str, required=False, help='Output path for the significance matrix plot.')
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/tests_CCP_segm_vs_classif.pdf")
+
+    metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice"]
+    stats_segm = ["mean", "median", "trimmed_mean", "std", "iqr_length"]
+
+    folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
+    file_prefix_segm = "aggregated_results"
+    df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
+
+    metrics_classif = ["balanced_accuracy", "ap", "auc", "f1_score"]
+
+    folder_path_classif = os.path.join(root_folder, "results_metrics_classif_macro")
+    file_prefix_classif = "aggregated_results"
+    df_classif = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
+
+    df_fit_results_segm = perform_fits_segm(df_segm, metrics_segm, stats_segm)
+    df_fit_results_classif = perform_fits_classif(df_classif)
+    print("Fitting completed.")
+    p_values = perform_pairwise_tests(df_fit_results_segm, df_fit_results_classif)
+    print("Pairwise tests completed.")
+    significance = tell_significance(p_values, bonferroni_correction=True)
+    plot_significance_matrix(significance, p_values, output_path)
+
+if __name__ == "__main__":
+    main()
