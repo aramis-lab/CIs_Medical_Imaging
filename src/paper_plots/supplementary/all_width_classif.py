@@ -1,4 +1,3 @@
-from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +17,7 @@ def plot_all_width_classif(root_folder: str, output_path: str):
 
     folder_path_macro = os.path.join(root_folder, "results_metrics_classif_macro")
     file_prefix_macro = "aggregated_results"
-    metrics_macro = ["accuracy", "auc", "f1_score", "ap"]
+    metrics_macro = ["balanced_accuracy", "auc", "f1_score", "ap"]
 
     df_macro = extract_df_classif_width(folder_path_macro, file_prefix_macro, metrics_macro)
 
@@ -50,7 +49,7 @@ def plot_all_width_classif(root_folder: str, output_path: str):
     ]
     
     for fig_name, metrics, df in metrics_list:
-        fig, axs = plt.subplots(1, len(metrics), figsize=(6*len(metrics), 12))
+        fig, axs = plt.subplots(len(metrics), 1, figsize=(18,15*len(metrics)))
         if len(metrics) == 1:
             axs = [axs]
         
@@ -64,12 +63,15 @@ def plot_all_width_classif(root_folder: str, output_path: str):
             others = [m for m in methods if m not in preferred_order]
             methods = preferred + others
             
-            ax.hlines(np.arange(0, 1.01, 0.05), 0, (len(methods)+2)*len(df_all["n"].unique()-2), colors="black", linewidths=0.6, linestyles=(0, (5,10)))
-            
+            max_width = df_all["width"].max()
+
             for i, n in enumerate(np.sort(df_all["n"].unique())):
                 for j, method in enumerate(methods):
                     widths = df_all[(df_all["n"]==n) & (df_all["method"]==method)]["width"]
+                    widths = widths.fillna(0.0) # NaN widths correspond to degenerate CIs with width 0
                     pos = (len(methods)+2)*i+j
+                    if metric != "accuracy":
+                        pos = pos + 1
                     ax.boxplot(widths, positions=[pos], widths=0.8, patch_artist=True,
                                 boxprops=dict(facecolor=method_colors[method]),
                                 flierprops=dict(marker='o', markersize=3, markerfacecolor=method_colors[method],
@@ -79,16 +81,16 @@ def plot_all_width_classif(root_folder: str, output_path: str):
             legend_handles = [mpatches.Patch(color=method_colors[method], label=method_labels[method]) for method in methods]
             
             ax.set_xlabel("Sample size", weight="bold")
-            ax.set_ylim(0.49, 1.02)
+            ax.set_ylabel("CI width", weight="bold")
+            ax.set_ylim(0.0, max(1, max_width)+0.01)
             ax.set_title(f"{metric.upper()}".replace("_", " "), weight="bold")
             ax.set_xticks([(len(methods)+2)*i+2 for i in range(len(df_all["n"].unique()))])
             ax.set_xticklabels([f"{int(n)}" for n in np.sort(df_all["n"].unique())])
-            ax.set_yticks(np.arange(0.5, 1.01, 0.05))
-            ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
-            ax.legend(handles=legend_handles, loc="lower right", bbox_to_anchor=(1.35, 0.5))
+            ax.set_yticks(np.arange(0, max(1, max_width)*1.01, step=0.1))
+            ax.grid(which='major', axis='y', linestyle=(0, (5,10)), color='black', linewidth=0.6)
+            ax.legend(handles=legend_handles, loc="lower right", bbox_to_anchor=(1.2, 0.5))
             ax.set_xlim(-1, (len(methods)+2)*len(df_all["n"].unique()))
         
-        fig.suptitle(f"{fig_name}", fontsize=32, weight="bold", y=0.98)
         plt.tight_layout()
         output_file = output_path.replace(".pdf", f"_{fig_name.lower()}.pdf")
         if not os.path.exists(os.path.dirname(output_file)):

@@ -23,11 +23,11 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
     df_macro_width = extract_df_classif_width(folder_path_macro, file_prefix_macro, metrics_macro)
 
     # Choose layout: each metric gets 2 columns (coverage + width)
-    means_macro_df_n=df_macro[(df_macro['method']=='percentile') & (df_macro['n']<=250)].sort_values(by=['stat', 'n'])
-    means_micro_df_n=df_micro[(df_micro['method']=='percentile') & (df_micro['n']<=250)].sort_values(by=['stat', 'n'])
+    means_macro_df_n=df_macro[(df_macro['method']=='percentile') & (df_macro['n']<=250)].sort_values(by=['metric', 'n'])
+    means_micro_df_n=df_micro[(df_micro['method']=='percentile') & (df_micro['n']<=250)].sort_values(by=['metric', 'n'])
 
-    means_macro_df_n_width =df_macro_width[(df_macro_width['method']=='percentile') & (df_macro_width['n']<=250)].sort_values(by=['stat', 'n'])
-    means_micro_df_n_width =df_micro_width[(df_micro_width['method']=='percentile') & (df_micro_width['n']<=250)].sort_values(by=['stat', 'n'])
+    means_macro_df_n_width =df_macro_width[(df_macro_width['method']=='percentile') & (df_macro_width['n']<=250)].sort_values(by=['metric', 'n'])
+    means_micro_df_n_width =df_micro_width[(df_micro_width['method']=='percentile') & (df_micro_width['n']<=250)].sort_values(by=['metric', 'n'])
 
     num_metrics = len([m for m in metrics_macro if m not in ['accuracy', 'balanced_accuracy']]) + 1
     fig, axes = plt.subplots(
@@ -50,14 +50,14 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
         ax_width = axes[row, 1]
 
         # Coverage ----------------------------------------------------------
-        macro_data = means_macro_df_n[means_macro_df_n['stat'] == metric]
-        micro_data = means_micro_df_n[means_micro_df_n['stat'] == metric]
+        macro_data = means_macro_df_n[means_macro_df_n['metric'] == metric]
+        micro_data = means_micro_df_n[means_micro_df_n['metric'] == metric]
 
         for data, label in [(macro_data, "Macro"), (micro_data, "Micro")]:
             if not data.empty:
-                med = data.groupby("n")["value"].median()
-                q1 = data.groupby("n")["value"].quantile(0.25)
-                q3 = data.groupby("n")["value"].quantile(0.75)
+                med = data.groupby("n")["coverage"].median()
+                q1 = data.groupby("n")["coverage"].quantile(0.25)
+                q3 = data.groupby("n")["coverage"].quantile(0.75)
                 n_vals = med.index.values
 
                 ax_cov.plot(n_vals, med.values, marker="o", label=label)
@@ -65,16 +65,18 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
 
         ax_cov.set_title(f'Coverage for micro-aggregated vs macro-aggregated {metric_labels[metric]}', weight='bold', fontsize=32)
         ax_cov.set_xlabel('Sample size', weight='bold', fontsize=28)
-        ax_cov.set_ylabel('Coverage', weight='bold', fontsize=28)
+        ax_cov.set_ylabel('Coverage (%)', weight='bold', fontsize=28)
+        ax_cov.set_yticks(np.arange(0.5, 1.01, 0.05))
+        ax_cov.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
         ax_cov.tick_params(axis='y', labelsize=24)
         ax_cov.tick_params(axis='x', labelsize=24)
-        ax_cov.set_ylim(0, 1.05)
+        ax_cov.set_ylim(0.49, 1.01)
         ax_cov.grid(True, axis='y')
         ax_cov.legend(fontsize=24)
 
         # Width subplot (right)
         # Macro
-        macro_width = means_macro_df_n_width[means_macro_df_n_width['stat'] == metric]
+        macro_width = means_macro_df_n_width[means_macro_df_n_width['metric'] == metric]
         if not macro_width.empty:
             medians = macro_width.groupby('n')['width'].median().values
             q1 = macro_width.groupby('n')['width'].quantile(0.25).values
@@ -83,7 +85,7 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
             ax_width.plot(n_vals, medians, marker='o', label='Macro', linewidth=2, markersize=8)
             ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
         # Micro
-        micro_width = means_micro_df_n_width[means_micro_df_n_width['stat'] == metric]
+        micro_width = means_micro_df_n_width[means_micro_df_n_width['metric'] == metric]
         if not micro_width.empty:
             medians = micro_width.groupby('n')['width'].median().values
             q1 = micro_width.groupby('n')['width'].quantile(0.25).values
@@ -96,7 +98,7 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
         ax_width.set_ylabel('Width', weight='bold', fontsize=28)
         ax_width.tick_params(axis='y', labelsize=24)
         ax_width.tick_params(axis='x', labelsize=24)
-        ax_width.set_ylim(-0.01, None)
+        ax_width.set_ylim(-0.01, 1.01)
         ax_width.grid(True, axis='y')
         ax_width.legend()
 
@@ -107,8 +109,8 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
     ax_width = axes[row, 1]
 
     # Coverage
-    macro_data = means_macro_df_n[means_macro_df_n['stat'] == "balanced_accuracy"]
-    micro_data = means_micro_df_n[means_micro_df_n['stat'] == "accuracy"]
+    macro_data = means_macro_df_n[means_macro_df_n['metric'] == "balanced_accuracy"]
+    micro_data = means_micro_df_n[means_micro_df_n['metric'] == "accuracy"]
 
     # Coverage subplot (left)
     # Macro
@@ -129,15 +131,17 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
         ax_cov.fill_between(n_vals, q1, q3, alpha=0.2)
     ax_cov.set_title(f'Coverage for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=32)
     ax_cov.set_xlabel('Sample size', weight='bold', fontsize=28)
-    ax_cov.set_ylabel('Coverage', weight='bold', fontsize=28)
+    ax_cov.set_ylabel('Coverage (%)', weight='bold', fontsize=28)
     ax_cov.tick_params(axis='y', labelsize=24)
     ax_cov.tick_params(axis='x', labelsize=24)
-    ax_cov.set_ylim(0, 1.05)
+    ax_cov.set_yticks(np.arange(0.5, 1.01, 0.05))
+    ax_cov.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
+    ax_cov.set_ylim(0.49, 1.01)
     ax_cov.grid(True, axis='y')
     ax_cov.legend(fontsize=24)
     # Width subplot (right)
     # Macro
-    macro_width = means_macro_df_n_width[means_macro_df_n_width['stat'] == "balanced_accuracy"]
+    macro_width = means_macro_df_n_width[means_macro_df_n_width['metric'] == "balanced_accuracy"]
     if not macro_width.empty:
         medians = macro_width.groupby('n')['width'].median().values
         q1 = macro_width.groupby('n')['width'].quantile(0.25).values
@@ -146,7 +150,7 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
         ax_width.plot(n_vals, medians, marker='o', label='Balanced Accuracy', linewidth=2, markersize=8)
         ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
     # Micro
-    micro_width = means_micro_df_n_width[means_micro_df_n_width['stat'] == "accuracy"]
+    micro_width = means_micro_df_n_width[means_micro_df_n_width['metric'] == "accuracy"]
     if not micro_width.empty:
         medians = micro_width.groupby('n')['width'].median().values
         q1 = micro_width.groupby('n')['width'].quantile(0.25).values
@@ -159,7 +163,7 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
     ax_width.set_ylabel('Width', weight='bold', fontsize=28)
     ax_width.tick_params(axis='y', labelsize=24)
     ax_width.tick_params(axis='x', labelsize=24)
-    ax_width.set_ylim(-0.01, None)
+    ax_width.set_ylim(-0.01, 1.01)
     ax_width.grid(True, axis='y')
     ax_width.legend()
 

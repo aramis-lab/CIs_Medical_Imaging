@@ -39,7 +39,7 @@ def perform_fits_segm(df_segm, metrics, stats):
     df_fit_results = pd.DataFrame(results)
     return df_fit_results
 
-def plot_rel_error_boxplots(root_folder:str, output_path:str):
+def plot_rel_error_CCP_segm(root_folder:str, output_path:str):
 
     metrics_segm = ['dsc', 'iou', 'nsd', 'boundary_iou', 'cldice', 'assd', 'masd', 'hd', 'hd_perc']
     palette = sns.color_palette("colorblind", len(metrics_segm))
@@ -97,7 +97,7 @@ def main():
     root_folder = args.root_folder
     output_path = args.output_path or os.path.join(root_folder, "clean_figs", "supplementary", "relative_error_CCP_segm.pdf")
 
-    plot_rel_error_boxplots(root_folder, output_path)
+    plot_rel_error_CCP_segm(root_folder, output_path)
 
 if __name__ == "__main__":
     main()

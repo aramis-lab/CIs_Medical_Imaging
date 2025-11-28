@@ -1,6 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 import argparse
+import numpy as np
 
 from ..df_loaders import extract_df_segm_cov
 from ..plot_utils import metric_labels, stat_labels
@@ -37,20 +38,17 @@ def plot_central_vs_dispersion(root_folder: str, output_path:str):
                     linewidth=2, markersize=8)
             ax.fill_between(n_vals, q1, q3, alpha=0.2)
 
-        ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=30)
+        ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=18)
         ax.set_xlabel('Sample size', weight='bold', fontsize=14)
-        ax.set_ylabel('Coverage', weight='bold', fontsize=14)
+        ax.set_ylabel('Coverage (%)', weight='bold', fontsize=14)
         ax.tick_params(axis='y', labelsize=12)
         ax.tick_params(axis='x', labelsize=12)
-        ax.set_ylim(0.5, 1)
-        ax.grid(True, axis='y')
-        ax.legend(prop={'weight': 'bold'}, fontsize=12)
+        ax.set_yticks(np.arange(0.5, 1.01, 0.05))
+        ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
+        ax.set_ylim(0.49, 1.01)
+        ax.grid(True, axis='y', linestyle=(0, (5,10)), color='black', linewidth=0.6)
+        ax.legend(fontsize=12, loc="lower right")
 
-        # hide unused subplots
-        for j in range(i + 1, len(axes)):
-            axes[j].set_visible(False)
-
-    plt.suptitle("CI Comparison: Central tendency statistics vs dispersion statistics", fontsize=30, weight='bold')
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))

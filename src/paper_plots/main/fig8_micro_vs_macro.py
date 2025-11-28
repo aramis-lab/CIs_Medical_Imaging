@@ -23,11 +23,11 @@ def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
 
 
     # Choose layout: each metric gets 2 columns (coverage + width)
-    macro_data=df_macro[(df_macro['method']=='percentile') & (df_macro['n']<=250)].sort_values(by=['stat', 'n'])
-    micro_data=df_micro[(df_micro['method']=='percentile') & (df_micro['n']<=250)].sort_values(by=['stat', 'n'])
+    macro_data=df_macro[(df_macro['method']=='percentile') & (df_macro['n']<=250)].sort_values(by=['metric', 'n'])
+    micro_data=df_micro[(df_micro['method']=='percentile') & (df_micro['n']<=250)].sort_values(by=['metric', 'n'])
 
-    macro_width =df_macro_width[(df_macro_width['method']=='percentile') & (df_macro_width['n']<=250)].sort_values(by=['stat', 'n'])
-    micro_width =df_micro_width[(df_micro_width['method']=='percentile') & (df_micro_width['n']<=250)].sort_values(by=['stat', 'n'])
+    macro_width =df_macro_width[(df_macro_width['method']=='percentile') & (df_macro_width['n']<=250)].sort_values(by=['metric', 'n'])
+    micro_width =df_micro_width[(df_micro_width['method']=='percentile') & (df_micro_width['n']<=250)].sort_values(by=['metric', 'n'])
 
     fig, axes = plt.subplots(
         1, 2, 
