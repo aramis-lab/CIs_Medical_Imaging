@@ -1,6 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 import argparse
+import numpy as np
 
 from ..df_loaders import extract_df_segm_cov
 from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels
@@ -39,16 +40,17 @@ def plot_bca_fail(root_folder: str, output_path: str):
                 linewidth=2
             )
     
-        ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold')
+        ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=18)
         ax.set_xlabel('Sample size',weight='bold', fontsize=16)
-        ax.set_ylabel('Coverage', weight='bold', fontsize=16)
+        ax.set_ylabel('Coverage (%)', weight='bold', fontsize=16)
+        ax.set_yticks(np.arange(0.5, 1.01, 0.05))
+        ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
         ax.tick_params(axis='y', labelsize=14)
         ax.tick_params(axis='x', labelsize=14)
-        ax.set_ylim(None, 1.01)
-        ax.grid(True, axis='y')
+        ax.set_ylim(0.59, 1.01)
+        ax.grid(True, axis='y', linestyle=(0, (5,10)), color='black', linewidth=0.6)
 
-        ax.legend(fontsize= 20)
-    plt.legend(fontsize= 20)
+        ax.legend(fontsize=12)
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
@@ -64,7 +66,7 @@ def main():
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/fig_bca_fail.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/bca_fail.pdf")
 
     # Call your plotting function
     plot_bca_fail(root_folder, output_path)

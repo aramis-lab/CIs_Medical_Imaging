@@ -46,26 +46,26 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         ax = axs[0]
 
         # --- CLASSIFICATION ---
-        medians = df_classif_cov_perc.groupby(['n', 'stat'])['coverage'].median().reset_index()
-        q1 = df_classif_cov_perc.groupby(['n', 'stat'])['coverage'].quantile(0.25).reset_index()
-        q3 = df_classif_cov_perc.groupby(['n', 'stat'])['coverage'].quantile(0.75).reset_index()
+        medians = df_classif_cov_perc.groupby(['n', 'metric'])['coverage'].median().reset_index()
+        q1 = df_classif_cov_perc.groupby(['n', 'metric'])['coverage'].quantile(0.25).reset_index()
+        q3 = df_classif_cov_perc.groupby(['n', 'metric'])['coverage'].quantile(0.75).reset_index()
         df_plot = (
-                medians.merge(q1, on=['n', 'stat'], suffixes=('_median', '_q1'))
-                .merge(q3, on=['n', 'stat'])
+                medians.merge(q1, on=['n', 'metric'], suffixes=('_median', '_q1'))
+                .merge(q3, on=['n', 'metric'])
                 .rename(columns={'coverage': 'coverage_q3'})
         )
 
-        for stat_classif in df_plot['stat'].unique():
-                df_stat = df_plot[df_plot['stat'] == stat_classif]
-                ax.plot(df_stat['n'], df_stat['coverage_median'], marker='o',
-                        color=color_dict_classif[stat_classif], linewidth=2,
-                        label=stat_classif)
-                ax.plot(df_stat['n'], df_stat['coverage_q1'], linestyle="--",
-                        color=color_dict_classif[stat_classif], linewidth=1)
-                ax.plot(df_stat['n'], df_stat['coverage_q3'], linestyle="--",
-                        color=color_dict_classif[stat_classif], linewidth=1)
-                ax.fill_between(df_stat['n'], df_stat['coverage_q1'], df_stat['coverage_q3'],
-                                alpha=0.2, color=color_dict_classif[stat_classif])
+        for classif_metric in df_plot['metric'].unique():
+                df_metric = df_plot[df_plot['metric'] == classif_metric]
+                ax.plot(df_metric['n'], df_metric['coverage_median'], marker='o',
+                        color=color_dict_classif[classif_metric], linewidth=2,
+                        label=classif_metric)
+                ax.plot(df_metric['n'], df_metric['coverage_q1'], linestyle="--",
+                        color=color_dict_classif[classif_metric], linewidth=1)
+                ax.plot(df_metric['n'], df_metric['coverage_q3'], linestyle="--",
+                        color=color_dict_classif[classif_metric], linewidth=1)
+                ax.fill_between(df_metric['n'], df_metric['coverage_q1'], df_metric['coverage_q3'],
+                                alpha=0.2, color=color_dict_classif[classif_metric])
 
         # --- SEGMENTATION ---
         df_segm_stat = df_segm_cov_perc[df_segm_cov_perc['stat'] == stat]
@@ -121,26 +121,26 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         ax = axs[1]
 
         # --- CLASSIFICATION ---
-        medians = df_classif_width_perc.groupby(['n', 'stat'])['width'].median().reset_index()
-        q1 = df_classif_width_perc.groupby(['n', 'stat'])['width'].quantile(0.25).reset_index()
-        q3 = df_classif_width_perc.groupby(['n', 'stat'])['width'].quantile(0.75).reset_index()
+        medians = df_classif_width_perc.groupby(['n', 'metric'])['width'].median().reset_index()
+        q1 = df_classif_width_perc.groupby(['n', 'metric'])['width'].quantile(0.25).reset_index()
+        q3 = df_classif_width_perc.groupby(['n', 'metric'])['width'].quantile(0.75).reset_index()
         df_plot = (
-                medians.merge(q1, on=['n', 'stat'], suffixes=('_median', '_q1'))
-                .merge(q3, on=['n', 'stat'])
+                medians.merge(q1, on=['n', 'metric'], suffixes=('_median', '_q1'))
+                .merge(q3, on=['n', 'metric'])
                 .rename(columns={'width': 'width_q3'})
         )
 
-        for stat_classif in df_plot['stat'].unique():
-                df_stat = df_plot[df_plot['stat'] == stat_classif]
-                ax.plot(df_stat['n'], df_stat['width_median'], marker='o',
-                        color=color_dict_classif[stat_classif], linewidth=2,
-                        label=stat_classif)
-                ax.plot(df_stat['n'], df_stat['width_q1'], linestyle="--",
-                        color=color_dict_classif[stat_classif], linewidth=1)
-                ax.plot(df_stat['n'], df_stat['width_q3'], linestyle="--",
-                        color=color_dict_classif[stat_classif], linewidth=1)
-                ax.fill_between(df_stat['n'], df_stat['width_q1'], df_stat['width_q3'],
-                                alpha=0.2, color=color_dict_classif[stat_classif])
+        for classif_metric in df_plot['metric'].unique():
+                df_metric = df_plot[df_plot['metric'] == classif_metric]
+                ax.plot(df_metric['n'], df_metric['width_median'], marker='o',
+                        color=color_dict_classif[classif_metric], linewidth=2,
+                        label=classif_metric)
+                ax.plot(df_metric['n'], df_metric['width_q1'], linestyle="--",
+                        color=color_dict_classif[classif_metric], linewidth=1)
+                ax.plot(df_metric['n'], df_metric['width_q3'], linestyle="--",
+                        color=color_dict_classif[classif_metric], linewidth=1)
+                ax.fill_between(df_metric['n'], df_metric['width_q1'], df_metric['width_q3'],
+                                alpha=0.2, color=color_dict_classif[classif_metric])
 
         # --- SEGMENTATION ---
         df_segm_stat = df_segm_width_perc[df_segm_width_perc['stat'] == stat]

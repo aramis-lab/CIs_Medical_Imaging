@@ -28,7 +28,7 @@ def perform_fits_segm(df_segm, metrics, stats):
                         Y = 0.95 - coverages
                         X = np.vstack([1/n_values]).T
                         beta2, res = np.linalg.lstsq(X, Y, rcond=None)[:2]
-                        rel_error = np.linalg.norm(X @ beta2 - Y) / np.linalg.norm(Y)
+                        rel_error = np.sqrt(res[0]) / np.linalg.norm(coverages)
                         new_row = {
                             'task': task,
                             'algo': algo,
@@ -58,7 +58,7 @@ def perform_fits_classif(df_classif):
                     Y = 0.95 - coverages
                     X = np.vstack([1/n_values]).T
                     beta2, res = np.linalg.lstsq(X, Y, rcond=None)[:2]
-                    rel_error = np.linalg.norm(X @ beta2 - Y) / np.linalg.norm(Y)
+                    rel_error = np.sqrt(res[0]) / np.linalg.norm(coverages)
                     new_row = {
                         'task': task,
                         'algo': algo,
@@ -95,7 +95,7 @@ def perform_pairwise_tests(df_fit_results, df_fit_results_classif):
                         (data_metric1['beta2'].to_numpy(), data_metric2['beta2'].to_numpy()),
                         statistic,
                         vectorized=False,
-                        n_resamples=10000,
+                        n_resamples=50000,
                         alternative='two-sided'
                     )
                     pval = res.pvalue
@@ -129,7 +129,29 @@ def tell_significance(p_vals, alphas=np.array([0.001, 0.01, 0.05]), bonferroni_c
                         significance[method][stat][metric1][metric2] = 0
     return significance
 
-def plot_significance_matrix(significance, p_vals, output_path):
+def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
+
+    metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice"]
+    stats_segm = ["mean", "median", "trimmed_mean", "std", "iqr_length"]
+
+    folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
+    file_prefix_segm = "aggregated_results"
+    df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
+    df_segm = df_segm[df_segm['method'] == 'percentile']
+
+    metrics_classif = ["balanced_accuracy", "ap", "auc", "f1_score"]
+
+    folder_path_classif = os.path.join(root_folder, "results_metrics_classif_macro")
+    file_prefix_classif = "aggregated_results"
+    df_classif = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
+    df_classif = df_classif[df_classif['method'] == 'percentile']
+
+    df_fit_results_segm = perform_fits_segm(df_segm, metrics_segm, stats_segm)
+    df_fit_results_classif = perform_fits_classif(df_classif)
+    print("Fitting completed.")
+    p_values = perform_pairwise_tests(df_fit_results_segm, df_fit_results_classif)
+    print("Pairwise tests completed.")
+    significance = tell_significance(p_values, bonferroni_correction=True)
 
     methods = list(significance.keys())
     stats = list(next(iter(significance.values())).keys())
@@ -161,14 +183,16 @@ def plot_significance_matrix(significance, p_vals, output_path):
                     global_matrix[i, j] = min(3, val) if val is not None else 0
 
             # Create p_val matrix for heatap 
-            pval_matrix = np.full((len(metrics_segm), len(metrics_classif)), 0.0)
+            pval_matrix = []
             for i, metric1 in enumerate(metrics_segm):
+                pval_row = []
                 for j, metric2 in enumerate(metrics_classif):
-                    p_val = p_vals.get(method, {}).get(stat, {}).get(metric2, {}).get(metric1, None)
+                    p_val = p_values.get(method, {}).get(stat, {}).get(metric2, {}).get(metric1, None)
                     if p_val is not None:
-                        pval_matrix[i, j] = p_val.round(4)
+                        pval_row.append(f"{p_val.round(4)}" if p_val >= 0.0001 else "<0.0001")
                     else:
-                        pval_matrix[i, j] = 0.0
+                        pval_row.append("0")
+                pval_matrix.append(pval_row)
             
             values = np.unique(global_matrix)
 
@@ -197,6 +221,7 @@ def plot_significance_matrix(significance, p_vals, output_path):
                 cmap=cmap,
                 cbar=False,
                 ax=ax,
+                fmt='',
                 annot_kws={"fontsize": 16}
             )
             ax.tick_params(axis='x', rotation=45, labelsize=14)
@@ -206,10 +231,10 @@ def plot_significance_matrix(significance, p_vals, output_path):
             ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
 
     legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1% (Red)'),
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5% (Orange)'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10% (Yellow)'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant (Gray)')
+        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
+        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
+        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
+        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
     ]
     plt.legend(
         handles=legend_elements,
@@ -236,26 +261,7 @@ def main():
     root_folder = args.root_folder
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/tests_CCP_segm_vs_classif.pdf")
 
-    metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice"]
-    stats_segm = ["mean", "median", "trimmed_mean", "std", "iqr_length"]
-
-    folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
-    file_prefix_segm = "aggregated_results"
-    df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
-
-    metrics_classif = ["balanced_accuracy", "ap", "auc", "f1_score"]
-
-    folder_path_classif = os.path.join(root_folder, "results_metrics_classif_macro")
-    file_prefix_classif = "aggregated_results"
-    df_classif = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
-
-    df_fit_results_segm = perform_fits_segm(df_segm, metrics_segm, stats_segm)
-    df_fit_results_classif = perform_fits_classif(df_classif)
-    print("Fitting completed.")
-    p_values = perform_pairwise_tests(df_fit_results_segm, df_fit_results_classif)
-    print("Pairwise tests completed.")
-    significance = tell_significance(p_values, bonferroni_correction=True)
-    plot_significance_matrix(significance, p_values, output_path)
+    plot_significance_matrix_segm_vs_classif(root_folder, output_path)
 
 if __name__ == "__main__":
     main()

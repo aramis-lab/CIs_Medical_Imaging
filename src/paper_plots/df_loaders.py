@@ -129,9 +129,9 @@ def extract_df_classif_cov(folder_path:str, file_prefix:str, metrics:list[str])-
                     for method, col in method_dict.items():
                         for val in data_n[col]:
                             all_values.append({
-                                'subtask':task, 
+                                'task':task, 
                                 'algo':algo,
-                                'stat': metric,
+                                'metric': metric,
                                 'n': n,
                                 'method': method,
                                 'coverage': val,
@@ -174,13 +174,12 @@ def extract_df_classif_width(folder_path:str, file_prefix:str, metrics:list[str]
                     for method, col in method_dict.items():
                         for val in data_n[col]:
                             all_values.append({
-                                'subtask':task, 
+                                'task':task, 
                                 'algo':algo,
-                                'stat': metric,
+                                'metric': metric,
                                 'n': n,
                                 'method': method,
-                                'width': val,
-                                'x_group': f"n={n}"
+                                'width': val
                             })
     df_classif_width=pd.DataFrame(all_values)
     return df_classif_width

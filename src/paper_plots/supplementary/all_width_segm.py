@@ -1,4 +1,3 @@
-from matplotlib.lines import Line2D
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,13 +47,14 @@ def plot_all_width_segm(root_folder: str, output_path: str):
             others = [m for m in methods if m not in preferred_order]
 
             methods = preferred+others
-
-            ax.hlines(np.arange(0, 1.01, 0.05), 0, (len(methods)+2)*len(df_all["n"].unique()-2), colors="black", linewidths=0.6, linestyles=(0, (5,10)))
-
+            max_width = df_all["width"].max()
             for i, n in enumerate(np.sort(df_all["n"].unique())):
                 for j, method in enumerate(methods):
                     widths = df_all[(df_all["n"]==n) & (df_all["method"]==method)]["width"]
+                    widths = widths.fillna(0.0) # NaN widths correspond to degenerate CIs with width 0
                     pos = (len(methods)+2)*i+j
+                    if summary_statistic != "mean":
+                        pos = pos + 1
                     ax.boxplot(widths, positions=[pos], widths=0.8, patch_artist=True,
                                 boxprops=dict(facecolor=method_colors[method]),
                                 flierprops=dict(marker='o', markersize=3, markerfacecolor=method_colors[method],
@@ -67,14 +67,17 @@ def plot_all_width_segm(root_folder: str, output_path: str):
 
             ax.set_ylabel(summary_statistic.upper(), weight="bold")
             ax.set_xlabel("Sample size", weight="bold")
-            ax.set_ylim(0.49, 1.02)
             ax.set_title(f"{metric.upper()}".replace("_", " "), weight="bold")
             ax.set_xticks([(len(methods)+2)*i+2 for i in range(len(df_all["n"].unique()))])
             ax.set_xticklabels([f"{int(n)}" for n in np.sort(df_all["n"].unique())])
-            ax.set_yticks(np.arange(0.5, 1.01, 0.05))
-            ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
+            if metric in ["hd", "hd_perc", "masd", "assd"]:
+                ax.set_yticks(np.arange(0, max(1,max_width)*1.01, step=max(max_width*1.01//10, 0.1)))
+            else:
+                ax.set_yticks(np.arange(0, max(1,max_width)*1.01, step=0.1))
+            ax.grid(which='major', axis='y', linestyle=(0, (5,10)), color='black', linewidth=0.6)
             ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.35, 0.5))
             ax.set_xlim(-1, (len(methods)+2)*len(df_all["n"].unique()))
+            ax.set_ylim(0.0, max(1, max_width)*1.01)
 
     plt.subplots_adjust(bottom=0.15, wspace=0.2, hspace=0.4)
     plt.tight_layout(rect=[0, 0.08, 1, 1])

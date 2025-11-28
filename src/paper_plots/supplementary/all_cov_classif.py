@@ -18,7 +18,7 @@ def plot_all_cov_classif(root_folder: str, output_path: str):
 
     folder_path_macro = os.path.join(root_folder, "results_metrics_classif_macro")
     file_prefix_macro = "aggregated_results"
-    metrics_macro = ["accuracy", "auc", "f1_score", "ap"]
+    metrics_macro = ["balanced_accuracy", "auc", "f1_score", "ap"]
 
     df_macro = extract_df_classif_cov(folder_path_macro, file_prefix_macro, metrics_macro)
 
@@ -50,7 +50,7 @@ def plot_all_cov_classif(root_folder: str, output_path: str):
     ]
     
     for fig_name, metrics, df in metrics_list:
-        fig, axs = plt.subplots(1, len(metrics), figsize=(6*len(metrics), 12))
+        fig, axs = plt.subplots(len(metrics), 1, figsize=(18,15*len(metrics)))
         if len(metrics) == 1:
             axs = [axs]
         
@@ -73,6 +73,8 @@ def plot_all_cov_classif(root_folder: str, output_path: str):
                 for j, method in enumerate(methods):
                     coverages = df_all[(df_all["n"]==n) & (df_all["method"]==method)]["coverage"]
                     pos = (len(methods)+2)*i+j
+                    if metric != "accuracy":
+                        pos = pos + 1
                     ax.boxplot(coverages, positions=[pos], widths=0.8, patch_artist=True,
                                 boxprops=dict(facecolor=method_colors[method]),
                                 flierprops=dict(marker='o', markersize=3, markerfacecolor=method_colors[method],
@@ -104,22 +106,22 @@ def plot_all_cov_classif(root_folder: str, output_path: str):
             legend_handles = [mpatches.Patch(color=method_colors[method], label=method_labels[method]) for method in methods]
             if arrow_legend_down:
                 legend_handles.append(Line2D([0], [0], color='black', marker='v', linestyle='None', alpha=0.5, markersize=21,
-                                            markeredgecolor="black", markeredgewidth=1.5, label='Count below 50% coverage'))
+                                            markeredgecolor="black", markeredgewidth=1.5, label='Count below\n 50% coverage'))
             if arrow_legend_up:
                 legend_handles.append(Line2D([0], [0], color='black', marker='^', linestyle='None', alpha=0.5, markersize=21,
-                                            markeredgecolor="black", markeredgewidth=1.5, label='Count above 99.5% coverage'))
+                                            markeredgecolor="black", markeredgewidth=1.5, label='Count above\n 99.5% coverage'))
             
             ax.set_xlabel("Sample size", weight="bold")
+            ax.set_ylabel("Coverage (%)", weight="bold")
             ax.set_ylim(0.49, 1.02)
             ax.set_title(f"{metric.upper()}".replace("_", " "), weight="bold")
             ax.set_xticks([(len(methods)+2)*i+2 for i in range(len(df_all["n"].unique()))])
             ax.set_xticklabels([f"{int(n)}" for n in np.sort(df_all["n"].unique())])
             ax.set_yticks(np.arange(0.5, 1.01, 0.05))
             ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
-            ax.legend(handles=legend_handles, loc="lower right", bbox_to_anchor=(1.35, 0.5))
+            ax.legend(handles=legend_handles, loc="lower right", bbox_to_anchor=(1.3, 0.5))
             ax.set_xlim(-1, (len(methods)+2)*len(df_all["n"].unique()))
         
-        fig.suptitle(f"{fig_name}", fontsize=32, weight="bold", y=0.98)
         plt.tight_layout()
         output_file = output_path.replace(".pdf", f"_{fig_name.lower()}.pdf")
         if not os.path.exists(os.path.dirname(output_file)):

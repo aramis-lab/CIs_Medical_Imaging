@@ -9,7 +9,7 @@ from ..df_loaders import extract_df_segm_cov
 from ..plot_utils import metric_labels, stat_labels, method_labels
 
 
-def plot_coverage_segm_metrics(root_folder:str, output_path:str):
+def plot_coverage_metrics_segm(root_folder:str, output_path:str):
 
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
@@ -52,7 +52,7 @@ def plot_coverage_segm_metrics(root_folder:str, output_path:str):
 
             ax.set_title(f'Stat : {stat_labels[stat]}, Method : {method_labels[method]}', weight='bold', fontsize=14)
             ax.set_xlabel('Sample size', weight='bold', fontsize=13)
-            ax.set_ylabel('Coverage', weight='bold',fontsize=13)
+            ax.set_ylabel('Coverage (%)', weight='bold',fontsize=13)
             ax.grid(True, axis='y')
             # Sort the legend by median value at n=125
             legend_order = (
@@ -70,6 +70,8 @@ def plot_coverage_segm_metrics(root_folder:str, output_path:str):
             ax.legend(sorted_handles, sorted_labels, fontsize=20, loc="lower right")
             ax.tick_params(axis='x', labelsize=14)
             ax.tick_params(axis='y', labelsize=14)
+            ax.set_yticks(np.arange(0.5, 1.01, 0.05))
+            ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
             ax.set_ylim(0.49,1)
             ax.set_yticks(np.arange(0.5, 1.05, 0.05))
     
@@ -85,8 +87,8 @@ def main():
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
     args = parser.parse_args()
 
-    output_path = args.output_path if args.output_path else os.path.join(args.root_folder, "clean_figs", "supplementary", "coverage_segm_metrics.pdf")
-    plot_coverage_segm_metrics(args.root_folder, output_path)
+    output_path = args.output_path if args.output_path else os.path.join(args.root_folder, "clean_figs", "supplementary", "coverage_metrics_segm.pdf")
+    plot_coverage_metrics_segm(args.root_folder, output_path)
 
 if __name__ == "__main__":
     main()

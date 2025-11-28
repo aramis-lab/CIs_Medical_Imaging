@@ -28,6 +28,11 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
         # Color palettes
         palette_segm = sns.color_palette("Blues", len(metrics_segm)+4)
         color_dict_segm = dict(zip(metrics_segm, palette_segm))
+        color_dict_segm.update({
+        "iou": (31/255, 119/255, 180/255),        # #1f77b4 -> RGB normalized
+        "boundary_iou": (74/255, 144/255, 226/255),  # #4a90e2 -> RGB normalized
+        "cldice": (1/255, 104/255, 4/255)         # #016804 -> RGB normalized
+        })
         metrics_classif = ["balanced_accuracy", "ap", "auc", "f1_score"]
         palette_classif = sns.color_palette("Reds", len(metrics_classif))
         color_dict_classif = dict(zip(metrics_classif, palette_classif))
@@ -49,26 +54,26 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                 ax = axs[row, 0]
 
                 # --- CLASSIFICATION ---
-                medians = df_classif_perc_cov.groupby(['n', 'stat'])['value'].median().reset_index()
-                q1 = df_classif_perc_cov.groupby(['n', 'stat'])['value'].quantile(0.25).reset_index()
-                q3 = df_classif_perc_cov.groupby(['n', 'stat'])['value'].quantile(0.75).reset_index()
+                medians = df_classif_perc_cov.groupby(['n', 'metric'])['coverage'].median().reset_index()
+                q1 = df_classif_perc_cov.groupby(['n', 'metric'])['coverage'].quantile(0.25).reset_index()
+                q3 = df_classif_perc_cov.groupby(['n', 'metric'])['coverage'].quantile(0.75).reset_index()
                 df_plot = (
-                        medians.merge(q1, on=['n', 'stat'], suffixes=('_median', '_q1'))
-                        .merge(q3, on=['n', 'stat'])
-                        .rename(columns={'value': 'value_q3'})
+                        medians.merge(q1, on=['n', 'metric'], suffixes=('_median', '_q1'))
+                        .merge(q3, on=['n', 'metric'])
+                        .rename(columns={'coverage': 'coverage_q3'})
                 )
 
-                for stat_classif in df_plot['stat'].unique():
-                        df_stat = df_plot[df_plot['stat'] == stat_classif]
-                        ax.plot(df_stat['n'], df_stat['value_median'], marker='o',
-                                color=color_dict_classif[stat_classif], linewidth=2,
-                                label=metric_labels[stat_classif])
-                        ax.plot(df_stat['n'], df_stat['value_q1'], linestyle="--",
-                                color=color_dict_classif[stat_classif], linewidth=1)
-                        ax.plot(df_stat['n'], df_stat['value_q3'], linestyle="--",
-                                color=color_dict_classif[stat_classif], linewidth=1)
-                        ax.fill_between(df_stat['n'], df_stat['value_q1'], df_stat['value_q3'],
-                                        alpha=0.2, color=color_dict_classif[stat_classif])
+                for metric_classif in df_plot['metric'].unique():
+                        df_metric = df_plot[df_plot['metric'] == metric_classif]
+                        ax.plot(df_metric['n'], df_metric['coverage_median'], marker='o',
+                                color=color_dict_classif[metric_classif], linewidth=2,
+                                label=metric_classif)
+                        ax.plot(df_metric['n'], df_metric['coverage_q1'], linestyle="--",
+                                color=color_dict_classif[metric_classif], linewidth=1)
+                        ax.plot(df_metric['n'], df_metric['coverage_q3'], linestyle="--",
+                                color=color_dict_classif[metric_classif], linewidth=1)
+                        ax.fill_between(df_metric['n'], df_metric['coverage_q1'], df_metric['coverage_q3'],
+                                        alpha=0.2, color=color_dict_classif[metric_classif])
 
                 # --- SEGMENTATION ---
                 df_segm_stat = df_segm_perc_cov[df_segm_perc_cov['stat'] == stat]
@@ -84,7 +89,7 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                 for metric in df_plot['metric'].unique():
                         df_metric = df_plot[df_plot['metric'] == metric]
                         ax.plot(df_metric['n'], df_metric['coverage_median'], marker='o',
-                                color=color_dict_segm[metric], linewidth=2, label=metric_labels[metric])
+                                color=color_dict_segm[metric], linewidth=2, label=metric)
                         ax.plot(df_metric['n'], df_metric['coverage_q1'], linestyle="--",
                                 color=color_dict_segm[metric], linewidth=1)
                         ax.plot(df_metric['n'], df_metric['coverage_q3'], linestyle="--",
@@ -94,9 +99,11 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
 
                 ax.set_title(f"Coverage — {stat_labels[stat]}", fontsize=44, weight="bold")
                 ax.set_xlabel("Sample size", fontsize=32)
-                ax.set_ylabel("Coverage", fontsize=32)
+                ax.set_ylabel("Coverage (%)", fontsize=32)
+                ax.set_yticks(np.arange(0.5, 1.01, 0.05))
+                ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
                 ax.grid(True, axis="y")
-                ax.set_ylim(None, 1.01)
+                ax.set_ylim(0.49, 1.01)
                 # ===== SEPARATE LEGENDS =====
                 handles_all, labels_all = ax.get_legend_handles_labels()
 
@@ -112,11 +119,11 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
 
                 # draw them in different corners
                 leg1 = ax.legend(handles_classif, labels_classif, title="Classification metrics",
-                                fontsize=24, title_fontsize=28, loc="upper right")
+                                fontsize=24, title_fontsize=28, loc="center right")
                 ax.add_artist(leg1)
 
                 ax.legend(handles_segm, labels_segm, title="Segmentation metrics",
-                        fontsize=24, title_fontsize=28, loc="center right")
+                        fontsize=24, title_fontsize=28, loc="lower right")
 
                 # ============================================================
                 # WIDTH (right column)
@@ -124,26 +131,26 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                 ax = axs[row, 1]
 
                 # --- CLASSIFICATION ---
-                medians = df_classif_perc_width.groupby(['n', 'stat'])['width'].median().reset_index()
-                q1 = df_classif_perc_width.groupby(['n', 'stat'])['width'].quantile(0.25).reset_index()
-                q3 = df_classif_perc_width.groupby(['n', 'stat'])['width'].quantile(0.75).reset_index()
+                medians = df_classif_perc_width.groupby(['n', 'metric'])['width'].median().reset_index()
+                q1 = df_classif_perc_width.groupby(['n', 'metric'])['width'].quantile(0.25).reset_index()
+                q3 = df_classif_perc_width.groupby(['n', 'metric'])['width'].quantile(0.75).reset_index()
                 df_plot = (
-                        medians.merge(q1, on=['n', 'stat'], suffixes=('_median', '_q1'))
-                        .merge(q3, on=['n', 'stat'])
+                        medians.merge(q1, on=['n', 'metric'], suffixes=('_median', '_q1'))
+                        .merge(q3, on=['n', 'metric'])
                         .rename(columns={'width': 'width_q3'})
                 )
 
-                for stat_classif in df_plot['stat'].unique():
-                        df_stat = df_plot[df_plot['stat'] == stat_classif]
-                        ax.plot(df_stat['n'], df_stat['width_median'], marker='o',
-                                color=color_dict_classif[stat_classif], linewidth=2,
-                                label=metric_labels[stat_classif])
-                        ax.plot(df_stat['n'], df_stat['width_q1'], linestyle="--",
-                                color=color_dict_classif[stat_classif], linewidth=1)
-                        ax.plot(df_stat['n'], df_stat['width_q3'], linestyle="--",
-                                color=color_dict_classif[stat_classif], linewidth=1)
-                        ax.fill_between(df_stat['n'], df_stat['width_q1'], df_stat['width_q3'],
-                                        alpha=0.2, color=color_dict_classif[stat_classif])
+                for metric_classif in df_plot['metric'].unique():
+                        df_metric = df_plot[df_plot['metric'] == metric_classif]
+                        ax.plot(df_metric['n'], df_metric['width_median'], marker='o',
+                                color=color_dict_classif[metric_classif], linewidth=2,
+                                label=metric_classif)
+                        ax.plot(df_metric['n'], df_metric['width_q1'], linestyle="--",
+                                color=color_dict_classif[metric_classif], linewidth=1)
+                        ax.plot(df_metric['n'], df_metric['width_q3'], linestyle="--",
+                                color=color_dict_classif[metric_classif], linewidth=1)
+                        ax.fill_between(df_metric['n'], df_metric['width_q1'], df_metric['width_q3'],
+                                        alpha=0.2, color=color_dict_classif[metric_classif])
 
                 # --- SEGMENTATION ---
                 df_segm_mean = df_segm_perc_width[df_segm_perc_width['stat'] == stat]
@@ -159,7 +166,7 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                 for metric in df_plot['metric'].unique():
                         df_metric = df_plot[df_plot['metric'] == metric]
                         ax.plot(df_metric['n'], df_metric['width_median'], marker='o',
-                                color=color_dict_segm[metric], linewidth=2, label=metric_labels[metric])
+                                color=color_dict_segm[metric], linewidth=2, label=metric)
                         ax.plot(df_metric['n'], df_metric['width_q1'], linestyle="--",
                                 color=color_dict_segm[metric], linewidth=1)
                         ax.plot(df_metric['n'], df_metric['width_q3'], linestyle="--",
@@ -170,6 +177,7 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                 ax.set_title(f"Width — {stat_labels[stat]}", fontsize=44, weight="bold")
                 ax.set_xlabel("Sample size", fontsize=32)
                 ax.set_ylabel("Width", fontsize=32)
+                ax.set_ylim(-0.01, 1.01)
                 ax.grid(True, axis="y")
 
                 # ===== SEPARATE LEGENDS =====
