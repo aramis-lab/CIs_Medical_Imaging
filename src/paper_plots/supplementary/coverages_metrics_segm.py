@@ -11,6 +11,8 @@ from ..plot_utils import metric_labels, stat_labels, method_labels
 
 def plot_coverage_metrics_segm(root_folder:str, output_path:str):
 
+    plt.rcdefaults()
+
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "assd", "masd", "hd", "hd_perc"]
@@ -50,9 +52,9 @@ def plot_coverage_metrics_segm(root_folder:str, output_path:str):
                 ax.plot(df_metric['n'].unique(), medians, marker='o', label=metric_labels[metric], color=color_dict[metric], linewidth=2, markersize=8)
                 ax.fill_between(df_metric['n'].unique(), q1, q3, alpha=0.2, color=color_dict[metric])
 
-            ax.set_title(f'Stat : {stat_labels[stat]}, Method : {method_labels[method]}', weight='bold', fontsize=14)
-            ax.set_xlabel('Sample size', weight='bold', fontsize=13)
-            ax.set_ylabel('Coverage (%)', weight='bold',fontsize=13)
+            ax.set_title(f'Stat : {stat_labels[stat]}, Method : {method_labels[method]}', weight='bold', fontsize=32)
+            ax.set_xlabel('Sample size', weight='bold', fontsize=24)
+            ax.set_ylabel('Coverage (%)', weight='bold',fontsize=24)
             ax.grid(True, axis='y')
             # Sort the legend by median value at n=125
             legend_order = (
@@ -68,8 +70,8 @@ def plot_coverage_metrics_segm(root_folder:str, output_path:str):
             sorted_handles_labels = sorted(zip(handles, labels), key=lambda x: legend_order.get_loc(x[1]))
             sorted_handles, sorted_labels = zip(*sorted_handles_labels)
             ax.legend(sorted_handles, sorted_labels, fontsize=20, loc="lower right")
-            ax.tick_params(axis='x', labelsize=14)
-            ax.tick_params(axis='y', labelsize=14)
+            ax.tick_params(axis='x', labelsize=20)
+            ax.tick_params(axis='y', labelsize=20)
             ax.set_yticks(np.arange(0.5, 1.01, 0.05))
             ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
             ax.set_ylim(0.49,1)

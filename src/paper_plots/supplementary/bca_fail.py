@@ -8,6 +8,8 @@ from ..plot_utils import method_labels, method_colors, metric_labels, stat_label
 
 def plot_bca_fail(root_folder: str, output_path: str):
 
+    plt.rcdefaults()
+
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]

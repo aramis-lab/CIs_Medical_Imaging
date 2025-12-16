@@ -31,19 +31,19 @@ method_labels = {
     "logit_transform": "Logit Transform",
     "wilson": "Wilson",
     "agresti_coull" : "Agresti-Coull",
-    "exact" : "Exact \n(Cloper-Pearson)",
+    "exact" : "Exact \n(Clopper-Pearson)",
     "wald" : 'Wald',
     "param_t" : "Parametric t",
     "param_z" : "Parametric z"
 }
 
 method_colors = {
-    "basic": "#E07A5F", 
+    "basic": "#0077B6",
     "percentile": "#B39DDB", 
     "bca" : "#F4A261",
     "wilson" : "#DFCF3E", 
     "agresti_coull" : "#5D9336", 
     "exact" : "#DB4ADB", 
-    "wald" : "#367F9C", 
+    "wald" : "#E07A5F",
     "param_t" : "#999999", 
     "param_z" : "#A7C7E7"}

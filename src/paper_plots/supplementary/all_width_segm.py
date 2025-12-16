@@ -75,7 +75,7 @@ def plot_all_width_segm(root_folder: str, output_path: str):
             else:
                 ax.set_yticks(np.arange(0, max(1,max_width)*1.01, step=0.1))
             ax.grid(which='major', axis='y', linestyle=(0, (5,10)), color='black', linewidth=0.6)
-            ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.35, 0.5))
+            ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.25, 0.5))
             ax.set_xlim(-1, (len(methods)+2)*len(df_all["n"].unique()))
             ax.set_ylim(0.0, max(1, max_width)*1.01)
 

@@ -8,6 +8,8 @@ from ..plot_utils import metric_labels, stat_labels
 
 
 def plot_central_vs_dispersion(root_folder: str, output_path:str):
+
+    plt.rcdefaults()
     
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"

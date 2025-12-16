@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import os
 import argparse
@@ -7,6 +8,9 @@ from ..df_loaders import extract_df_classif_cov, extract_df_classif_width
 
 
 def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
+
+    plt.rcdefaults()
+
     folder_path_micro = os.path.join(root_folder, "results_metrics_classif")
     file_prefix_micro = "aggregated_results"
     metrics_micro =['accuracy']
@@ -54,14 +58,15 @@ def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
         n_vals = micro_data['n'].unique()
         ax_cov.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=2, markersize=8)
         ax_cov.fill_between(n_vals, q1, q3, alpha=0.2)
-    ax_cov.set_title(f'Coverage for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=32)
+    ax_cov.set_title(f'Coverage for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=38)
     ax_cov.set_xlabel('Sample size', weight='bold', fontsize=28)
     ax_cov.set_ylabel('Coverage', weight='bold', fontsize=28)
-    ax_cov.tick_params(axis='y', labelsize=24)
-    ax_cov.tick_params(axis='x', labelsize=24)
+    ax_cov.tick_params(axis='y', labelsize=26)
+    ax_cov.tick_params(axis='x', labelsize=26)
     ax_cov.set_ylim(0, 1.05)
+    ax_cov.set_yticks(np.arange(0.0, 1.01, 0.1))
     ax_cov.grid(True, axis='y')
-    ax_cov.legend(fontsize=24)
+    ax_cov.legend(fontsize=32)
     ax_width = axes[1]
 
     # Width subplot (right)
@@ -81,14 +86,15 @@ def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
         n_vals = micro_width['n'].unique()
         ax_width.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=2, markersize=8)
         ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
-    ax_width.set_title(f'Width for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=32)
+    ax_width.set_title(f'Width for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=38)
     ax_width.set_xlabel('Sample size', weight='bold', fontsize=28)
     ax_width.set_ylabel('Width', weight='bold', fontsize=28)
-    ax_width.tick_params(axis='y', labelsize=24)
-    ax_width.tick_params(axis='x', labelsize=24)
+    ax_width.tick_params(axis='y', labelsize=26)
+    ax_width.tick_params(axis='x', labelsize=26)
+    ax_width.set_yticks(np.arange(0.0, 1.01, 0.1))
     ax_width.set_ylim(-0.01, None)
     ax_width.grid(True, axis='y')
-    ax_width.legend(fontsize=24)
+    ax_width.legend(fontsize=32)
 
     for ax, letter in zip([ax_cov, ax_width], ['A', 'B']):
         ax.text(0.02, 0.98, letter, transform=ax.transAxes,

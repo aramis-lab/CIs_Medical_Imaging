@@ -127,6 +127,8 @@ def tell_significance(p_vals, alphas=np.array([0.01, 0.05, 0.1]), bonferroni_cor
 
 def plot_significance_matrix_segm(root_folder:str, output_path:str):
 
+    plt.rcdefaults()
+
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
@@ -178,7 +180,7 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
                         pval_row.append(f"{p_val.round(4)}" if p_val >= 0.0001 else "<0.0001")
                     else:
                         pval_row.append("0")
-                pval_row[i] = "O"
+                pval_row[i] = "0"
                 pval_matrix.append(pval_row)
             
             values = np.unique(global_matrix)
@@ -228,7 +230,7 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
         ncol=1,
         fontsize=16,
         frameon=True,
-        title="Significance levels with Bonferroni correction",
+        title="Significance levels \nwith Bonferroni correction",
         title_fontsize=16
     )
     plt.tight_layout()

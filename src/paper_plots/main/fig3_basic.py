@@ -6,6 +6,8 @@ from ..df_loaders import extract_df_segm_cov, extract_df_classif_cov
 from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels
 
 def plot_fig3_basic(root_folder: str, output_path: str):
+
+    plt.rcdefaults()
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc"]
@@ -55,7 +57,7 @@ def plot_fig3_basic(root_folder: str, output_path: str):
 
     ax.grid(True, axis='y')
 
-    ax.legend(fontsize= 20)
+    ax.legend(fontsize= 32)
 
     ax= axs[1]
 
@@ -92,7 +94,7 @@ def plot_fig3_basic(root_folder: str, output_path: str):
     ax.set_ylim(0.8,1)
     ax.grid(True, axis='y')
 
-    ax.legend(fontsize= 20)
+    ax.legend(fontsize= 32)
 
     for ax, letter in zip(axs, ['A', 'B']):
         ax.text(0.98, 0.02, letter, transform=ax.transAxes,

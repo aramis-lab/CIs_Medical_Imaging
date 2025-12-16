@@ -85,6 +85,8 @@ def compute_descriptive_stats(root_folder:str):
 
 def plot_descriptive_stats_classif(root_folder:str, output_path:str):
 
+    plt.rcdefaults()
+
     results_df = compute_descriptive_stats(root_folder)
     dimensions = results_df['dimension'].unique()
     dimension_order = sorted(results_df['dimension'].unique())

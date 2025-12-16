@@ -8,6 +8,8 @@ from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov, extract_df
 
 
 def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
+
+        plt.rcdefaults()
     
         folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
         file_prefix_segm = "aggregated_results"
@@ -92,6 +94,7 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         ax.set_title(f"Coverage — {stat_labels[stat]}", fontsize=44, weight="bold")
         ax.set_xlabel("Sample size", fontsize=32)
         ax.set_ylabel("Coverage", fontsize=32)
+        ax.tick_params(axis="both", labelsize=24)
         ax.grid(True, axis="y")
         ax.set_ylim(None, 1.01)
         # ===== SEPARATE LEGENDS =====
@@ -167,6 +170,7 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         ax.set_title(f"Width — {stat_labels[stat]}", fontsize=44, weight="bold")
         ax.set_xlabel("Sample size", fontsize=32)
         ax.set_ylabel("Width", fontsize=32)
+        ax.tick_params(axis="both", labelsize=24)
         ax.grid(True, axis="y")
 
         # ===== SEPARATE LEGENDS =====
@@ -195,7 +199,6 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
                         fontsize=40, fontweight='bold', va='top', ha='center')
 
         # Global layout
-        plt.suptitle("CI Comparison: Classification Macro vs Segmentation", fontsize=30, weight='bold')
         plt.tight_layout(rect=[0, 0, 1, 0.97])
         if not os.path.exists(os.path.dirname(output_path)):
                 os.makedirs(os.path.dirname(output_path))

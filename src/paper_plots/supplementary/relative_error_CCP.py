@@ -41,6 +41,8 @@ def perform_fits_segm(df_segm, metrics, stats):
 
 def plot_rel_error_CCP_segm(root_folder:str, output_path:str):
 
+    plt.rcdefaults()
+
     metrics_segm = ['dsc', 'iou', 'nsd', 'boundary_iou', 'cldice', 'assd', 'masd', 'hd', 'hd_perc']
     palette = sns.color_palette("colorblind", len(metrics_segm))
     color_dict = dict(zip(metrics_segm, palette))

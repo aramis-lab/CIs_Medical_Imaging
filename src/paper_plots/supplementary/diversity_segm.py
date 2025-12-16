@@ -53,10 +53,14 @@ def compute_descriptive_stats(root_folder:str):
 
 def plot_descriptive_stats_segm(root_folder:str, output_path:str):
 
+    plt.rcdefaults()
+
     results_df = compute_descriptive_stats(root_folder)
     metrics=results_df['Metric'].unique()
 
-    metrics_order = ["dsc", "iou", "nsd", "boundary_iou", "cldice", "assd", "masd", "hd" , "hd_perc"]
+    bounded_metrics = ['dsc', 'iou', 'nsd', 'boundary_iou', 'cldice']
+    unbounded_metrics = ['assd', 'masd', 'hd' , 'hd_perc']
+    metrics_order = bounded_metrics + unbounded_metrics
 
     results_df['Metric'] = pd.Categorical(results_df['Metric'], categories=metrics_order, ordered=True)
     results_df = results_df.sort_values('Metric')
@@ -73,9 +77,52 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
 
     dark_color_dict = {k: darken_color(v, 0.75) for k, v in color_dict.items()}
 
+    fig, axs = plt.subplots(2,2, figsize=(30, 12))
+
+    ### --- Plot Mean --- ###
+    ax = axs[0,0]
+
+    # Primary axis (left): bounded metrics only
+    sns.boxplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax, dodge=False)
+    sns.stripplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax, dodge=False)
+    ax.set_ylabel('Mean (bounded metrics)', weight='bold')
+    ax.set_ylim(0, 1.01)
+
+    # Twin axis (right): unbounded metrics
+    ax2 = ax.twinx()
+    sns.boxplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax2, dodge=False)
+    sns.stripplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
+    ax2.set_ylabel('Mean (unbounded metrics)', weight='bold')
+    ax2.set_ylim(0, None)
+    ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
+
+    # Common formatting
+    ax.set_xticklabels([metric_labels[m] for m in metrics_order])
+    ax.set_title('Mean values across all instances', weight='bold', fontsize=15)
+    ax.set_xlabel('Metric', weight='bold')
+
+    ### --- Plot Standard Error --- ###
+    ax = axs[0,1]
+    # Primary axis (left): bounded metrics only
+    sns.boxplot(x='Metric', y='Standard error', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax, dodge=False)
+    sns.stripplot(x='Metric', y='Standard error', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax, dodge=False)
+    ax.set_ylabel('Standard Error (bounded metrics)', weight='bold')
+    ax.set_ylim(0, 1.01)
+
+    # Twin axis (right): unbounded metrics
+    ax2 = ax.twinx()
+    sns.boxplot(x='Metric', y='Standard error', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax2, dodge=False)
+    sns.stripplot(x='Metric', y='Standard error', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
+    ax2.set_ylabel('Standard Error (unbounded metrics)', weight='bold')
+    ax2.set_ylim(0, None)
+    ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
+
+    ax.set_xticklabels([metric_labels[m] for m in metrics_order])
+    ax.set_title('Standard Error values across all instances', weight='bold', fontsize=15)
+    ax.set_xlabel('Metric', weight='bold')
+
     # Plot Skewness
-    fig, axs = plt.subplots(2,1, figsize=(15, 12))
-    ax = axs[0]
+    ax = axs[1,0]
     ax.axhspan(-1, 1, color='#009409', alpha=0.3, label='Normal range')
     ax.axhline(2, color='red', linestyle='--', label='Highly skewed on the left', linewidth=1.7)
     ax.axhline(-2, color='red', linestyle='-', label='Highly skewed on the right', linewidth=1.7)
@@ -96,7 +143,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     ax.set_ylim(-6, 10)
 
     # Plot Kurtosis
-    ax = axs[1]
+    ax = axs[1,1]
     ax.axhspan(2, 7, color='#009409', alpha=0.3, label='Normal range')
     ax.axhline(7, color='red', linestyle='--', label='Heavy tails', linewidth=1.7)
     ax.axhline(2, color='red', linestyle='-', label='Light tails', linewidth=1.7)
@@ -108,7 +155,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
                frameon=False,
                fontsize=10,
                title_fontproperties=FontProperties(weight='bold'),
-               bbox_to_anchor=(1.23, 0.8)
+               bbox_to_anchor=(1.18, 0.8)
               )
     ax.set_xticklabels([metric_labels[m] for m in metrics_order])
     ax.set_title('Kurtosis values across all instances', weight='bold', fontsize=15)

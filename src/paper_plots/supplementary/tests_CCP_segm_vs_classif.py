@@ -131,6 +131,8 @@ def tell_significance(p_vals, alphas=np.array([0.001, 0.01, 0.05]), bonferroni_c
 
 def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
 
+    plt.rcdefaults()
+
     metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice"]
     stats_segm = ["mean", "median", "trimmed_mean", "std", "iqr_length"]
 
@@ -243,7 +245,7 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
         ncol=1,
         fontsize=16,
         frameon=True,
-        title="Significance levels with Bonferroni correction",
+        title="Significance levels \nwith Bonferroni correction",
         title_fontsize=16
     )
     plt.tight_layout()
