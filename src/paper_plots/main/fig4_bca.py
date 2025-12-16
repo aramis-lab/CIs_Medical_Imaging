@@ -8,6 +8,8 @@ from ..plot_utils import method_labels, method_colors, metric_labels, stat_label
 
 def plot_fig4_bca(root_folder: str, output_path: str):
 
+    plt.rcdefaults()
+
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc"]
@@ -40,11 +42,10 @@ def plot_fig4_bca(root_folder: str, output_path: str):
     plt.ylabel('Coverage', weight='bold', fontsize=32)
     plt.tick_params(axis='y', labelsize=28)
     plt.tick_params(axis='x', labelsize=28)
-    plt.ylim(None, 1.01)
+    plt.ylim(0.59, 1.01)
     plt.grid(True, axis='y')
 
-    plt.legend(fontsize= 24)
-    plt.legend(fontsize= 24)
+    plt.legend(fontsize= 32)
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))

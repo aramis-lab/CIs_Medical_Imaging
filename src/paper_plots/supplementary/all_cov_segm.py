@@ -117,7 +117,7 @@ def plot_all_cov_segm(root_folder: str, output_path: str):
             ax.set_xticklabels([f"{int(n)}" for n in np.sort(df_all["n"].unique())])
             ax.set_yticks(np.arange(0.5, 1.01, 0.05))
             ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
-            ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.25, 0.5))
+            ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.35, 0.5))
             ax.set_xlim(-1, (len(methods)+2)*len(df_all["n"].unique()))
 
     plt.subplots_adjust(bottom=0.15, wspace=0.2, hspace=0.4)

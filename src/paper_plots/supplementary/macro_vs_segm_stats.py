@@ -10,6 +10,8 @@ from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov, extract_df
 
 def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
 
+        plt.rcdefaults()
+
         folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
         file_prefix_segm = "aggregated_results"
         metrics_segm = ["boundary_iou", "cldice", "dsc", "iou", "nsd"]
@@ -28,11 +30,6 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
         # Color palettes
         palette_segm = sns.color_palette("Blues", len(metrics_segm)+4)
         color_dict_segm = dict(zip(metrics_segm, palette_segm))
-        color_dict_segm.update({
-        "iou": (31/255, 119/255, 180/255),        # #1f77b4 -> RGB normalized
-        "boundary_iou": (74/255, 144/255, 226/255),  # #4a90e2 -> RGB normalized
-        "cldice": (1/255, 104/255, 4/255)         # #016804 -> RGB normalized
-        })
         metrics_classif = ["balanced_accuracy", "ap", "auc", "f1_score"]
         palette_classif = sns.color_palette("Reds", len(metrics_classif))
         color_dict_classif = dict(zip(metrics_classif, palette_classif))
@@ -102,6 +99,7 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                 ax.set_ylabel("Coverage (%)", fontsize=32)
                 ax.set_yticks(np.arange(0.5, 1.01, 0.05))
                 ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
+                ax.tick_params(axis='both', which='major', labelsize=24)
                 ax.grid(True, axis="y")
                 ax.set_ylim(0.49, 1.01)
                 # ===== SEPARATE LEGENDS =====
@@ -177,6 +175,8 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                 ax.set_title(f"Width — {stat_labels[stat]}", fontsize=44, weight="bold")
                 ax.set_xlabel("Sample size", fontsize=32)
                 ax.set_ylabel("Width", fontsize=32)
+                ax.set_yticks(np.arange(0.0, 1.01, 0.1))
+                ax.tick_params(axis='both', which='both', labelsize=24)
                 ax.set_ylim(-0.01, 1.01)
                 ax.grid(True, axis="y")
 

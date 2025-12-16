@@ -3,23 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import argparse
+from ..plot_utils import method_labels, method_colors
 
 def plot_ci_bounds(root_folder: str, output_path: str):
-    method_colors = {
-        "basic": "#E07A5F", 
-        "percentile": "#B39DDB", 
-        "bca" : "#F4A261",
-        "wilson" : "#DFCF3E", 
-        "agresti_coull" : "#5D9336", 
-        "exact" : "#DB4ADB", 
-        "wald" : "#367F9C", 
-        "param_t" : "#999999", 
-        "param_z" : "#A7C7E7"}
-
-    method_labels = {
-        "basic": "Basic", 
-        "percentile": "Percentile", 
-        "bca" : "BCa"}
 
     task = "Task03_Liver_L2"
     alg_name = "17111010008"
@@ -55,9 +41,10 @@ def plot_ci_bounds(root_folder: str, output_path: str):
         ax.fill_betweenx(np.arange(len(indices)), lower, upper, color=method_colors[method])
         ax.vlines(true_value, 0,10000, colors="red", linestyles="--")
         ax.axis()
-        ax.set_title("CI bounds " + method_labels[method] + " vs True Value, Coverage: " + f"{coverage:.2f}")
-        ax.set_xlabel("Confidence Interval Bounds")
-        ax.set_ylabel("Interval Index (lower bound sorted)")
+        ax.set_title("CI bounds " + method_labels[method] + " vs True Value, Coverage: " + f"{coverage:.2f}", fontsize=16)
+        ax.set_xlabel("Confidence Interval Bounds", fontsize=14)
+        ax.set_ylabel("Interval Index (lower bound sorted)", fontsize=14)
+        ax.tick_params(axis='both', which='major', labelsize=12)
         ax.set_xlim(0, 1)
 
     plt.tight_layout()

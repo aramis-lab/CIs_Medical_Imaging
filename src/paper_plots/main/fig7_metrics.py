@@ -13,6 +13,8 @@ from ..df_loaders import extract_df_segm_cov
 
 def plot_fig7_metrics(root_folder:str, output_path:str):
 
+    plt.rcdefaults()
+
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm =['dsc', 'iou', 'nsd', 'boundary_iou', 'cldice', 'assd', 'masd', 'hd', 'hd_perc']

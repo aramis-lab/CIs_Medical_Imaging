@@ -8,6 +8,9 @@ from ..df_loaders import extract_df_classif_cov, extract_df_classif_width
 
 
 def plot_micro_vs_macro_all(root_folder:str, output_path:str):
+
+    plt.rcdefaults()
+    
     folder_path_micro = os.path.join(root_folder, "results_metrics_classif")
     file_prefix_micro = "aggregated_results"
     metrics_micro =['accuracy', "auc", "f1_score", "ap"]
@@ -98,6 +101,7 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
         ax_width.set_ylabel('Width', weight='bold', fontsize=28)
         ax_width.tick_params(axis='y', labelsize=24)
         ax_width.tick_params(axis='x', labelsize=24)
+        ax_width.set_yticks(np.arange(0.0, 1.01, 0.1))
         ax_width.set_ylim(-0.01, 1.01)
         ax_width.grid(True, axis='y')
         ax_width.legend()
@@ -164,6 +168,7 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
     ax_width.tick_params(axis='y', labelsize=24)
     ax_width.tick_params(axis='x', labelsize=24)
     ax_width.set_ylim(-0.01, 1.01)
+    ax_width.set_yticks(np.arange(0.0, 1.01, 0.1))
     ax_width.grid(True, axis='y')
     ax_width.legend()
 

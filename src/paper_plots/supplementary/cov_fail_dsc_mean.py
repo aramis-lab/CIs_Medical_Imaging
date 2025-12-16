@@ -8,6 +8,8 @@ from ..df_loaders import extract_df_segm_cov
 
 
 def plot_cov_fail_dsc_mean(root_folder:str, output_path:str):
+
+    plt.rcdefaults()
     
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
