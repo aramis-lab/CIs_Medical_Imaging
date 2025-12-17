@@ -7,7 +7,7 @@ from ..plot_utils import metric_labels, stat_labels
 from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov, extract_df_segm_width, extract_df_classif_width
 
 
-def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
+def plot_fig7_macro_vs_segm_mean(root_folder:str, output_path:str):
 
         plt.rcdefaults()
     
@@ -60,7 +60,8 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         for classif_metric in df_plot['metric'].unique():
                 df_metric = df_plot[df_plot['metric'] == classif_metric]
                 ax.plot(df_metric['n'], df_metric['coverage_median'], marker='o',
-                        color=color_dict_classif[classif_metric], linewidth=2,
+                        color=color_dict_classif[classif_metric], linewidth=4,
+                        markersize=10,
                         label=classif_metric)
                 ax.plot(df_metric['n'], df_metric['coverage_q1'], linestyle="--",
                         color=color_dict_classif[classif_metric], linewidth=1)
@@ -83,7 +84,7 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         for metric in df_plot['metric'].unique():
                 df_metric = df_plot[df_plot['metric'] == metric]
                 ax.plot(df_metric['n'], df_metric['coverage_median'], marker='o',
-                        color=color_dict_segm[metric], linewidth=2, label=metric)
+                        color=color_dict_segm[metric], linewidth=4,  markersize=10, label=metric)
                 ax.plot(df_metric['n'], df_metric['coverage_q1'], linestyle="--",
                         color=color_dict_segm[metric], linewidth=1)
                 ax.plot(df_metric['n'], df_metric['coverage_q3'], linestyle="--",
@@ -93,8 +94,9 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
 
         ax.set_title(f"Coverage — {stat_labels[stat]}", fontsize=44, weight="bold")
         ax.set_xlabel("Sample size", fontsize=32)
-        ax.set_ylabel("Coverage", fontsize=32)
+        ax.set_ylabel("Coverage (%)", fontsize=32)
         ax.tick_params(axis="both", labelsize=24)
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
         ax.grid(True, axis="y")
         ax.set_ylim(None, 1.01)
         # ===== SEPARATE LEGENDS =====
@@ -136,7 +138,8 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         for classif_metric in df_plot['metric'].unique():
                 df_metric = df_plot[df_plot['metric'] == classif_metric]
                 ax.plot(df_metric['n'], df_metric['width_median'], marker='o',
-                        color=color_dict_classif[classif_metric], linewidth=2,
+                        color=color_dict_classif[classif_metric], linewidth=4,
+                        markersize=10,
                         label=classif_metric)
                 ax.plot(df_metric['n'], df_metric['width_q1'], linestyle="--",
                         color=color_dict_classif[classif_metric], linewidth=1)
@@ -159,7 +162,7 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         for metric in df_plot['metric'].unique():
                 df_metric = df_plot[df_plot['metric'] == metric]
                 ax.plot(df_metric['n'], df_metric['width_median'], marker='o',
-                        color=color_dict_segm[metric], linewidth=2, label=metric)
+                        color=color_dict_segm[metric], linewidth=4, markersize=10, label=metric)
                 ax.plot(df_metric['n'], df_metric['width_q1'], linestyle="--",
                         color=color_dict_segm[metric], linewidth=1)
                 ax.plot(df_metric['n'], df_metric['width_q3'], linestyle="--",
@@ -197,6 +200,8 @@ def plot_fig6_macro_vs_segm_mean(root_folder:str, output_path:str):
         for ax, letter in zip(axs, ['A', 'B']):
                 ax.text(0.5, 0.98, letter, transform=ax.transAxes,
                         fontsize=40, fontweight='bold', va='top', ha='center')
+        
+        plt.suptitle("Classification macro metrics vs Segmentation metrics", fontsize=44, weight="bold")
 
         # Global layout
         plt.tight_layout(rect=[0, 0, 1, 0.97])
@@ -214,10 +219,10 @@ def main():
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig6_macro_vs_segm_mean.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig7_macro_vs_segm_mean.pdf")
 
     # Call your plotting function
-    plot_fig6_macro_vs_segm_mean(root_folder, output_path)
+    plot_fig7_macro_vs_segm_mean(root_folder, output_path)
 
 if __name__ == "__main__":
     main()

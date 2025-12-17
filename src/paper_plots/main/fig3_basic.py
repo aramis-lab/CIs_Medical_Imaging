@@ -42,7 +42,8 @@ def plot_fig3_basic(root_folder: str, output_path: str):
             label=f"{method_labels[method]}",
             color=method_colors[method],
             marker='o',
-            linewidth=2
+            linewidth=4,
+            markersize=10
         )
         ax.fill_between(df_group['n'], df_group['coverage_q1'], df_group['coverage_q3'],
             color=method_colors[method],
@@ -50,10 +51,11 @@ def plot_fig3_basic(root_folder: str, output_path: str):
 
     ax.set_title(f'Metric: {metric_labels[metric]}, Stat: {stat_labels[stat]}', weight='bold', fontsize=40)
     ax.set_xlabel('Sample size',weight='bold', fontsize=32)
-    ax.set_ylabel('Coverage', weight='bold', fontsize=32)
+    ax.set_ylabel('Coverage (%)', weight='bold', fontsize=32)
     ax.tick_params(axis='y', labelsize=28)
     ax.tick_params(axis='x', labelsize=28)
     ax.set_ylim(0.8,1)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
 
     ax.grid(True, axis='y')
 
@@ -79,7 +81,8 @@ def plot_fig3_basic(root_folder: str, output_path: str):
             label=f"{method_labels[method]}",
             color=method_colors[method],
             marker='o',
-            linewidth=2
+            linewidth=4,
+            markersize=10
         )
         ax.fill_between(df_group['n'], df_group['coverage_q1'], df_group['coverage_q3'],
             color=method_colors[method],

@@ -27,7 +27,6 @@ def compute_descriptive_stats(root_folder:str):
             tasks = df_alg['subtask'].unique()
             for task in tasks:
                 if score=='cldice' and task not in  ['Task08_HepaticVessel_L1','Task08_HepaticVessel_L2']:
-                    print(task)
                     continue 
                 else:
                     values = df_alg[df_alg['subtask'] == task]['value'].dropna()
@@ -41,7 +40,7 @@ def compute_descriptive_stats(root_folder:str):
                     'skewness': skew(values),
                     'kurtosis': kurtosis(values, fisher=False),
                     'Mean': np.mean(values), 
-                    'Standard error': np.std(values, ddof=1),
+                    'Standard deviation': np.std(values, ddof=1),
                     "total_number": count_total
                     }  
         
@@ -104,21 +103,21 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     ### --- Plot Standard Error --- ###
     ax = axs[0,1]
     # Primary axis (left): bounded metrics only
-    sns.boxplot(x='Metric', y='Standard error', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax, dodge=False)
-    sns.stripplot(x='Metric', y='Standard error', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax, dodge=False)
-    ax.set_ylabel('Standard Error (bounded metrics)', weight='bold')
+    sns.boxplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax, dodge=False)
+    sns.stripplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax, dodge=False)
+    ax.set_ylabel('Standard Deviation (bounded metrics)', weight='bold')
     ax.set_ylim(0, 1.01)
 
     # Twin axis (right): unbounded metrics
     ax2 = ax.twinx()
-    sns.boxplot(x='Metric', y='Standard error', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax2, dodge=False)
-    sns.stripplot(x='Metric', y='Standard error', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
-    ax2.set_ylabel('Standard Error (unbounded metrics)', weight='bold')
+    sns.boxplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax2, dodge=False)
+    sns.stripplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
+    ax2.set_ylabel('Standard Deviation (unbounded metrics)', weight='bold')
     ax2.set_ylim(0, None)
     ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
 
     ax.set_xticklabels([metric_labels[m] for m in metrics_order])
-    ax.set_title('Standard Error values across all instances', weight='bold', fontsize=15)
+    ax.set_title('Standard Deviation values across all instances', weight='bold', fontsize=15)
     ax.set_xlabel('Metric', weight='bold')
 
     # Plot Skewness

@@ -34,15 +34,17 @@ def plot_fig4_bca(root_folder: str, output_path: str):
             color=method_colors[method],
             marker='o',
             linestyle=linestyle,
-            linewidth=2
+            linewidth=4,
+            markersize=10
         )
     
     plt.title(f'Metric: {metric_labels[metrics_segm[0]]}', weight='bold', fontsize=40)
     plt.xlabel('Sample size',weight='bold', fontsize=32)
-    plt.ylabel('Coverage', weight='bold', fontsize=32)
+    plt.ylabel('Coverage (%)', weight='bold', fontsize=32)
+    plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
     plt.tick_params(axis='y', labelsize=28)
     plt.tick_params(axis='x', labelsize=28)
-    plt.ylim(0.59, 1.01)
+    plt.ylim(0.79, 1.01)
     plt.grid(True, axis='y')
 
     plt.legend(fontsize= 32)

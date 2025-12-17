@@ -11,7 +11,6 @@ from .cov_fail_dsc_mean import plot_cov_fail_dsc_mean
 from .coverages_metrics_segm import plot_coverage_metrics_segm
 from .diversity_classif import plot_descriptive_stats_classif
 from .diversity_segm import plot_descriptive_stats_segm
-from .hoeffding_vs_param_t import plot_hoeffding_vs_param_t
 from .macro_vs_segm_stats import plot_macro_vs_segm_stats
 from .micro_vs_macro import plot_micro_vs_macro_all
 from .relative_error_CCP import plot_rel_error_CCP_segm
