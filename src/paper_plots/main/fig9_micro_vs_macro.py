@@ -7,7 +7,7 @@ from ..plot_utils import metric_labels
 from ..df_loaders import extract_df_classif_cov, extract_df_classif_width
 
 
-def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
+def plot_fig9_micro_vs_macro(root_folder:str, output_path:str):
 
     plt.rcdefaults()
 
@@ -48,7 +48,7 @@ def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
         q1 = macro_data.groupby('n')['coverage'].quantile(0.25).values
         q3 = macro_data.groupby('n')['coverage'].quantile(0.75).values
         n_vals = macro_data['n'].unique()
-        ax_cov.plot(n_vals, medians, marker='o', label='Balanced Accuracy', linewidth=2, markersize=8)
+        ax_cov.plot(n_vals, medians, marker='o', label='Balanced Accuracy', linewidth=4, markersize=10)
         ax_cov.fill_between(n_vals, q1, q3, alpha=0.2)
     # Micro
     if not micro_data.empty:
@@ -56,13 +56,14 @@ def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
         q1 = micro_data.groupby('n')['coverage'].quantile(0.25).values
         q3 = micro_data.groupby('n')['coverage'].quantile(0.75).values
         n_vals = micro_data['n'].unique()
-        ax_cov.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=2, markersize=8)
+        ax_cov.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=4, markersize=10)
         ax_cov.fill_between(n_vals, q1, q3, alpha=0.2)
     ax_cov.set_title(f'Coverage for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=38)
     ax_cov.set_xlabel('Sample size', weight='bold', fontsize=28)
-    ax_cov.set_ylabel('Coverage', weight='bold', fontsize=28)
+    ax_cov.set_ylabel('Coverage (%)', weight='bold', fontsize=28)
     ax_cov.tick_params(axis='y', labelsize=26)
     ax_cov.tick_params(axis='x', labelsize=26)
+    ax_cov.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
     ax_cov.set_ylim(0, 1.05)
     ax_cov.set_yticks(np.arange(0.0, 1.01, 0.1))
     ax_cov.grid(True, axis='y')
@@ -76,7 +77,7 @@ def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
         q1 = macro_width.groupby('n')['width'].quantile(0.25).values
         q3 = macro_width.groupby('n')['width'].quantile(0.75).values
         n_vals = macro_width['n'].unique()
-        ax_width.plot(n_vals, medians, marker='o', label='Balanced Accuracy', linewidth=2, markersize=8)
+        ax_width.plot(n_vals, medians, marker='o', label='Balanced Accuracy', linewidth=4, markersize=10)
         ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
     # Micro
     if not micro_width.empty:
@@ -84,7 +85,7 @@ def plot_fig8_micro_vs_macro(root_folder:str, output_path:str):
         q1 = micro_width.groupby('n')['width'].quantile(0.25).values
         q3 = micro_width.groupby('n')['width'].quantile(0.75).values
         n_vals = micro_width['n'].unique()
-        ax_width.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=2, markersize=8)
+        ax_width.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=4, markersize=10)
         ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
     ax_width.set_title(f'Width for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=38)
     ax_width.set_xlabel('Sample size', weight='bold', fontsize=28)
@@ -115,10 +116,10 @@ def main():
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig8_micro_vs_macro.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig9_micro_vs_macro.pdf")
 
     # Call your plotting function
-    plot_fig8_micro_vs_macro(root_folder, output_path)
+    plot_fig9_micro_vs_macro(root_folder, output_path)
 
 if __name__ == "__main__":
     main()

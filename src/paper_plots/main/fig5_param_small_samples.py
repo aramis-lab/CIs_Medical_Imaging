@@ -8,7 +8,6 @@ import argparse
 from ..plot_utils import method_labels, method_colors, metric_labels
 from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov
 
-
 def plot_fig5_param_small_samples(root_folder:str, output_path:str):
 
     plt.rcParams.update({

@@ -38,12 +38,12 @@ method_labels = {
 }
 
 method_colors = {
-    "basic": "#0077B6",
+    "basic": "#D4461F",
     "percentile": "#B39DDB", 
     "bca" : "#F4A261",
     "wilson" : "#DFCF3E", 
     "agresti_coull" : "#5D9336", 
     "exact" : "#DB4ADB", 
-    "wald" : "#E07A5F",
+    "wald" : "#367F9C",
     "param_t" : "#999999", 
     "param_z" : "#A7C7E7"}

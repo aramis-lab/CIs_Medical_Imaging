@@ -17,7 +17,7 @@ def plot_bca_fail(root_folder: str, output_path: str):
 
     df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
 
-    fig, axs = plt.subplots(3, 3, figsize=(21, 18))
+    fig, axs = plt.subplots(3, 3, figsize=(60, 48))
     axs = axs.flatten()
 
     for i, metric in enumerate(metrics_segm):
@@ -39,7 +39,8 @@ def plot_bca_fail(root_folder: str, output_path: str):
                 color=method_colors[method],
                 marker='o',
                 linestyle=linestyle,
-                linewidth=2
+                linewidth=4,
+                markersize=10
             )
     
         ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=18)

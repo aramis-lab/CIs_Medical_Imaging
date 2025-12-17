@@ -11,7 +11,7 @@ import argparse
 from ..plot_utils import metric_labels, stat_labels
 from ..df_loaders import extract_df_segm_cov
 
-def plot_fig7_metrics(root_folder:str, output_path:str):
+def plot_fig8_metrics(root_folder:str, output_path:str):
 
     plt.rcdefaults()
 
@@ -43,7 +43,7 @@ def plot_fig7_metrics(root_folder:str, output_path:str):
         medians = data_method[data_method['metric']==metric].groupby('n')['coverage'].median().values
         q1 = data_method[data_method['metric']==metric].groupby('n')['coverage'].quantile(0.25).values
         q3 = data_method[data_method['metric']==metric].groupby('n')['coverage'].quantile(0.75).values
-        ax_left.plot(df_metric['n'].unique(), medians, marker='o', label=metric_labels[metric], color=color_dict[metric], linewidth=2, markersize=8)
+        ax_left.plot(df_metric['n'].unique(), medians, marker='o', label=metric_labels[metric], color=color_dict[metric], linewidth=4, markersize=10)
         ax_left.fill_between(df_metric['n'].unique(), q1, q3, alpha=0.2, color=color_dict[metric])
     sorted_metrics = (
     data_method.groupby('metric')["coverage"]
@@ -54,7 +54,8 @@ def plot_fig7_metrics(root_folder:str, output_path:str):
 
     ax_left.set_title(f'Stat : {stat_labels["mean"]}', weight='bold', fontsize=28)
     ax_left.set_xlabel('Sample size', weight='bold', fontsize=26)
-    ax_left.set_ylabel('Coverage', weight='bold',fontsize=26)
+    ax_left.set_ylabel('Coverage (%)', weight='bold',fontsize=26)
+    ax_left.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
     ax_left.grid(True, axis='y')
     # Sort the legend by median value at n=125
     legend_order = (
@@ -227,10 +228,10 @@ def main():
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig7_metrics.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig8_metrics.pdf")
 
     # Call your plotting function
-    plot_fig7_metrics(root_folder, output_path)
+    plot_fig8_metrics(root_folder, output_path)
 
 if __name__=="__main__":
     main()
