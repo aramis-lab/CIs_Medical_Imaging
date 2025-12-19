@@ -41,8 +41,6 @@ def make_all_plots(root_folder: str):
     plot_descriptive_stats_classif(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/skew_kurt_segm.pdf")
     plot_descriptive_stats_segm(root_folder, output_path)
-    output_path = os.path.join(root_folder, "clean_figs/supplementary/hoeffding_vs_param_t.pdf")
-    plot_hoeffding_vs_param_t(output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/macro_vs_segm_stats.pdf")
     plot_macro_vs_segm_stats(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/micro_vs_macro.pdf")
