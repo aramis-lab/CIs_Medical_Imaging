@@ -13,11 +13,11 @@ def plot_fig4_bca(root_folder: str, output_path: str):
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc"]
-    stats_segm = ["mean", "median"]
+    stats_segm = ["median"]
 
     df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
 
-    data_method=df_segm[df_segm['method'].isin(['bca', 'percentile']) & df_segm['stat'].isin(['mean', 'median'])]
+    data_method=df_segm[df_segm['method'].isin(['bca', 'percentile']) & df_segm['stat'].isin(['median'])]
     medians = data_method.groupby(['n', 'method', 'stat'])['coverage'].median().reset_index()
     q1 = data_method.groupby(['n', 'method', 'stat'])['coverage'].quantile(0.25).reset_index()
     q3 = data_method.groupby(['n', 'method', 'stat'])['coverage'].quantile(0.75).reset_index()
@@ -36,6 +36,13 @@ def plot_fig4_bca(root_folder: str, output_path: str):
             linestyle=linestyle,
             linewidth=4,
             markersize=10
+        )
+        plt.fill_between(
+            df_group['n'],
+            df_group['coverage_q1'],
+            df_group['coverage_q3'],
+            color=method_colors[method],
+            alpha=0.2
         )
     
     plt.title(f'Metric: {metric_labels[metrics_segm[0]]}', weight='bold', fontsize=40)

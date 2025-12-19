@@ -92,10 +92,10 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                 df_plot = medians.merge(q1, on='n', suffixes=('_median', '_q1')).merge(q3, on='n').rename(columns={'coverage': 'coverage_q3'})
 
                 ax.plot(df_plot['n'], df_plot['coverage_median'], marker='o',
-                        color=color_dict_classif[classif_metric], linewidth=4, markersize=10,
+                        color="tab:blue", linewidth=4, markersize=10,
                         label=metric_labels[classif_metric])
                 ax.fill_between(df_plot['n'], df_plot['coverage_q1'], df_plot['coverage_q3'],
-                                alpha=0.2, color=color_dict_classif[classif_metric])
+                                alpha=0.2, color="tab:blue")
 
                 # --- SEGMENTATION ---
                 df_segm_stat = df_segm_cov_perc[(df_segm_cov_perc['stat'] == stat) & (df_segm_cov_perc['metric'] == segm_metric)]
@@ -105,10 +105,10 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                 df_plot = medians.merge(q1, on='n', suffixes=('_median', '_q1')).merge(q3, on='n').rename(columns={'coverage': 'coverage_q3'})
 
                 ax.plot(df_plot['n'], df_plot['coverage_median'], marker='s',
-                        color=color_dict_segm[segm_metric], linewidth=4, markersize=10,
+                        color="tab:orange", linewidth=4, markersize=10,
                         label=metric_labels[segm_metric])
                 ax.fill_between(df_plot['n'], df_plot['coverage_q1'], df_plot['coverage_q3'],
-                                alpha=0.6, color=color_dict_segm[segm_metric])
+                                alpha=0.2, color="tab:orange")
 
                 ax.set_title("Coverage", fontsize=TITLE_FONTSIZE, weight="bold")
                 ax.set_xlabel("Sample size", fontsize=LABEL_FONTSIZE)
@@ -137,10 +137,10 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                     df_plot = medians.merge(q1, on='n', suffixes=('_median', '_q1')).merge(q3, on='n').rename(columns={'width': 'width_q3'})
 
                     ax.plot(df_plot['n'], df_plot['width_median'], marker='o',
-                            color=color_dict_classif[classif_metric], linewidth=4, markersize=10,
+                            color="tab:blue", linewidth=4, markersize=10,
                             label=metric_labels[classif_metric])
                     ax.fill_between(df_plot['n'], df_plot['width_q1'], df_plot['width_q3'],
-                                    alpha=0.2, color=color_dict_classif[classif_metric])
+                                    alpha=0.2, color="tab:blue")
 
                     # --- SEGMENTATION ---
                     df_segm_stat = df_segm_width_perc[(df_segm_width_perc['stat'] == stat) & (df_segm_width_perc['metric'] == segm_metric)]
@@ -150,10 +150,10 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                     df_plot = medians.merge(q1, on='n', suffixes=('_median', '_q1')).merge(q3, on='n').rename(columns={'width': 'width_q3'})
 
                     ax.plot(df_plot['n'], df_plot['width_median'], marker='s',
-                            color=color_dict_segm[segm_metric], linewidth=4, markersize=10,
+                            color="tab:orange", linewidth=4, markersize=10,
                             label=metric_labels[segm_metric])
                     ax.fill_between(df_plot['n'], df_plot['width_q1'], df_plot['width_q3'],
-                                    alpha=0.6, color=color_dict_segm[segm_metric])
+                                    alpha=0.2, color="tab:orange")
 
                     ax.set_title(f"Width", fontsize=TITLE_FONTSIZE, weight="bold")
                     ax.set_xlabel("Sample size", fontsize=LABEL_FONTSIZE)
@@ -230,7 +230,7 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                 else:
                     ax.axhline(y=target_coverage, color='black', linestyle='--', linewidth=4, label=f"Target Coverage ({(target_coverage*100):.1f}%)")
 
-                for metric in [metric_a, metric_b]:
+                for i, metric in enumerate([metric_a, metric_b]):
                     df_metric = df_segm_cov_perc[df_segm_cov_perc["metric"] == metric]
                     medians = df_metric.groupby('n')['coverage'].median().reset_index()
                     q1 = df_metric.groupby('n')['coverage'].quantile(0.25).reset_index()
@@ -238,10 +238,10 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                     df_plot = medians.merge(q1, on='n', suffixes=('_median', '_q1')).merge(q3, on='n').rename(columns={'coverage': 'coverage_q3'})
 
                     ax.plot(df_plot['n'], df_plot['coverage_median'],
-                            marker='o', label=metric_labels[metric], color=color_dict_segm[metric],
+                            marker='o', label=metric_labels[metric], color="tab:blue" if i==0 else "tab:orange",
                             linewidth=4, markersize=10)
                     ax.fill_between(df_plot['n'], df_plot['coverage_q1'], df_plot['coverage_q3'],
-                                    alpha=0.2, color=color_dict_segm[metric])
+                                    alpha=0.2, color="tab:blue" if i==0 else "tab:orange")
 
                 ax.set_title("Coverage", fontsize=TITLE_FONTSIZE, weight="bold")
                 ax.set_xlabel("Sample size", fontsize=LABEL_FONTSIZE)
@@ -261,7 +261,7 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                     ax = axs[1]
                     ax.axhline(y=target_width, color='black', linestyle='--', linewidth=4, label=f"Target Width ({target_width})")
 
-                    for metric in [metric_a, metric_b]:
+                    for i, metric in enumerate([metric_a, metric_b]):
                         df_metric = df_segm_width_perc[df_segm_width_perc["metric"] == metric]
                         medians = df_metric.groupby('n')['width'].median().reset_index()
                         q1 = df_metric.groupby('n')['width'].quantile(0.25).reset_index()
@@ -269,16 +269,17 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                         df_plot = medians.merge(q1, on='n', suffixes=('_median', '_q1')).merge(q3, on='n').rename(columns={'width': 'width_q3'})
 
                         ax.plot(df_plot['n'], df_plot['width_median'],
-                                marker='o', label=metric_labels[metric], color=color_dict_segm[metric],
+                                marker='o', label=metric_labels[metric], color="tab:blue" if i==0 else "tab:orange",
                                 linewidth=4, markersize=10)
                         ax.fill_between(df_plot['n'], df_plot['width_q1'], df_plot['width_q3'],
-                                        alpha=0.2, color=color_dict_segm[metric])
+                                        alpha=0.2, color="tab:blue" if i==0 else "tab:orange")
 
                     ax.set_title("Width", fontsize=TITLE_FONTSIZE, weight="bold")
                     ax.set_xlabel("Sample size", fontsize=LABEL_FONTSIZE)
                     ax.set_ylabel("Width", fontsize=LABEL_FONTSIZE)
                     ax.grid(True, axis='y')
-                    ax.set_xscale("log")
+                    if scale_log:
+                        ax.set_xscale("log")
                     ax.tick_params(axis='both', labelsize=TICK_FONTSIZE)
                     ax.legend(fontsize=LEGEND_FONTSIZE, title_fontsize=LEGEND_TITLE_FONTSIZE, loc="upper right")
 
@@ -304,7 +305,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig10_sample_needs.pdf")
 
     # Call your plotting function
-    plot_fig10_sample_needs(root_folder, output_path, scale_log=True)
+    # plot_fig10_sample_needs(root_folder, output_path, scale_log=True)
     plot_fig10_sample_needs(root_folder, output_path, scale_log=False)
 
 if __name__=="__main__":
