@@ -12,7 +12,8 @@ metric_labels = {
     'ap': 'AP',
     'auc': 'AUC',
     'f1_score': 'F1 Score',
-    'accuracy': 'Accuracy'
+    'accuracy': 'Accuracy',
+    "mcc": "MCC"
 }
 
 stat_labels = {
@@ -39,8 +40,8 @@ method_labels = {
 
 method_colors = {
     "basic": "#D4461F",
-    "percentile": "#B39DDB", 
-    "bca" : "#F4A261",
+    "percentile": "#8E5EE8", 
+    "bca" : "#FF9742",
     "wilson" : "#DFCF3E", 
     "agresti_coull" : "#5D9336", 
     "exact" : "#DB4ADB", 
