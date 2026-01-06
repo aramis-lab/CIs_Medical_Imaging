@@ -19,7 +19,7 @@ def plot_fig7bis_micro_vs_segm_mean(root_folder:str, output_path:str):
         df_segm_cov = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
         df_segm_width = extract_df_segm_width(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
 
-        folder_path_classif = os.path.join(root_folder, "results_metrics_classif")
+        folder_path_classif = os.path.join(root_folder, "results_metrics_classif_micro")
         file_prefix_classif = "aggregated_results"
         metrics_classif = ["auc", "ap", "accuracy", "f1_score"]
 
@@ -211,9 +211,7 @@ def plot_fig7bis_micro_vs_segm_mean(root_folder:str, output_path:str):
         plt.close()
 
 def main():
-
-    parser = argparse.ArgumentParser(description="Generate Figure 7bis classification micro vs mean of segmentation metrics.")
-
+    parser = argparse.ArgumentParser(description="Generate Figure 6 classification micro vs mean of segmentation metrics.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
 
@@ -224,8 +222,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig7bis_micro_vs_segm_mean.pdf")
 
     # Call your plotting function
-
-    plot_fig7bis_micro_vs_segm_mean(root_folder, output_path)
+    plot_fig7_macro_vs_segm_mean(root_folder, output_path)
 
 if __name__ == "__main__":
     main()

@@ -74,7 +74,7 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     ax_left.tick_params(axis='x', labelsize=28)
     ax_left.tick_params(axis='y', labelsize=28)
 
-    data= pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
+    data= pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"), sep=';')
     results=[]
     metrics=data['score'].unique()
     for score in metrics:
