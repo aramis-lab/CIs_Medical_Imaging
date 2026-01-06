@@ -27,10 +27,10 @@ def plot_fig4_bca(root_folder: str, output_path: str):
     plt.figure(figsize=(20, 16))
     
     for (method, stat), df_group in df_plot.groupby(['method', 'stat']):
-        linestyle = '--' if stat == 'median' else '-'
+        linestyle = '-' if stat == 'median' else '-'
         plt.plot(
             df_group['n'], df_group['coverage_median'],
-            label=f"{method_labels[method]} ({stat_labels[stat]})",
+            label=f"{method_labels[method]}",
             color=method_colors[method],
             marker='o',
             linestyle=linestyle,
@@ -45,7 +45,7 @@ def plot_fig4_bca(root_folder: str, output_path: str):
             alpha=0.2
         )
     
-    plt.title(f'Metric: {metric_labels[metrics_segm[0]]}', weight='bold', fontsize=40)
+    plt.title(f'Metric: {metric_labels[metrics_segm[0]]}, Summary statistic: Median', weight='bold', fontsize=40)
     plt.xlabel('Sample size',weight='bold', fontsize=32)
     plt.ylabel('Coverage (%)', weight='bold', fontsize=32)
     plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))

@@ -91,7 +91,7 @@ def plot_fig3_basic(root_folder: str, output_path: str):
 
     ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=40)
     ax.set_xlabel('Sample size',weight='bold', fontsize=32)
-    ax.set_ylabel('Coverage', weight='bold', fontsize=32)
+    # ax.set_ylabel('Coverage', weight='bold', fontsize=32)
     ax.tick_params(axis='y', labelsize=28)
     ax.tick_params(axis='x', labelsize=28)
     ax.set_ylim(0.8,1)

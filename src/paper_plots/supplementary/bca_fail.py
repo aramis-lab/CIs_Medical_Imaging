@@ -13,11 +13,11 @@ def plot_bca_fail(root_folder: str, output_path: str):
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
-    stats_segm = ["mean", "median"]
+    stats_segm = [ "median"]
 
     df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
 
-    fig, axs = plt.subplots(3, 3, figsize=(60, 48))
+    fig, axs = plt.subplots(3, 3, figsize=(25, 15))
     axs = axs.flatten()
 
     for i, metric in enumerate(metrics_segm):
@@ -32,28 +32,31 @@ def plot_bca_fail(root_folder: str, output_path: str):
         df_plot.rename(columns={'coverage': 'coverage_q3'}, inplace=True)
         
         for (method, stat), df_group in df_plot.groupby(['method', 'stat']):
-            linestyle = '--' if stat == 'median' else '-'
+            linestyle = '-' if stat == 'median' else '-'
             ax.plot(
                 df_group['n'], df_group['coverage_median'],
-                label=f"{method_labels[method]} ({stat_labels[stat]})",
+                label=f"{method_labels[method]}",
                 color=method_colors[method],
                 marker='o',
                 linestyle=linestyle,
                 linewidth=4,
                 markersize=10
             )
+            ax.fill_between(df_group['n'], df_group['coverage_q1'], df_group['coverage_q3'],
+            color=method_colors[method],
+            alpha=0.2)
     
-        ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=18)
-        ax.set_xlabel('Sample size',weight='bold', fontsize=16)
-        ax.set_ylabel('Coverage (%)', weight='bold', fontsize=16)
+        ax.set_title(f'Metric: {metric_labels[metric]}, Summary statistic: {stat_labels[stat]}', weight='bold', fontsize=22)
+        ax.set_xlabel('Sample size',weight='bold', fontsize=20)
+        ax.set_ylabel('Coverage (%)', weight='bold', fontsize=20)
         ax.set_yticks(np.arange(0.5, 1.01, 0.05))
         ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
-        ax.tick_params(axis='y', labelsize=14)
-        ax.tick_params(axis='x', labelsize=14)
-        ax.set_ylim(0.59, 1.01)
+        ax.tick_params(axis='y', labelsize=18)
+        ax.tick_params(axis='x', labelsize=18)
+        ax.set_ylim(0.8, 1.01)
         ax.grid(True, axis='y', linestyle=(0, (5,10)), color='black', linewidth=0.6)
 
-        ax.legend(fontsize=12)
+        ax.legend(fontsize=20)
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))

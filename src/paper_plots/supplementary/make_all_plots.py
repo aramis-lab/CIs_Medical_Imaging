@@ -12,6 +12,7 @@ from .coverages_metrics_segm import plot_coverage_metrics_segm
 from .diversity_classif import plot_descriptive_stats_classif
 from .diversity_segm import plot_descriptive_stats_segm
 from .macro_vs_segm_stats import plot_macro_vs_segm_stats
+from .micro_vs_segm_stats import plot_micro_vs_segm_stats
 from .micro_vs_macro import plot_micro_vs_macro_all
 from .relative_error_CCP import plot_rel_error_CCP_segm
 from .tests_CCP_segm_vs_classif import plot_significance_matrix_segm_vs_classif
@@ -31,8 +32,8 @@ def make_all_plots(root_folder: str):
     plot_bca_fail(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/central_vs_dispersion.pdf")
     plot_central_vs_dispersion(root_folder, output_path)
-    output_path = os.path.join(root_folder, "clean_figs/supplementary/ci_bounds.pdf")
-    plot_ci_bounds(root_folder, output_path)
+    # output_path = os.path.join(root_folder, "clean_figs/supplementary/ci_bounds.pdf")
+    # plot_ci_bounds(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/cov_fail_dsc_mean.pdf")
     plot_cov_fail_dsc_mean(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/coverage_metrics_segm.pdf")
@@ -43,6 +44,8 @@ def make_all_plots(root_folder: str):
     plot_descriptive_stats_segm(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/macro_vs_segm_stats.pdf")
     plot_macro_vs_segm_stats(root_folder, output_path)
+    output_path = os.path.join(root_folder, "clean_figs/supplementary/micro_vs_segm_stats.pdf")
+    plot_micro_vs_segm_stats(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/micro_vs_macro.pdf")
     plot_micro_vs_macro_all(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/relative_error_CCP_segm.pdf")

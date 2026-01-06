@@ -19,7 +19,7 @@ def plot_cov_fail_dsc_mean(root_folder:str, output_path:str):
     df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
     df_segm = df_segm[df_segm['method']=='percentile']
     
-    data = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
+    data = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"), sep=";")
 
     algo_dict = {algo: f"Algo_{i+1}" for i, algo in enumerate(data['alg_name'].unique())}
     task_dict = {task: f"Task_{i+1}" for i, task in enumerate(data['subtask'].unique())}

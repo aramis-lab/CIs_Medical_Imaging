@@ -2,7 +2,7 @@ import numpy as np
 import argparse
 import os
 import matplotlib.pyplot as plt
-
+from scipy.stats import t
 from ..df_loaders import extract_df_segm_width
 
 def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
@@ -24,8 +24,44 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
 
     df_percentile_median = df_percentile.groupby("n")["width"].median()
     df_param_t_median = df_param_t.groupby("n")["width"].median()
-
+    df_param_t_Q1 = df_param_t.groupby("n")["width"].quantile(0.25)
+    df_param_t_Q3 = df_param_t.groupby("n")["width"].quantile(0.75)
+    var_Q1 = (df_param_t_Q1 * np.sqrt(df_param_t_Q1.index) / 4) ** 2
+    var_Q3 = (df_param_t_Q3 * np.sqrt(df_param_t_Q3.index) / 4) ** 2
+    inferred_width_Q1 = 2 * t.ppf(0.975, n_values - 1) * np.sqrt(var_Q1.median()) / np.sqrt(n_values)
+    inferred_width_Q3 = 2 * t.ppf(0.975, n_values - 1) * np.sqrt(var_Q3.median()) / np.sqrt(n_values)
     plt.figure(figsize=(8, 6))
+    plt.plot(n_values, hoeffding_width, label="Hoeffding Width", color='#0173B2', linestyle='--')
+    # plt.plot(n_values, worst_param_t_width, label="Worst-case Parametric t Width", color='#DE8F05')
+    plt.plot(
+    n_values,
+    inferred_width_Q1,
+    linestyle="--",
+    color="#CC78BC",
+    linewidth=2,
+    label=fr"Q1 Parametric t width ($\sigma={np.sqrt(var_Q1.median()):.4f}$)"
+    )
+
+    plt.plot(
+        n_values,
+        inferred_width_Q3,
+        linestyle="-.",
+        color="#CC78BC",
+        linewidth=2,
+        alpha=0.7,
+        label=fr"Q3 Parametric t width ($\sigma={np.sqrt(var_Q3.median()):.4f}$)"
+    )
+    # plt.fill_between(
+    # df_param_t_Q1.index,
+    # df_param_t_Q1.values,
+    # df_param_t_Q3.values,
+    # alpha=0.6,
+    # color="#CC78BC",
+    # label="Parametric t IQR")
+    plt.plot(n_values, typical_param_t_width, label="Typical Parametric t Width", color='#CC78BC')
+    
+    plt.scatter(df_percentile_median.index, df_percentile_median.values, label="Percentile Width, CIs of mean of DSC", color='#029E73', marker='D',zorder=5)
+    plt.scatter(df_param_t_median.index, df_param_t_median.values, label="Parametric t Width, CIs of mean of DSC", color="#3C220C", marker='x', zorder=5)
     plt.plot(n_values, hoeffding_width, label="Hoeffding", color='#0173B2', linestyle='--')
     plt.plot(n_values, empirical_bernstein_width, label="Empirical Bernstein", color='#DE8F05', linestyle='-.')
     plt.plot(n_values, typical_param_t_width, label="Median Parametric t", color='#CC78BC')

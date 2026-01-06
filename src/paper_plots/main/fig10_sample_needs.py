@@ -8,6 +8,14 @@ import argparse
 from ..plot_utils import metric_labels
 from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov, extract_df_segm_width, extract_df_classif_width
 
+def plot_with_iqr(ax, df, y, label, marker):
+    med = df.groupby("n")[y].median()
+    q1 = df.groupby("n")[y].quantile(0.25)
+    q3 = df.groupby("n")[y].quantile(0.75)
+
+    ax.plot(med.index, med.values, marker=marker, linewidth=4, label=label)
+    ax.fill_between(med.index, q1.values, q3.values, alpha=0.25)
+
 
 def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=True):
 
@@ -52,6 +60,34 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
 
     stat = stats_segm[0]
 
+    # df_segm_stat = df_segm_width_perc[(df_segm_width_perc['stat'] == stat) & (df_segm_width_perc['metric'] == 'dsc')]
+    # medians = df_segm_stat.groupby(['n'])['width'].median().reset_index()
+    # q1 = df_segm_stat.groupby(['n'])['width'].quantile(0.25).reset_index()
+    # q3 = df_segm_stat.groupby(['n'])['width'].quantile(0.75).reset_index()
+    # df_plot = medians.merge(q1, on='n', suffixes=('_median', '_q1')).merge(q3, on='n').rename(columns={'width': 'width_q3'})
+    # plt.figure(figsize=(16, 12)) 
+    # plt.plot(df_plot['n'], df_plot['width_median'], marker='s',
+    #         color='orange', linewidth=4, markersize=10,
+    #         label=metric_labels['dsc'])
+    # plt.fill_between(df_plot['n'], df_plot['width_q1'], df_plot['width_q3'],
+    #                 alpha=0.6, color='orange')
+    
+    # plt.title(f"Width", fontsize=TITLE_FONTSIZE, weight="bold")
+    # plt.xlabel("Sample size", fontsize=LABEL_FONTSIZE)
+    # plt.ylabel("Width", fontsize=LABEL_FONTSIZE)
+    # plt.tick_params(axis="both", labelsize=TICK_FONTSIZE)
+    # plt.grid(True, axis="y")
+    # plt.ylim(-0.05, 0.4)
+    # plt.axhline(y=0.05, color='black', linestyle='--', linewidth=4, label=f"Width= 0.05")
+
+    # plt.legend(fontsize=LEGEND_FONTSIZE, title_fontsize=LEGEND_TITLE_FONTSIZE, loc="upper right")
+
+    # # Save figure (optional)
+    
+    # output_dir = os.path.join(root_folder, "clean_figs")
+    # os.makedirs(output_dir, exist_ok=True)
+    # plt.savefig(os.path.join(output_dir, f"width_dsc.pdf"), bbox_inches="tight")
+    
     # =================================================================
     # LOOP OVER ALL PAIRS OF METRICS
     # =================================================================
@@ -79,10 +115,10 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                 # ============================================================
                 ax = axs[0]
                 if isinstance(target_coverage, tuple):
-                    ax.axhline(y=target_coverage[0], color='black', linestyle='--', linewidth=4, label=f"Target Coverage ({(target_coverage[0]*100):.1f}%, {(target_coverage[1]*100):.1f}%)")
+                    ax.axhline(y=target_coverage[0], color='black', linestyle='--', linewidth=4, label=f"Coverage= ({(target_coverage[0]*100):.1f}%, {(target_coverage[1]*100):.1f}%)")
                     ax.axhline(y=target_coverage[1], color='black', linestyle='--', linewidth=4)
                 else:
-                    ax.axhline(y=target_coverage, color='black', linestyle='--', linewidth=4, label=f"Target Coverage ({(target_coverage*100):.1f}%)")
+                    ax.axhline(y=target_coverage, color='black', linestyle='--', linewidth=4, label=f"Coverage= ({(target_coverage*100):.1f}%)")
 
                 # --- CLASSIFICATION ---
                 df_classif = df_classif_cov_perc[df_classif_cov_perc["metric"] == classif_metric]
@@ -127,7 +163,7 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                 # ============================================================
                 if target_width != "":
                     ax = axs[1]
-                    ax.axhline(y=target_width, color='black', linestyle='--', linewidth=4, label=f"Target Width ({target_width})")
+                    ax.axhline(y=target_width, color='black', linestyle='--', linewidth=4, label=f"Width= ({target_width})")
 
                     # --- CLASSIFICATION ---
                     df_classif = df_classif_width_perc[df_classif_width_perc["metric"] == classif_metric]
@@ -225,10 +261,10 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                 # ============================================================
                 ax = axs[0]
                 if isinstance(target_coverage, tuple):
-                    ax.axhline(y=target_coverage[0], color='black', linestyle='--', linewidth=4, label=f"Target Coverage ({(target_coverage[0]*100):.1f}%, {(target_coverage[1]*100):.1f}%)")
+                    ax.axhline(y=target_coverage[0], color='black', linestyle='--', linewidth=4, label=f"Coverage= ({(target_coverage[0]*100):.1f}%, {(target_coverage[1]*100):.1f}%)")
                     ax.axhline(y=target_coverage[1], color='black', linestyle='--', linewidth=4)
                 else:
-                    ax.axhline(y=target_coverage, color='black', linestyle='--', linewidth=4, label=f"Target Coverage ({(target_coverage*100):.1f}%)")
+                    ax.axhline(y=target_coverage, color='black', linestyle='--', linewidth=4, label=f"Coverage= ({(target_coverage*100):.1f}%)")
 
                 for i, metric in enumerate([metric_a, metric_b]):
                     df_metric = df_segm_cov_perc[df_segm_cov_perc["metric"] == metric]
@@ -259,7 +295,7 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                 # ============================================================
                 if both_bounded:
                     ax = axs[1]
-                    ax.axhline(y=target_width, color='black', linestyle='--', linewidth=4, label=f"Target Width ({target_width})")
+                    ax.axhline(y=target_width, color='black', linestyle='--', linewidth=4, label=f"Width= ({target_width})")
 
                     for i, metric in enumerate([metric_a, metric_b]):
                         df_metric = df_segm_width_perc[df_segm_width_perc["metric"] == metric]
@@ -291,6 +327,133 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
                 out_path = os.path.join(output_dir, f"{metric_a}_vs_{metric_b}_{target_coverage}_{target_width}.pdf")
                 fig.savefig(out_path, bbox_inches="tight")
                 plt.close(fig)
+
+    # ============================================================
+    # ADDITIONAL BIG FIGURE: SELECTED METRICS
+    # ============================================================
+
+    import string  # for letters A-F
+
+    plt.rcdefaults()  # reset to default colors (blue/orange)
+
+    # layout: 2 rows, 3 columns
+    fig, axes = plt.subplots(3, 2, figsize=(30, 42), sharex=False,
+                            gridspec_kw={"height_ratios": [1, 1, 1]})
+
+    # Define selected pairs
+    SELECTED_PAIRS = [
+        ("dsc", "auc"),                  # coverage + width
+        ("dsc", "balanced_accuracy"),    # coverage + width
+        ("iou", "assd"),                 # coverage only
+    ]
+
+    subplot_letters = list(string.ascii_uppercase[:6])  # ['A', 'B', 'C', 'D', 'E', 'F']
+    letter_idx = 0  # track the current letter
+
+    for row, (segm_metric, other_metric) in enumerate(SELECTED_PAIRS):
+
+        # -------------------
+        # Coverage (top row)
+        # -------------------
+        ax = axes[row, 0]
+
+        # Other metric
+        if other_metric in metrics_classif:
+            df_other = df_classif_cov_perc[df_classif_cov_perc["metric"] == other_metric]
+            marker = "o"
+        else:  # segmentation metric (ASSD)
+            df_other = df_segm_cov_perc[(df_segm_cov_perc["metric"] == other_metric) &
+                                        (df_segm_cov_perc["stat"] == "mean")]
+            marker = "o"
+
+        plot_with_iqr(ax, df_other, "coverage", metric_labels[other_metric], marker=marker)
+
+        # Segmentation metric
+        df_segm = df_segm_cov_perc[(df_segm_cov_perc["metric"] == segm_metric) &
+                                (df_segm_cov_perc["stat"] == "mean")]
+        plot_with_iqr(ax, df_segm, "coverage", metric_labels[segm_metric], marker="s")
+        ax.axhline(y=0.925, color='black', linestyle='--', linewidth=4, label=f"Coverage= 92.5%")
+
+        ax.set_title(f"{metric_labels[segm_metric]} vs {metric_labels[other_metric]}", fontsize=34, weight="bold")
+        ax.grid(True, axis="y")
+        ax.set_ylim(.80, 1)
+
+        ax.set_xlabel("Sample size", fontsize=30)
+        if row < 2:
+            ax.set_xscale("log")
+            ax.tick_params(axis='both', labelsize=TICK_FONTSIZE)
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.1f}'))
+        else:
+            ax.set_xscale("linear")
+            ax.set_xlim(0, 250)
+            ax.tick_params(axis='both', labelsize=TICK_FONTSIZE)
+
+    
+        ax.set_ylabel("Coverage (%)", fontsize=30)
+        if row==0:
+            ax.set_title("Coverage")
+        ax.legend(fontsize=24)
+
+        # Add subplot letter
+        ax.text(0.5, 1, subplot_letters[letter_idx], transform=ax.transAxes,
+                fontsize=40, fontweight='bold', va='top', ha='right')
+        letter_idx += 1
+
+        # -------------------
+        # Width (bottom row)
+        # -------------------
+        ax = axes[row, 1]
+
+        if row < 2:  # only first two pairs have width
+            df_other_w = df_classif_width_perc[df_classif_width_perc["metric"] == other_metric]
+            plot_with_iqr(ax, df_other_w, "width", metric_labels[other_metric], marker="o")
+            df_segm_w = df_segm_width_perc[(df_segm_width_perc["metric"] == segm_metric) &
+                                        (df_segm_width_perc["stat"] == "mean")]
+            plot_with_iqr(ax, df_segm_w, "width", metric_labels[segm_metric], marker="s")
+
+            ax.axhline(y=0.05, color='black', linestyle='--', linewidth=4, label=f"Width=0.05")
+
+            ax.set_ylabel("Width", fontsize=30)
+            ax.grid(True, axis="y")
+
+            ax.set_xscale("log")
+            ax.tick_params(axis='both', labelsize=TICK_FONTSIZE)
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.1f}'))
+            ax.grid(True, axis="y")
+            if row==0:
+                ax.set_title("Width")
+
+
+        else:
+            df_segm_w = df_segm_width_perc[(df_segm_width_perc["metric"] == 'dsc') &
+                                        (df_segm_width_perc["stat"] == "mean")]
+            plot_with_iqr(ax, df_segm_w, "width", 'DSC', marker="s")
+            ax.axhline(y=0.05, color='black', linestyle='--', linewidth=4, label=f"Width= ({target_width})")
+
+            ax.set_ylabel("Width", fontsize=30)
+            ax.grid(True, axis="y")
+            ax.tick_params(labelsize=26)
+            ax.set_xscale("linear")
+            ax.set_xlim(0, 250)
+        ax.legend(fontsize=24)
+        ax.set_xlabel("Sample size", fontsize=30)
+
+        # Add subplot letter
+        ax.text(0.5, 1, subplot_letters[letter_idx], transform=ax.transAxes,
+                fontsize=40, fontweight='bold', va='top', ha='right')
+        letter_idx += 1
+
+    # -------------------
+    # Final formatting
+    # -------------------
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
+
+    output_dir = os.path.join(root_folder, "clean_figs/main")
+    os.makedirs(output_dir, exist_ok=True)
+    fig.savefig(os.path.join(output_dir, "sample_size_needs.pdf"), bbox_inches="tight")
+    plt.close(fig)
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Plot Figure 10: Sample Size Needs")
