@@ -12,7 +12,7 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     n_values = np.linspace(10, 1000, 200)
 
     hoeffding_width = 2 * np.sqrt(np.log(2 / 0.05) / (2 * n_values))
-    typical_param_t_width = 4 * 0.220090 / np.sqrt(n_values)
+    typical_param_t_width = 2 * t.ppf(0.975, n_values - 1) * 0.220090 / np.sqrt(n_values)
     empirical_bernstein_width = 2 * (0.220090*np.sqrt(2  * np.log(4 / 0.05) / n_values)+ 7 * np.log(4 / 0.05) / (3 * (n_values - 1)))
 
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
@@ -31,7 +31,6 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     inferred_width_Q1 = 2 * t.ppf(0.975, n_values - 1) * np.sqrt(var_Q1.median()) / np.sqrt(n_values)
     inferred_width_Q3 = 2 * t.ppf(0.975, n_values - 1) * np.sqrt(var_Q3.median()) / np.sqrt(n_values)
     plt.figure(figsize=(8, 6))
-    plt.plot(n_values, hoeffding_width, label="Hoeffding Width", color='#0173B2', linestyle='--')
     # plt.plot(n_values, worst_param_t_width, label="Worst-case Parametric t Width", color='#DE8F05')
     plt.plot(
     n_values,
@@ -58,10 +57,7 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     # alpha=0.6,
     # color="#CC78BC",
     # label="Parametric t IQR")
-    plt.plot(n_values, typical_param_t_width, label="Typical Parametric t Width", color='#CC78BC')
     
-    plt.scatter(df_percentile_median.index, df_percentile_median.values, label="Percentile Width, CIs of mean of DSC", color='#029E73', marker='D',zorder=5)
-    plt.scatter(df_param_t_median.index, df_param_t_median.values, label="Parametric t Width, CIs of mean of DSC", color="#3C220C", marker='x', zorder=5)
     plt.plot(n_values, hoeffding_width, label="Hoeffding", color='#0173B2', linestyle='--')
     plt.plot(n_values, empirical_bernstein_width, label="Empirical Bernstein", color='#DE8F05', linestyle='-.')
     plt.plot(n_values, typical_param_t_width, label="Median Parametric t", color='#CC78BC')
@@ -72,6 +68,7 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     plt.ylabel("Width of Confidence Interval")
     plt.title("Comparison between Hoeffding's and usual CI Widths")
     plt.legend(title="Method")
+    plt.ylim(-0.01, 1.01)
     plt.grid(True)
     plt.savefig(output_path)
     plt.close()
