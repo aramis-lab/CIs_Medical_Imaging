@@ -104,7 +104,7 @@ def perform_pairwise_tests(df_fit_results, df_fit_results_classif):
 
     return p_values
 
-def tell_significance(p_vals, alphas=np.array([0.001, 0.01, 0.05]), bonferroni_correction=True):
+def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
     
     m = len(next(iter(next(iter(p_vals.values())).values())).keys())
     n = len(next(iter(next(iter(next(iter(p_vals.values())).values())).values())).keys())
@@ -150,6 +150,11 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
 
     df_fit_results_segm = perform_fits_segm(df_segm, metrics_segm, stats_segm)
     df_fit_results_classif = perform_fits_classif(df_classif)
+    median_segm = df_fit_results_segm.groupby(['method', 'stat', 'metric'])['beta2'].median().reset_index()
+    median_classif = df_fit_results_classif.groupby(['method', 'metric'])['beta2'].median().reset_index()
+
+    order_segm = median_segm[median_segm['stat'] == 'mean'].sort_values('beta2')['metric'].tolist()
+    order_classif = median_classif.sort_values('beta2')['metric'].tolist()
     print("Fitting completed.")
     p_values = perform_pairwise_tests(df_fit_results_segm, df_fit_results_classif)
     print("Pairwise tests completed.")
@@ -160,10 +165,13 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
     metrics_classif = list(next(iter(next(iter(significance.values())).values())).keys())
     metrics_segm = list(next(iter(next(iter(next(iter(significance.values())).values())).values())).keys())
 
-    fig, axes = plt.subplots(len(methods), len(stats), figsize=(15 * len(stats), 12 * len(methods)))
+    metrics_classif = [m for m in order_classif if m in metrics_classif]
+    metrics_segm = [m for m in order_segm if m in metrics_segm]
 
-    for col, stat in enumerate(stats):
-        for row, method in enumerate(methods):
+    fig, axes = plt.subplots(len(stats), len(methods), figsize=(15 * len(methods), 12 * len(stats)))
+
+    for row, stat in enumerate(stats):
+        for col, method in enumerate(methods):
             if len(stats) == 1 and len(methods) == 1:
                 ax = axes
             elif len(stats) == 1 or len(methods) == 1:
@@ -182,7 +190,7 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
             for i, metric1 in enumerate(metrics_segm):
                 for j, metric2 in enumerate(metrics_classif):
                     val = method_stat_significance.get(metric2, {}).get(metric1, None)
-                    global_matrix[i, j] = min(3, val) if val is not None else 0
+                    global_matrix[i, j] = min(2, val) if val is not None else 0
 
             # Create p_val matrix for heatap 
             pval_matrix = []
@@ -202,9 +210,8 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
             color_map_dict = {
                 -1: '#000000',
                 0: '#d9d9d9',
-                1: '#fee08b',
-                2: '#fdae61',
-                3: '#d73027',
+                1: '#fdae61',
+                2: '#d73027',
             }
             # extract only the colors for values that appear
             colors = [color_map_dict[v] for v in values]
@@ -232,22 +239,21 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
 
             ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
 
-    legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
-        handles=legend_elements,
-        loc='center left',
-        bbox_to_anchor=(1.01, 0.5),
-        ncol=1,
-        fontsize=16,
-        frameon=True,
-        title="Significance levels \nwith Bonferroni correction",
-        title_fontsize=16
-    )
+            legend_elements = [
+                mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%, <0.0025'),
+                mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%, <0.0125'),
+                mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
+            ]
+            ax.legend(
+                handles=legend_elements,
+                loc='center left',
+                bbox_to_anchor=(1.01, 0.5),
+                ncol=1,
+                fontsize=16,
+                frameon=True,
+                title="Significance levels \nwith Bonferroni correction",
+                title_fontsize=16
+            )
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))

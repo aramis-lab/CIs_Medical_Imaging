@@ -101,7 +101,7 @@ def perform_pairwise_tests(df_fit_results):
 
     return p_values
 
-def tell_significance(p_vals, alphas=np.array([0.01, 0.05, 0.1]), bonferroni_correction=True):
+def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
     
     m = len(next(iter(next(iter(p_vals.values())).values())).keys())
     num_comparisons = m - 1
@@ -139,22 +139,26 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
     print("Data loaded. Performing fits...")
 
     df_fit_results = perform_fits(df_segm, stats)
+
+    median = df_fit_results.groupby(['method', 'stat', 'metric'])['beta2'].median().reset_index()
+
     print("Fitting completed.")
     p_values = perform_pairwise_tests(df_fit_results)
     print("Pairwise tests completed.")
     significance = tell_significance(p_values, bonferroni_correction=True)
 
-    metric_order = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
     methods = list(significance.keys())
     stats = list(next(iter(significance.values())).keys())
     metrics_all = list(next(iter(next(iter(significance.values())).values())).keys())
-    metrics_all = [m for m in metric_order if m in metrics_all]
 
-    fig, axes = plt.subplots(len(stats), len(methods), figsize=(15 * len(methods), 12 * len(stats)))
+    fig, axes = plt.subplots(len(methods), len(stats), figsize=(15 * len(stats), 12 * len(methods)))
 
-    for row, stat in enumerate(stats):
-        for col, method in enumerate(methods):
-            ax = axes[row, col] if len(stats) > 1 else axes[col]
+    for col, stat in enumerate(stats):
+        for row, method in enumerate(methods):
+            ax = axes[row, col] if len(stats) > 1 else axes[row]
+
+            order = median[(median['method'] == method) & (median['stat'] == stat)].sort_values('beta2')['metric'].tolist()
+            metrics_order = [m for m in order if m in metrics_all]
 
             if (stat != 'mean') and (method in ['param_z', 'param_t']):
                 ax.axis('off')
@@ -162,19 +166,19 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
 
             # Extract significance for the specific method and stat
             method_stat_significance = significance.get(method, {}).get(stat, {})
-            global_matrix = np.zeros((len(metrics_all), len(metrics_all)))
+            global_matrix = np.zeros((len(metrics_order), len(metrics_order)))
 
-            for i, metric1 in enumerate(metrics_all):
-                for j, metric2 in enumerate(metrics_all):
+            for i, metric1 in enumerate(metrics_order):
+                for j, metric2 in enumerate(metrics_order):
                     val = method_stat_significance.get(metric1, {}).get(metric2, None)
-                    global_matrix[i, j] = min(3, val) if val is not None else 0
+                    global_matrix[i, j] = min(2, val) if val is not None else 0
                 global_matrix[i, i] = -1
 
             # Create p_val matrix for heatap 
             pval_matrix = []
-            for i, metric1 in enumerate(metrics_all):
+            for i, metric1 in enumerate(metrics_order):
                 pval_row = []
-                for j, metric2 in enumerate(metrics_all):
+                for j, metric2 in enumerate(metrics_order):
                     p_val = p_values.get(method, {}).get(stat, {}).get(metric1, {}).get(metric2, None)
                     if p_val is not None:
                         pval_row.append(f"{p_val.round(4)}" if p_val >= 0.0001 else "<0.0001")
@@ -189,9 +193,8 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
             color_map_dict = {
                 -1: '#000000',
                 0: '#d9d9d9',
-                1: '#fee08b',
-                2: '#fdae61',
-                3: '#d73027',
+                1: '#fdae61',
+                2: '#d73027',
             }
             # extract only the colors for values that appear
             colors = [color_map_dict[v] for v in values]
@@ -200,7 +203,7 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
             cmap = ListedColormap(colors)
             
             # Plot heatmap
-            labels = [metric_labels.get(m, m) for m in metrics_all]
+            labels = [metric_labels.get(m, m) for m in metrics_order]
             sns.heatmap(
                 global_matrix,
                 xticklabels=labels,
@@ -218,21 +221,20 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
 
             ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
 
-    legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
-        handles=legend_elements,
-        bbox_to_anchor=(1.01, 0.5),
-        ncol=1,
-        fontsize=16,
-        frameon=True,
-        title="Significance levels \nwith Bonferroni correction",
-        title_fontsize=16
-    )
+            legend_elements = [
+                mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%, <0.00125'),
+                mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%, <0.00625'),
+                mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
+            ]
+            ax.legend(
+                handles=legend_elements,
+                bbox_to_anchor=(1.01, 0.5),
+                ncol=1,
+                fontsize=16,
+                frameon=True,
+                title="Significance levels \nwith Bonferroni correction",
+                title_fontsize=16
+            )
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
