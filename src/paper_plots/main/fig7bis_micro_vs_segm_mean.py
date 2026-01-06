@@ -197,7 +197,7 @@ def plot_fig7bis_micro_vs_segm_mean(root_folder:str, output_path:str):
         ax.legend(handles_segm, labels_segm, title="Segmentation metrics",
                 fontsize=24, title_fontsize=28, loc="center right")
 
-        for ax, letter in zip(axs, ['A', 'B']):
+        for ax, letter in zip(axs, ['C', 'D']):
                 ax.text(0.5, 0.98, letter, transform=ax.transAxes,
                         fontsize=40, fontweight='bold', va='top', ha='center')
         
