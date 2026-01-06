@@ -448,10 +448,11 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
     # -------------------
     plt.tight_layout(rect=[0, 0, 1, 0.94])
 
-    output_dir = os.path.join(root_folder, "clean_figs/main")
-    os.makedirs(output_dir, exist_ok=True)
-    fig.savefig(os.path.join(output_dir, "sample_size_needs.pdf"), bbox_inches="tight")
-    plt.close(fig)
+
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+    plt.savefig(output_path, bbox_inches="tight")
+    plt.close()
 
 
 
