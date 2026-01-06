@@ -14,6 +14,8 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     hoeffding_width = 2 * np.sqrt(np.log(2 / 0.05) / (2 * n_values))
     worst_param_t_width = 2 / np.sqrt(n_values)
     typical_param_t_width = 4 * 0.220090 / np.sqrt(n_values)
+    width_empirical_bernstein = 2 * (0.220090*np.sqrt(2  * np.log(4 / 0.05) / n_values)
+    + 7 * np.log(4 / 0.05) / (3 * (n_values - 1)))
 
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
 
@@ -27,6 +29,7 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
 
     plt.figure(figsize=(8, 6))
     plt.plot(n_values, hoeffding_width, label="Hoeffding Width", color='#0173B2', linestyle='--')
+    plt.plot(n_values, width_empirical_bernstein, label="Empirical Bernstein Width", color="#486B2D", linestyle='-.')
     plt.plot(n_values, worst_param_t_width, label="Worst-case Parametric t Width", color='#DE8F05')
     plt.plot(n_values, typical_param_t_width, label="Typical Parametric t Width", color='#CC78BC')
     plt.scatter(df_percentile_median.index, df_percentile_median.values, label="Percentile Width, CIs of mean of DSC", color='#029E73', marker='D',zorder=5)
