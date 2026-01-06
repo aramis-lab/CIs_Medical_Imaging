@@ -32,13 +32,17 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     inferred_width_Q3 = 2 * t.ppf(0.975, n_values - 1) * np.sqrt(var_Q3.median()) / np.sqrt(n_values)
     plt.figure(figsize=(8, 6))
     # plt.plot(n_values, worst_param_t_width, label="Worst-case Parametric t Width", color='#DE8F05')
+    plt.plot(n_values, hoeffding_width, label="Hoeffding", color='#0173B2', linestyle='-')
+    plt.plot(n_values, empirical_bernstein_width, label=fr"Empirical Bernstein (median $\hat\sigma=0.2200$)", color='#DE8F05', linestyle='-')
+    plt.plot(n_values, typical_param_t_width, label=fr"Parametric t (median $\hat\sigma=0.2200$)", color='#CC78BC')
+
     plt.plot(
     n_values,
     inferred_width_Q1,
     linestyle="--",
     color="#CC78BC",
     linewidth=2,
-    label=fr"Q1 Parametric t ($\sigma={np.sqrt(var_Q1.median()):.4f}$)"
+    label=fr"Parametric t Q1 ($\hat\sigma={np.sqrt(var_Q1.median()):.4f}$)"
     )
 
     plt.plot(
@@ -48,25 +52,13 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
         color="#CC78BC",
         linewidth=2,
         alpha=0.7,
-        label=fr"Q3 Parametric t ($\sigma={np.sqrt(var_Q3.median()):.4f}$)"
+        label=fr"Parametric t Q3 ($\hat\sigma={np.sqrt(var_Q3.median()):.4f}$)"
     )
-    # plt.fill_between(
-    # df_param_t_Q1.index,
-    # df_param_t_Q1.values,
-    # df_param_t_Q3.values,
-    # alpha=0.6,
-    # color="#CC78BC",
-    # label="Parametric t IQR")
-    
-    plt.plot(n_values, hoeffding_width, label="Hoeffding", color='#0173B2', linestyle='--')
-    plt.plot(n_values, empirical_bernstein_width, label="Empirical Bernstein", color='#DE8F05', linestyle='-.')
-    plt.plot(n_values, typical_param_t_width, label="Median Parametric t", color='#CC78BC')
-    plt.scatter(df_percentile_median.index, df_percentile_median.values, label="Percentile, CIs of mean of DSC", color='#029E73', marker='D',zorder=5)
-    plt.scatter(df_param_t_median.index, df_param_t_median.values, label="Parametric t, CIs of mean of DSC", color="#3C220C", marker='x', zorder=5)
-
+    plt.scatter(df_param_t_median.index, df_param_t_median.values, label="Parametric t (observed)", color="#3C220C", marker='x', zorder=5)
+    plt.scatter(df_percentile_median.index, df_percentile_median.values, label="Percentile bootstrap (observed)", color='#029E73', marker='D',zorder=5)
     plt.xlabel("Sample Size (n)")
     plt.ylabel("Width of Confidence Interval")
-    plt.title("Comparison between Hoeffding's and usual CI Widths")
+    plt.title("Comparison of concentration inequalities, parametric t and percentile bootstrap")
     plt.legend(title="Method")
     plt.ylim(-0.01, 1.01)
     plt.grid(True)
@@ -79,7 +71,7 @@ def main():
     parser.add_argument("--output_path", type=str, required=False, help="Path to save the output plot.")
     args = parser.parse_args()
     root_folder = args.root_folder
-    output_path = args.output_path if args.output_path else f"{args.root_folder}/clean_figs/supplementary/fig6_hoeffding_vs_param_t.pdf"
+    output_path = args.output_path if args.output_path else f"{args.root_folder}/clean_figs/main/fig6_hoeffding_vs_param_t.pdf"
     plot_fig6_hoeffding_vs_param_t(root_folder, output_path)
 
 

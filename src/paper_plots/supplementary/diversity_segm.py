@@ -11,7 +11,7 @@ from ..plot_utils import metric_labels
 
 def compute_descriptive_stats(root_folder:str):
 
-    data = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"), sep=";")
+    data = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
 
     results=[]
     metrics=data['score'].unique()
@@ -76,10 +76,10 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
 
     dark_color_dict = {k: darken_color(v, 0.75) for k, v in color_dict.items()}
 
-    fig, axs = plt.subplots(2,2, figsize=(34, 12))
+    fig, axs = plt.subplots(4,1, figsize=(16, 24))
 
     ### --- Plot Mean --- ###
-    ax = axs[0,0]
+    ax = axs[0]
 
     # Primary axis (left): bounded metrics only
     sns.boxplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax, dodge=False)
@@ -101,7 +101,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     ax.set_xlabel('Metric', fontsize=20)
 
     ### --- Plot Standard Error --- ###
-    ax = axs[0,1]
+    ax = axs[1]
     # Primary axis (left): bounded metrics only
     sns.boxplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax, dodge=False)
     sns.stripplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax, dodge=False)
@@ -121,7 +121,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     ax.set_xlabel('Metric', fontsize=20)
 
     # Plot Skewness
-    ax = axs[1,0]
+    ax = axs[2]
     ax.axhspan(-1, 1, color='#009409', alpha=0.3, label='Normal range')
     ax.axhline(2, color='red', linestyle='--', label='Highly skewed on the left', linewidth=1.7)
     ax.axhline(-2, color='red', linestyle='-', label='Highly skewed on the right', linewidth=1.7)
@@ -142,7 +142,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     ax.set_ylim(-6, 10)
 
     # Plot Kurtosis
-    ax = axs[1,1]
+    ax = axs[3]
     ax.axhspan(2, 7, color='#009409', alpha=0.3, label='Normal range')
     ax.axhline(7, color='red', linestyle='--', label='Heavy tails', linewidth=1.7)
     ax.axhline(2, color='red', linestyle='-', label='Light tails', linewidth=1.7)

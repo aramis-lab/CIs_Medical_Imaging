@@ -17,6 +17,7 @@ from .micro_vs_macro import plot_micro_vs_macro_all
 from .relative_error_CCP import plot_rel_error_CCP_segm
 from .tests_CCP_segm_vs_classif import plot_significance_matrix_segm_vs_classif
 from .tests_CCP_segm import plot_significance_matrix_segm
+from .concentration_ineq import plot_hoeffding_eb_t_ci_widths, plot_hoeffding_eb_t_ci_width_ratios
 
 
 def make_all_plots(root_folder: str):
@@ -36,7 +37,7 @@ def make_all_plots(root_folder: str):
     # plot_ci_bounds(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/cov_fail_dsc_mean.pdf")
     plot_cov_fail_dsc_mean(root_folder, output_path)
-    output_path = os.path.join(root_folder, "clean_figs/supplementary/coverage_metrics_segm.pdf")
+    output_path = os.path.join(root_folder, "clean_figs/supplementary/cov_segm_metrics.pdf")
     plot_coverage_metrics_segm(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/skew_kurt_classif.pdf")
     plot_descriptive_stats_classif(root_folder, output_path)
@@ -54,6 +55,10 @@ def make_all_plots(root_folder: str):
     plot_significance_matrix_segm_vs_classif(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/tests_CCP_segm.pdf")
     plot_significance_matrix_segm(root_folder, output_path)
+    output_path = os.path.join(root_folder, "clean_figs/supplementary/concentration_ineq.pdf")
+    plot_hoeffding_eb_t_ci_widths(root_folder, output_path)
+    output_path = os.path.join(root_folder, "clean_figs/supplementary/concentration_ineq_ratios.pdf")
+    plot_hoeffding_eb_t_ci_width_ratios(root_folder, output_path)
     pass
 
 if __name__ == "__main__":

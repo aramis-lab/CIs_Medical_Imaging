@@ -89,7 +89,7 @@ def main():
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
     args = parser.parse_args()
 
-    output_path = args.output_path if args.output_path else os.path.join(args.root_folder, "clean_figs", "supplementary", "coverage_metrics_segm.pdf")
+    output_path = args.output_path if args.output_path else os.path.join(args.root_folder, "clean_figs", "supplementary", "cov_segm_metrics.pdf")
     plot_coverage_metrics_segm(args.root_folder, output_path)
 
 if __name__ == "__main__":
