@@ -38,7 +38,7 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     linestyle="--",
     color="#CC78BC",
     linewidth=2,
-    label=fr"Q1 Parametric t width ($\sigma={np.sqrt(var_Q1.median()):.4f}$)"
+    label=fr"Q1 Parametric t ($\sigma={np.sqrt(var_Q1.median()):.4f}$)"
     )
 
     plt.plot(
@@ -48,7 +48,7 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
         color="#CC78BC",
         linewidth=2,
         alpha=0.7,
-        label=fr"Q3 Parametric t width ($\sigma={np.sqrt(var_Q3.median()):.4f}$)"
+        label=fr"Q3 Parametric t ($\sigma={np.sqrt(var_Q3.median()):.4f}$)"
     )
     # plt.fill_between(
     # df_param_t_Q1.index,
