@@ -37,6 +37,7 @@ def plot_fig4_bca(root_folder: str, output_path: str):
             linewidth=4,
             markersize=10
         )
+
         plt.fill_between(
             df_group['n'],
             df_group['coverage_q1'],
@@ -44,7 +45,7 @@ def plot_fig4_bca(root_folder: str, output_path: str):
             color=method_colors[method],
             alpha=0.2
         )
-    
+
     plt.title(f'Metric: {metric_labels[metrics_segm[0]]}, Summary statistic: Median', weight='bold', fontsize=40)
     plt.xlabel('Sample size',weight='bold', fontsize=32)
     plt.ylabel('Coverage (%)', weight='bold', fontsize=32)
