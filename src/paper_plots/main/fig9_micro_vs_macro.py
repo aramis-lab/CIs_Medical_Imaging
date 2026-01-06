@@ -33,13 +33,12 @@ def plot_fig9_micro_vs_macro(root_folder:str, output_path:str):
     macro_width =df_macro_width[(df_macro_width['method']=='percentile') & (df_macro_width['n']<=250)].sort_values(by=['metric', 'n'])
     micro_width =df_micro_width[(df_micro_width['method']=='percentile') & (df_micro_width['n']<=250)].sort_values(by=['metric', 'n'])
 
-    fig, axes = plt.subplots(
-        1, 2, 
-        figsize=(36, 15), 
-        sharex=True
+    fig, ax = plt.subplots(
+        1, 1, 
+        figsize=(25, 15)
     )
 
-    ax_cov = axes[0]
+    ax_cov = ax
 
     # Coverage subplot (left)
     # Macro
@@ -68,38 +67,38 @@ def plot_fig9_micro_vs_macro(root_folder:str, output_path:str):
     ax_cov.set_yticks(np.arange(0.0, 1.01, 0.1))
     ax_cov.grid(True, axis='y')
     ax_cov.legend(fontsize=32)
-    ax_width = axes[1]
+    # ax_width = axes[1]
 
-    # Width subplot (right)
-    # Macro
-    if not macro_width.empty:
-        medians = macro_width.groupby('n')['width'].median().values
-        q1 = macro_width.groupby('n')['width'].quantile(0.25).values
-        q3 = macro_width.groupby('n')['width'].quantile(0.75).values
-        n_vals = macro_width['n'].unique()
-        ax_width.plot(n_vals, medians, marker='o', label='Balanced Accuracy', linewidth=4, markersize=10)
-        ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
-    # Micro
-    if not micro_width.empty:
-        medians = micro_width.groupby('n')['width'].median().values
-        q1 = micro_width.groupby('n')['width'].quantile(0.25).values
-        q3 = micro_width.groupby('n')['width'].quantile(0.75).values
-        n_vals = micro_width['n'].unique()
-        ax_width.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=4, markersize=10)
-        ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
-    ax_width.set_title(f'Width for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=38)
-    ax_width.set_xlabel('Sample size', weight='bold', fontsize=28)
-    ax_width.set_ylabel('Width', weight='bold', fontsize=28)
-    ax_width.tick_params(axis='y', labelsize=26)
-    ax_width.tick_params(axis='x', labelsize=26)
-    ax_width.set_yticks(np.arange(0.0, 1.01, 0.1))
-    ax_width.set_ylim(-0.01, None)
-    ax_width.grid(True, axis='y')
-    ax_width.legend(fontsize=32)
+    # # Width subplot (right)
+    # # Macro
+    # if not macro_width.empty:
+    #     medians = macro_width.groupby('n')['width'].median().values
+    #     q1 = macro_width.groupby('n')['width'].quantile(0.25).values
+    #     q3 = macro_width.groupby('n')['width'].quantile(0.75).values
+    #     n_vals = macro_width['n'].unique()
+    #     ax_width.plot(n_vals, medians, marker='o', label='Balanced Accuracy', linewidth=4, markersize=10)
+    #     ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
+    # # Micro
+    # if not micro_width.empty:
+    #     medians = micro_width.groupby('n')['width'].median().values
+    #     q1 = micro_width.groupby('n')['width'].quantile(0.25).values
+    #     q3 = micro_width.groupby('n')['width'].quantile(0.75).values
+    #     n_vals = micro_width['n'].unique()
+    #     ax_width.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=4, markersize=10)
+    #     ax_width.fill_between(n_vals, q1, q3, alpha=0.2)
+    # ax_width.set_title(f'Width for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=38)
+    # ax_width.set_xlabel('Sample size', weight='bold', fontsize=28)
+    # ax_width.set_ylabel('Width', weight='bold', fontsize=28)
+    # ax_width.tick_params(axis='y', labelsize=26)
+    # ax_width.tick_params(axis='x', labelsize=26)
+    # ax_width.set_yticks(np.arange(0.0, 1.01, 0.1))
+    # ax_width.set_ylim(-0.01, None)
+    # ax_width.grid(True, axis='y')
+    # ax_width.legend(fontsize=32)
 
-    for ax, letter in zip([ax_cov, ax_width], ['A', 'B']):
-        ax.text(0.02, 0.98, letter, transform=ax.transAxes,
-                fontsize=36, fontweight='bold', va='top', ha='left')
+    # for ax, letter in zip([ax_cov, ax_width], ['A', 'B']):
+    #     ax.text(0.02, 0.98, letter, transform=ax.transAxes,
+    #             fontsize=36, fontweight='bold', va='top', ha='left')
 
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):

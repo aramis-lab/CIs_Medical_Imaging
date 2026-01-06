@@ -11,7 +11,7 @@ from ..plot_utils import metric_labels
 
 def compute_descriptive_stats(root_folder:str):
 
-    data = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
+    data = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"), sep=";")
 
     results=[]
     metrics=data['score'].unique()
@@ -76,7 +76,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
 
     dark_color_dict = {k: darken_color(v, 0.75) for k, v in color_dict.items()}
 
-    fig, axs = plt.subplots(2,2, figsize=(30, 12))
+    fig, axs = plt.subplots(2,2, figsize=(34, 12))
 
     ### --- Plot Mean --- ###
     ax = axs[0,0]
@@ -84,41 +84,41 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     # Primary axis (left): bounded metrics only
     sns.boxplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax, dodge=False)
     sns.stripplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax, dodge=False)
-    ax.set_ylabel('Mean (bounded metrics)', weight='bold')
+    ax.set_ylabel('Mean (bounded metrics)', fontsize=20)
     ax.set_ylim(0, 1.01)
 
     # Twin axis (right): unbounded metrics
     ax2 = ax.twinx()
     sns.boxplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax2, dodge=False)
     sns.stripplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
-    ax2.set_ylabel('Mean (unbounded metrics)', weight='bold')
+    ax2.set_ylabel('Mean (unbounded metrics)', fontsize=20)
     ax2.set_ylim(0, None)
     ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
 
     # Common formatting
-    ax.set_xticklabels([metric_labels[m] for m in metrics_order])
-    ax.set_title('Mean values across all instances', weight='bold', fontsize=15)
-    ax.set_xlabel('Metric', weight='bold')
+    ax.set_xticklabels([metric_labels[m] for m in metrics_order], fontsize=18)
+    ax.set_title('Mean values across all instances',weight='bold', fontsize=20)
+    ax.set_xlabel('Metric', fontsize=20)
 
     ### --- Plot Standard Error --- ###
     ax = axs[0,1]
     # Primary axis (left): bounded metrics only
     sns.boxplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax, dodge=False)
     sns.stripplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(bounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax, dodge=False)
-    ax.set_ylabel('Standard Deviation (bounded metrics)', weight='bold')
+    ax.set_ylabel('Standard Deviation (bounded metrics)',fontsize=20)
     ax.set_ylim(0, 1.01)
 
     # Twin axis (right): unbounded metrics
     ax2 = ax.twinx()
     sns.boxplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', showfliers=False, palette=color_dict, linewidth=1, ax=ax2, dodge=False)
     sns.stripplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
-    ax2.set_ylabel('Standard Deviation (unbounded metrics)', weight='bold')
+    ax2.set_ylabel('Standard Deviation (unbounded metrics)',fontsize=20)
     ax2.set_ylim(0, None)
     ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
 
-    ax.set_xticklabels([metric_labels[m] for m in metrics_order])
-    ax.set_title('Standard Deviation values across all instances', weight='bold', fontsize=15)
-    ax.set_xlabel('Metric', weight='bold')
+    ax.set_xticklabels([metric_labels[m] for m in metrics_order], fontsize=18)
+    ax.set_title('Standard Deviation values across all instances',weight='bold',fontsize=20)
+    ax.set_xlabel('Metric', fontsize=20)
 
     # Plot Skewness
     ax = axs[1,0]
@@ -129,16 +129,16 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     sns.stripplot(x='Metric', y='skewness', data=results_df, hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax)
 
     ax.legend(title="Typical skewness values",
-               loc='upper right',
+          
                frameon=False,
-               fontsize=10,
-               title_fontproperties=FontProperties(weight='bold'),
-               bbox_to_anchor=(1.23, 0.8)
+               fontsize=18,
+               title_fontproperties=FontProperties(weight='bold', size=18), loc='upper left'
+            #    bbox_to_anchor=(1.23, 0.8)
               )
-    ax.set_xticklabels([metric_labels[m] for m in metrics_order])
-    ax.set_title('Skewness values across all instances', weight='bold', fontsize=15)
-    ax.set_ylabel('Skewness', weight='bold')
-    ax.set_xlabel('Metric', weight='bold')
+    ax.set_xticklabels([metric_labels[m] for m in metrics_order], fontsize=18)
+    ax.set_title('Skewness values across all instances', weight='bold', fontsize=20)
+    ax.set_ylabel('Skewness',fontsize=20)
+    ax.set_xlabel('Metric',fontsize=20)
     ax.set_ylim(-6, 10)
 
     # Plot Kurtosis
@@ -150,16 +150,16 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     sns.stripplot(x='Metric', y='kurtosis', data=results_df, hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax)
 
     ax.legend(title="Typical kurtosis values",
-               loc='upper right',
+             
                frameon=False,
-               fontsize=10,
-               title_fontproperties=FontProperties(weight='bold'),
-               bbox_to_anchor=(1.18, 0.8)
+               fontsize=18,
+               title_fontproperties=FontProperties(weight='bold', size=18),loc='upper left'
+            #    bbox_to_anchor=(1.18, 0.8)
               )
-    ax.set_xticklabels([metric_labels[m] for m in metrics_order])
-    ax.set_title('Kurtosis values across all instances', weight='bold', fontsize=15)
-    ax.set_ylabel('Kurtosis', weight='bold')
-    ax.set_xlabel('Metric', weight='bold')
+    ax.set_xticklabels([metric_labels[m] for m in metrics_order], fontsize=18)
+    ax.set_title('Kurtosis values across all instances', weight='bold', fontsize=20)
+    ax.set_ylabel('Kurtosis',fontsize=20)
+    ax.set_xlabel('Metric',fontsize=20)
     ax.set_ylim(0, 50)
 
     plt.tight_layout()
