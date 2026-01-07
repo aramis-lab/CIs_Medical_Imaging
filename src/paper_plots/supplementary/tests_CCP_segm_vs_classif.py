@@ -168,92 +168,99 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
     metrics_classif = [m for m in order_classif if m in metrics_classif]
     metrics_segm = [m for m in order_segm if m in metrics_segm]
 
-    fig, axes = plt.subplots(len(stats), len(methods), figsize=(15 * len(methods), 12 * len(stats)))
+    nb_cols = int(np.floor(np.sqrt(len(stats))))
+    nb_rows = int(np.ceil(len(stats) / nb_cols))
+    fig, axes = plt.subplots(nb_rows, nb_cols, figsize=(15 * nb_cols, 12 * nb_rows))
 
-    for row, stat in enumerate(stats):
-        for col, method in enumerate(methods):
-            if len(stats) == 1 and len(methods) == 1:
-                ax = axes
-            elif len(stats) == 1 or len(methods) == 1:
-                ax = axes[max(row, col)]
-            else:
-                ax = axes[row, col]
+    method = 'percentile'
+    for i, stat in enumerate(stats):
+        row = i // nb_cols
+        col = i % nb_cols
+        if nb_cols == 1 and nb_rows == 1:
+            ax = axes
+        elif nb_cols == 1 or nb_rows == 1:
+            ax = axes[max(row, col)]
+        else:
+            ax = axes[row, col]
 
-            if (stat != 'mean') and (method in ['param_z', 'param_t']):
-                ax.axis('off')
-                continue
+        # Extract significance for the specific method and stat
+        method_stat_significance = significance.get(method, {}).get(stat, {})
+        global_matrix = np.zeros((len(metrics_segm), len(metrics_classif)))
 
-            # Extract significance for the specific method and stat
-            method_stat_significance = significance.get(method, {}).get(stat, {})
-            global_matrix = np.zeros((len(metrics_segm), len(metrics_classif)))
+        for i, metric1 in enumerate(metrics_segm):
+            for j, metric2 in enumerate(metrics_classif):
+                val = method_stat_significance.get(metric2, {}).get(metric1, None)
+                global_matrix[i, j] = min(2, val) if val is not None else 0
 
-            for i, metric1 in enumerate(metrics_segm):
-                for j, metric2 in enumerate(metrics_classif):
-                    val = method_stat_significance.get(metric2, {}).get(metric1, None)
-                    global_matrix[i, j] = min(2, val) if val is not None else 0
+        # Create p_val matrix for heatap 
+        pval_matrix = []
+        for i, metric1 in enumerate(metrics_segm):
+            pval_row = []
+            for j, metric2 in enumerate(metrics_classif):
+                p_val = p_values.get(method, {}).get(stat, {}).get(metric2, {}).get(metric1, None)
+                if p_val is not None:
+                    pval_row.append(f"{p_val.round(4)}" if p_val >= 0.0001 else "<0.0001")
+                else:
+                    pval_row.append("0")
+            pval_matrix.append(pval_row)
+        
+        values = np.unique(global_matrix)
 
-            # Create p_val matrix for heatap 
-            pval_matrix = []
-            for i, metric1 in enumerate(metrics_segm):
-                pval_row = []
-                for j, metric2 in enumerate(metrics_classif):
-                    p_val = p_values.get(method, {}).get(stat, {}).get(metric2, {}).get(metric1, None)
-                    if p_val is not None:
-                        pval_row.append(f"{p_val.round(4)}" if p_val >= 0.0001 else "<0.0001")
-                    else:
-                        pval_row.append("0")
-                pval_matrix.append(pval_row)
-            
-            values = np.unique(global_matrix)
+        # full mapping dictionary
+        color_map_dict = {
+            -1: '#000000',
+            0: '#d9d9d9',
+            1: '#fdae61',
+            2: '#d73027',
+        }
+        # extract only the colors for values that appear
+        colors = [color_map_dict[v] for v in values]
 
-            # full mapping dictionary
-            color_map_dict = {
-                -1: '#000000',
-                0: '#d9d9d9',
-                1: '#fdae61',
-                2: '#d73027',
-            }
-            # extract only the colors for values that appear
-            colors = [color_map_dict[v] for v in values]
+        # build colormap
+        cmap = ListedColormap(colors)
+        
+        # Plot heatmap
+        labels_x = [metric_labels.get(m, m) for m in metrics_classif]
+        labels_y = [metric_labels.get(m, m) for m in metrics_segm]
+        sns.heatmap(
+            global_matrix,
+            xticklabels=labels_x,
+            yticklabels=labels_y,
+            annot=pval_matrix,
+            cmap=cmap,
+            cbar=False,
+            ax=ax,
+            fmt='',
+            annot_kws={"fontsize": 16}
+        )
+        ax.tick_params(axis='x', rotation=45, labelsize=14)
 
-            # build colormap
-            cmap = ListedColormap(colors)
-            
-            # Plot heatmap
-            labels_x = [metric_labels.get(m, m) for m in metrics_classif]
-            labels_y = [metric_labels.get(m, m) for m in metrics_segm]
-            sns.heatmap(
-                global_matrix,
-                xticklabels=labels_x,
-                yticklabels=labels_y,
-                annot=pval_matrix,
-                cmap=cmap,
-                cbar=False,
-                ax=ax,
-                fmt='',
-                annot_kws={"fontsize": 16}
-            )
-            ax.tick_params(axis='x', rotation=45, labelsize=14)
+        ax.tick_params(axis='y', rotation=45, labelsize=14)
 
-            ax.tick_params(axis='y', rotation=45, labelsize=14)
+        ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
 
-            ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
+        legend_elements = [
+            mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%, <0.0025'),
+            mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%, <0.0125'),
+            mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
+        ]
+        ax.legend(
+            handles=legend_elements,
+            loc='center left',
+            bbox_to_anchor=(1.01, 0.5),
+            ncol=1,
+            fontsize=16,
+            frameon=True,
+            title="Significance levels \nwith Bonferroni correction",
+            title_fontsize=16
+        )
+    
+    for i in range(nb_rows * nb_cols):
+        row = i // nb_cols
+        col = i % nb_cols
+        if i >= len(stats):
+            axes[row, col].axis('off')
 
-            legend_elements = [
-                mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%, <0.0025'),
-                mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%, <0.0125'),
-                mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-            ]
-            ax.legend(
-                handles=legend_elements,
-                loc='center left',
-                bbox_to_anchor=(1.01, 0.5),
-                ncol=1,
-                fontsize=16,
-                frameon=True,
-                title="Significance levels \nwith Bonferroni correction",
-                title_fontsize=16
-            )
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
