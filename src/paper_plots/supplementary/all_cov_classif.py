@@ -50,7 +50,7 @@ def plot_all_cov_classif(root_folder: str, output_path: str):
     ]
     
     for fig_name, metrics, df in metrics_list:
-        fig, axs = plt.subplots(len(metrics), 1, figsize=(18,15*len(metrics)))
+        fig, axs = plt.subplots(len(metrics), 1, figsize=(21,15*len(metrics)))
         if len(metrics) == 1:
             axs = [axs]
         
@@ -119,7 +119,7 @@ def plot_all_cov_classif(root_folder: str, output_path: str):
             ax.set_xticklabels([f"{int(n)}" for n in np.sort(df_all["n"].unique())])
             ax.set_yticks(np.arange(0.5, 1.01, 0.05))
             ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
-            ax.legend(handles=legend_handles, loc="lower right", bbox_to_anchor=(1.35, 0.5))
+            ax.legend(handles=legend_handles, loc="lower right", bbox_to_anchor=(1.3, 0.5))
             ax.set_xlim(-1, (len(methods)+2)*len(df_all["n"].unique()))
         
         plt.tight_layout()
