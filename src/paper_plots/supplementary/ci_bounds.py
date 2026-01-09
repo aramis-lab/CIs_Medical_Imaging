@@ -28,9 +28,10 @@ def plot_ci_bounds(root_folder: str, output_path: str):
         ax = axs[i]
         upper = df[f"upper_bound_{method}"].to_numpy()
         lower = df[f"lower_bound_{method}"].to_numpy()
-
+        center = (upper+lower)/2
         lower_all[method] = lower
         upper_all[method] = upper
+    
 
         indices = np.argsort(lower)
         lower = lower[indices]
@@ -39,13 +40,15 @@ def plot_ci_bounds(root_folder: str, output_path: str):
         coverage = np.mean((lower <= true_value) & (upper >= true_value))
 
         ax.fill_betweenx(np.arange(len(indices)), lower, upper, color=method_colors[method])
-        ax.vlines(true_value, 0,10000, colors="red", linestyles="--")
+        ax.vlines(true_value, 0,10000, colors="red", linestyles="--", label="True summary statistic value")
+        ax.vlines(np.mean(center), 0,10000, colors="black", linestyles="--", label="Intervals mean center")
         ax.axis()
         ax.set_title("CI bounds " + method_labels[method] + " vs True Value, Coverage: " + f"{coverage:.2f}", fontsize=16)
         ax.set_xlabel("Confidence Interval Bounds", fontsize=14)
         ax.set_ylabel("Interval Index (lower bound sorted)", fontsize=14)
         ax.tick_params(axis='both', which='major', labelsize=12)
         ax.set_xlim(0, 1)
+        ax.legend()
 
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
