@@ -19,6 +19,7 @@ from .tests_CCP_segm_vs_classif import plot_significance_matrix_segm_vs_classif
 from .tests_CCP_segm import plot_significance_matrix_segm
 from .concentration_ineq import plot_hoeffding_eb_t_ci_widths, plot_hoeffding_eb_t_ci_width_ratios
 
+from .sample_needs_all import plot_fig10_sample_needs
 
 def make_all_plots(root_folder: str):
     output_path = os.path.join(root_folder, "clean_figs/supplementary/all_cov_classif.pdf")
@@ -33,8 +34,11 @@ def make_all_plots(root_folder: str):
     plot_bca_fail(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/central_vs_dispersion.pdf")
     plot_central_vs_dispersion(root_folder, output_path)
+    plot_fig10_sample_needs(root_folder)
     # output_path = os.path.join(root_folder, "clean_figs/supplementary/ci_bounds.pdf")
     # plot_ci_bounds(root_folder, output_path)
+    output_path = os.path.join(root_folder, "clean_figs/supplementary/tests_CCP_segm.pdf")
+    plot_significance_matrix_segm(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/cov_fail_dsc_mean.pdf")
     plot_cov_fail_dsc_mean(root_folder, output_path)
     output_path = os.path.join(root_folder, "clean_figs/supplementary/cov_segm_metrics.pdf")
