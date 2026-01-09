@@ -202,7 +202,7 @@ def plot_micro_vs_segm_stats(root_folder:str, output_path:str):
                         fontsize=24, title_fontsize=28, loc="center right")
 
         # Global layout
-        plt.suptitle("CI Comparison: Classification Micro vs Segmentation", fontsize=30, weight='bold')
+        plt.suptitle("CI Comparison: Classification Micro vs Segmentation", fontsize=46, weight='bold')
         plt.tight_layout(rect=[0, 0, 1, 0.97])
         if not os.path.exists(os.path.dirname(output_path)):
                 os.makedirs(os.path.dirname(output_path))
