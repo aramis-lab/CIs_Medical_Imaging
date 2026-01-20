@@ -30,8 +30,8 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
         "cldice": (1/255, 104/255, 4/255)         # #016804 -> RGB normalized
     })
 
-    fig = plt.figure(figsize=(36,15))
-    gs = gridspec.GridSpec(2, 2, width_ratios=[2, 1])
+    fig = plt.figure(figsize=(25,10))
+    gs = gridspec.GridSpec(2, 2, width_ratios=[1.7, 1])
 
     ax_left = fig.add_subplot(gs[:, 0])
     ax_top_right = fig.add_subplot(gs[0, 1])
@@ -52,7 +52,7 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     .index
     )
 
-    ax_left.set_title(f'Stat : {stat_labels["mean"]}', weight='bold', fontsize=28)
+    ax_left.set_title(f'Summary statistic : {stat_labels["mean"]}', weight='bold', fontsize=28)
     ax_left.set_xlabel('Sample size', weight='bold', fontsize=26)
     ax_left.set_ylabel('Coverage (%)', weight='bold',fontsize=26)
     ax_left.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
@@ -162,10 +162,10 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     # Sort metrics by descending absolute skewness
     sorted_metrics = df_fit_results.groupby('metric')["abs_skewness"].median().sort_values(ascending=False).index
 
-    label_fontsize = 16
-    legend_fontsize = 14
-    title_fontsize = 18
-    tick_fontsize = 14
+    label_fontsize = 23
+    legend_fontsize = 18
+    title_fontsize = 25
+    tick_fontsize = 18
 
     # Plot Absolute Skewness
     ax_top_right.axhspan(0, 1, color='#009409', alpha=0.3, label='Normal range')
@@ -173,7 +173,7 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     sns.boxplot(x='metric', y='abs_skewness', data=df_fit_results, order=sorted_metrics, hue="metric", showfliers=False, palette=color_dict, linewidth=1, ax=ax_top_right)
     sns.stripplot(x='metric', y='abs_skewness', data=df_fit_results, order=sorted_metrics, hue="metric", jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax_top_right)
 
-    ax_top_right.set_title('Absolute skewness values across all instances', weight='bold', fontsize=title_fontsize)
+    ax_top_right.set_title('Absolute skewness values', weight='bold', fontsize=title_fontsize)
     ax_top_right.set_ylabel('Absolute skewness', weight='bold', fontsize=label_fontsize)
     ax_top_right.set_xlabel('Metric', weight='bold', fontsize=label_fontsize)
     ax_top_right.legend(title="Typical values",
@@ -183,7 +183,7 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
                 title_fontproperties=FontProperties(weight='bold'))
     ax_top_right.tick_params(axis='y', labelsize=tick_fontsize)
     ax_top_right.set_ylim(-0.05, 10)
-    ax_top_right.tick_params(axis='x', labelsize=tick_fontsize)
+    ax_top_right.tick_params(axis='x', labelsize=tick_fontsize-2)
     ax_top_right.tick_params(axis='y', labelsize=tick_fontsize)
     xticks = ax_top_right.get_xticklabels()
     ax_top_right.set_xticklabels([metric_labels[metric.get_text()] for metric in xticks])
@@ -199,11 +199,11 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     sns.boxplot(x='metric', y='beta2', data=df_fit_results, order=sorted_metrics_ccp, hue="metric", showfliers=False, palette=color_dict, linewidth=1, ax=ax_bot_right)
     sns.stripplot(x='metric', y='beta2', data=df_fit_results, order=sorted_metrics_ccp, hue="metric", jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax_bot_right)
 
-    ax_bot_right.set_title('CCP values across all instances \n for percentile method for CI of the mean', weight='bold', fontsize=title_fontsize)
+    ax_bot_right.set_title('CCP values \n percentile method for CI of the mean', weight='bold', fontsize=title_fontsize)
     ax_bot_right.set_ylabel('Coverage convergence pace', weight='bold', fontsize=label_fontsize)
     ax_bot_right.set_xlabel('Metric', weight='bold', fontsize=label_fontsize)
     ax_bot_right.set_ylim(-0.05, 6)
-    ax_bot_right.tick_params(axis='x', labelsize=tick_fontsize)
+    ax_bot_right.tick_params(axis='x', labelsize=tick_fontsize-2)
     ax_bot_right.tick_params(axis='y', labelsize=tick_fontsize)
     # Adjust x-axis labels for both subplots
     xticks = ax_bot_right.get_xticklabels()
