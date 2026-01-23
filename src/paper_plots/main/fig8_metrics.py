@@ -74,7 +74,7 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     ax_left.tick_params(axis='x', labelsize=28)
     ax_left.tick_params(axis='y', labelsize=28)
 
-    data= pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"), sep=';')
+    data= pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
     results=[]
     metrics=data['score'].unique()
     for score in metrics:
@@ -173,7 +173,6 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     sns.boxplot(x='metric', y='abs_skewness', data=df_fit_results, order=sorted_metrics, hue="metric", showfliers=False, palette=color_dict, linewidth=1, ax=ax_top_right)
     sns.stripplot(x='metric', y='abs_skewness', data=df_fit_results, order=sorted_metrics, hue="metric", jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax_top_right)
 
-    ax_top_right.set_title('Absolute skewness values', weight='bold', fontsize=title_fontsize)
     ax_top_right.set_ylabel('Absolute skewness', weight='bold', fontsize=label_fontsize)
     ax_top_right.set_xlabel('Metric', weight='bold', fontsize=label_fontsize)
     ax_top_right.legend(title="Typical values",
@@ -199,8 +198,7 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     sns.boxplot(x='metric', y='beta2', data=df_fit_results, order=sorted_metrics_ccp, hue="metric", showfliers=False, palette=color_dict, linewidth=1, ax=ax_bot_right)
     sns.stripplot(x='metric', y='beta2', data=df_fit_results, order=sorted_metrics_ccp, hue="metric", jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax_bot_right)
 
-    ax_bot_right.set_title('CCP values \n percentile method for CI of the mean', weight='bold', fontsize=title_fontsize)
-    ax_bot_right.set_ylabel('Coverage convergence pace', weight='bold', fontsize=label_fontsize)
+    ax_bot_right.set_ylabel('CCP', weight='bold', fontsize=label_fontsize)
     ax_bot_right.set_xlabel('Metric', weight='bold', fontsize=label_fontsize)
     ax_bot_right.set_ylim(-0.05, 6)
     ax_bot_right.tick_params(axis='x', labelsize=tick_fontsize-2)

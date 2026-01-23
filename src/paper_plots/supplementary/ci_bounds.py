@@ -10,7 +10,7 @@ def plot_ci_bounds(root_folder: str, output_path: str):
     task = "Task03_Liver_L2"
     alg_name = "17111010008"
 
-    df = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"), sep=";")
+    df = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
     df = df[df["score"]=="dsc"]
     df = df[(df["alg_name"]==alg_name) & (df["subtask"]==task)]
 
