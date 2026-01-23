@@ -172,3 +172,13 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Hydra logs
+multirun/
+outputs/
+logs/
+
+# Data and results Files
+src/data/*
+src/results/*
+.DS_Store

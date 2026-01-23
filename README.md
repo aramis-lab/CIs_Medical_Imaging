@@ -1,2 +1,2 @@
-# CIs_MICCAI_2025
-Repository for the Confidence Interval project for MICCAI 2025.
+# CIs_Medical_Imaging
+Repository for the Confidence Interval in Medical Imaging project.
