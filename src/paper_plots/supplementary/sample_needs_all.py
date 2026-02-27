@@ -17,7 +17,7 @@ def plot_with_iqr(ax, df, y, label, marker):
     ax.fill_between(med.index, q1.values, q3.values, alpha=0.25)
 
 
-def plot_fig10_sample_needs(root_folder:str, scale_log:bool=True):
+def plot_fig10_sample_needs(root_folder:str, output_folder:str, scale_log:bool=True):
 
     plt.rcdefaults()
 
@@ -175,7 +175,7 @@ def plot_fig10_sample_needs(root_folder:str, scale_log:bool=True):
 
                 # Save figure (optional)
                 
-                output_dir = os.path.join(root_folder, "clean_figs/comparison_plots_segm_classif_log" if scale_log else "clean_figs/comparison_plots_segm_classif_linear")
+                output_dir = os.path.join(output_folder, "comparison_plots_segm_classif_log" if scale_log else "comparison_plots_segm_classif_linear")
                 os.makedirs(output_dir, exist_ok=True)
                 fig.savefig(os.path.join(output_dir, f"{segm_metric}_vs_{classif_metric}_{target_coverage}_{target_width}.pdf"), bbox_inches="tight")
                 plt.close(fig)
@@ -294,7 +294,7 @@ def plot_fig10_sample_needs(root_folder:str, scale_log:bool=True):
                 # ------------------------------------------------------------
                 # SAVE FIGURE
                 # ------------------------------------------------------------
-                output_dir = os.path.join(root_folder, "clean_figs/comparison_plots_segm_segm_log" if scale_log else "clean_figs/comparison_plots_segm_segm_linear")
+                output_dir = os.path.join(output_folder, "comparison_plots_segm_segm_log" if scale_log else "comparison_plots_segm_segm_linear")
                 os.makedirs(output_dir, exist_ok=True)
                 out_path = os.path.join(output_dir, f"{metric_a}_vs_{metric_b}_{target_coverage}_{target_width}.pdf")
                 fig.savefig(out_path, bbox_inches="tight")
@@ -309,17 +309,17 @@ def main():
     parser = argparse.ArgumentParser(description="Plot Figure 10: Sample Size Needs")
     parser.add_argument("--root_folder", type=str, required=True,
                         help="Root folder containing the results folders.")
-    parser.add_argument("--output_path", type=str, default=None,
-                        help="Path to save the output figure. If not provided, defaults to 'clean_figs/main/fig10_sample_needs.pdf' inside the root folder.")
+    parser.add_argument("--output_folder", type=str, default=None,
+                        help="Path to save the output figures. If not provided, defaults to 'clean_figs/main/' inside the root folder.")
     args = parser.parse_args()
 
     root_folder = args.root_folder
-    # If output_path not provided, default inside root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig10_sample_needs.pdf")
+    # If output_folder not provided, default inside root_folder
+    output_folder = args.output_folder or os.path.join(root_folder, "clean_figs/main/")
 
     # Call your plotting function
     # plot_fig10_sample_needs(root_folder, output_path, scale_log=True)
-    plot_fig10_sample_needs(root_folder, output_path, scale_log=False)
+    plot_fig10_sample_needs(root_folder, output_folder=output_folder, scale_log=False)
 
 if __name__=="__main__":
     main()
