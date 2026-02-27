@@ -153,7 +153,7 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
 
     nb_cols = int(np.floor(np.sqrt(len(methods))))
     nb_rows = int(np.ceil(len(methods) / nb_cols))
-    fig, axes = plt.subplots(nb_rows, nb_cols, figsize=(15 * nb_cols, 12 * nb_rows))
+    _, axes = plt.subplots(nb_rows, nb_cols, figsize=(15 * nb_cols, 12 * nb_rows))
 
     stat = "mean"
     for i, method in enumerate(methods):

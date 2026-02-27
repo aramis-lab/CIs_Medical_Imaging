@@ -30,7 +30,7 @@ def plot_coverage_metrics_segm(root_folder:str, output_path:str):
         "cldice": (1/255, 104/255, 4/255)         # #016804 -> RGB normalized
     })
 
-    fig, axs = plt.subplots(len(stats_segm), len(methods), figsize=(12*len(methods), 10*len(stats_segm)))
+    _, axs = plt.subplots(len(stats_segm), len(methods), figsize=(12*len(methods), 10*len(stats_segm)))
     for i, stat in enumerate(stats_segm):
         for j, method in enumerate(methods):
             if (stat != 'mean') and (method in ['param_z', 'param_t']):

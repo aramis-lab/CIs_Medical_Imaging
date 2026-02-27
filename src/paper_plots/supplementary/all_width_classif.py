@@ -49,7 +49,7 @@ def plot_all_width_classif(root_folder: str, output_path: str):
     ]
     
     for fig_name, metrics, df in metrics_list:
-        fig, axs = plt.subplots(len(metrics), 1, figsize=(21,15*len(metrics)))
+        _, axs = plt.subplots(len(metrics), 1, figsize=(21,15*len(metrics)))
         if len(metrics) == 1:
             axs = [axs]
         

@@ -30,7 +30,7 @@ def plot_fig5_param_small_samples(root_folder:str, output_path:str):
 })
 
     
-    fig, axs = plt.subplots(2, 1, figsize=(27, 27))
+    _, axs = plt.subplots(2, 1, figsize=(27, 27))
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc"]
@@ -210,7 +210,6 @@ def plot_fig5_param_small_samples(root_folder:str, output_path:str):
 
     ####### Second plot : mean of DSC ######
 
-    
     if not os.path.exists(os.path.dirname(output_path)):
         os.makedirs(os.path.dirname(output_path))
     plt.savefig(output_path)

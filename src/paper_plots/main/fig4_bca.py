@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import argparse
 
 from ..df_loaders import extract_df_segm_cov
-from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels
-
+from ..plot_utils import method_labels, method_colors, metric_labels
 
 def plot_fig4_bca(root_folder: str, output_path: str):
 

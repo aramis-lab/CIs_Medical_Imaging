@@ -17,7 +17,7 @@ def plot_bca_fail(root_folder: str, output_path: str):
 
     df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
 
-    fig, axs = plt.subplots(3, 3, figsize=(25, 15))
+    _, axs = plt.subplots(3, 3, figsize=(25, 15))
     axs = axs.flatten()
 
     for i, metric in enumerate(metrics_segm):

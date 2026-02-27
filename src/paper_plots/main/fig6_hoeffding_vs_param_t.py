@@ -51,14 +51,6 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
         alpha=0.7,
         label=fr"Parametric t Q3 ($\hat\sigma={np.sqrt(var_Q3.median()):.4f}$)"
     )
-    # plt.fill_between(
-    # df_param_t_Q1.index,
-    # df_param_t_Q1.values,
-    # df_param_t_Q3.values,
-    # alpha=0.6,
-    # color="#CC78BC",
-    # label="Parametric t IQR")
-
     
     plt.plot(n_values, hoeffding_width, label="Hoeffding", color='#0173B2', linestyle='--')
     plt.plot(n_values, empirical_bernstein_width, label="Empirical Bernstein", color='#DE8F05', linestyle='-.')

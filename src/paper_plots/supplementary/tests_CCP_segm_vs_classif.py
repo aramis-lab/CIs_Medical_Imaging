@@ -170,7 +170,7 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
 
     nb_cols = int(np.floor(np.sqrt(len(stats))))
     nb_rows = int(np.ceil(len(stats) / nb_cols))
-    fig, axes = plt.subplots(nb_rows, nb_cols, figsize=(15 * nb_cols, 12 * nb_rows))
+    _, axes = plt.subplots(nb_rows, nb_cols, figsize=(15 * nb_cols, 12 * nb_rows))
 
     method = 'percentile'
     for i, stat in enumerate(stats):

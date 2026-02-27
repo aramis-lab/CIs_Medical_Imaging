@@ -13,7 +13,7 @@ from ..plot_utils import metric_labels
 
 def multivariate_skewness_kurtosis(logits, eps=1e-5):
     X = np.asarray(logits)
-    n_samples, d = X.shape
+    _, d = X.shape
 
     # Center the data
     X_centered = X - np.mean(X, axis=0)

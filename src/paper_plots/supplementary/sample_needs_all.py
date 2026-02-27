@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import os
 import seaborn as sns
-import pandas as pd
 import itertools
 import argparse
 
@@ -49,8 +48,6 @@ def plot_fig10_sample_needs(root_folder:str, output_folder:str, scale_log:bool=T
     # Color palettes
     palette_segm = sns.color_palette("Blues", 1)
     color_dict_segm = dict(zip(metrics_segm, [palette_segm[0]] * len(metrics_segm)))
-    palette_classif = sns.color_palette("Reds", 1)
-    color_dict_classif = dict(zip(metrics_classif, [palette_classif[0]] * len(metrics_classif)))
 
     # Filter by percentile method
     df_segm_cov_perc = df_segm_cov[df_segm_cov["method"] == "percentile"]
@@ -318,7 +315,6 @@ def main():
     output_folder = args.output_folder or os.path.join(root_folder, "clean_figs/main/")
 
     # Call your plotting function
-    # plot_fig10_sample_needs(root_folder, output_path, scale_log=True)
     plot_fig10_sample_needs(root_folder, output_folder=output_folder, scale_log=False)
 
 if __name__=="__main__":

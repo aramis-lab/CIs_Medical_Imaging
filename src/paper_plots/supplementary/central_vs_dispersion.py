@@ -19,7 +19,7 @@ def plot_central_vs_dispersion(root_folder: str, output_path:str):
     df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats_segm)
     df_segm = df_segm[df_segm["method"] == "percentile"]
 
-    fig, axes = plt.subplots(3, 3, figsize=(21, 18), sharex=False)
+    _, axes = plt.subplots(3, 3, figsize=(21, 18), sharex=False)
     axes = axes.flatten()  # flatten to 1D for easy indexing
 
     for i, metric in enumerate(metrics_segm):

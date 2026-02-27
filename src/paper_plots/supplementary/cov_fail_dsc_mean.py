@@ -66,7 +66,7 @@ def plot_cov_fail_dsc_mean(root_folder:str, output_path:str):
     n_col = 5
     n_row = 3
 
-    fig, axes = plt.subplots(n_row, n_col, figsize=(6*n_col, 5*n_row), squeeze=False)
+    _, axes = plt.subplots(n_row, n_col, figsize=(6*n_col, 5*n_row), squeeze=False)
 
     for idx, (task, algo, cov_value) in enumerate(triples):
         i, j = divmod(idx, n_col)

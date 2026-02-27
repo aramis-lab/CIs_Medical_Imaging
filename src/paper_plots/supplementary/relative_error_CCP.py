@@ -67,7 +67,7 @@ def plot_rel_error_CCP_segm(root_folder:str, output_path:str):
 
     sorted_metrics = df_fit_segm.groupby('metric')["beta2"].median().sort_values(ascending=False).index
 
-    fig, ax = plt.subplots(1, 1, figsize=(15, 9))
+    _, ax = plt.subplots(1, 1, figsize=(15, 9))
 
     # Plot R2
     sns.boxplot(x='metric', y='relative_error', data=df_fit_segm, order=sorted_metrics, hue="metric", showfliers=False, palette=color_dict, linewidth=1, ax=ax)

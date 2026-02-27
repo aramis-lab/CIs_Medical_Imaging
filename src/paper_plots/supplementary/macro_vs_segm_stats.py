@@ -39,7 +39,7 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
         df_segm_perc_width = df_segm_width[(df_segm_width['n'] <= 250) & (df_segm_width['method'] == 'percentile')]
         df_classif_perc_width = df_classif_width[(df_classif_width['n'] <= 250) & (df_classif_width['method'] == 'percentile')]
         n_stats = len(stats_segm)
-        fig, axs = plt.subplots(n_stats, 2, figsize=(36, 15 * n_stats))
+        _, axs = plt.subplots(n_stats, 2, figsize=(36, 15 * n_stats))
         if n_stats == 1:
                 axs = np.array([axs])  # keep consistent 2D structure
 

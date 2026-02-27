@@ -20,7 +20,7 @@ def plot_ci_bounds(root_folder: str, output_path: str):
 
     df = df[(df["n"]==50)]
 
-    fig, axs = plt.subplots(1, 3, figsize=(24, 8))
+    _, axs = plt.subplots(1, 3, figsize=(24, 8))
 
     lower_all = {}
     upper_all = {}

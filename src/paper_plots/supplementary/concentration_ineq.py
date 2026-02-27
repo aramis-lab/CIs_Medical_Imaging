@@ -4,7 +4,7 @@ import os
 from scipy.stats import t
 
 
-def plot_hoeffding_eb_t_ci_widths(root_folder: str, output_path: str):
+def plot_hoeffding_eb_t_ci_widths(output_path: str):
 
     alpha = 0.05
 
@@ -12,7 +12,6 @@ def plot_hoeffding_eb_t_ci_widths(root_folder: str, output_path: str):
     n_max = 10**5
 
     sigma_t=0.22
-    V_mp = sigma_t**2
 
     n = np.logspace(np.log10(n_min), np.log10(n_max), num=5000).astype(int)
 
@@ -40,7 +39,7 @@ def plot_hoeffding_eb_t_ci_widths(root_folder: str, output_path: str):
     plt.savefig(output_path)
     plt.close()
 
-def plot_hoeffding_eb_t_ci_width_ratios(root_folder: str, output_path: str):
+def plot_hoeffding_eb_t_ci_width_ratios(output_path: str):
 
     alpha = 0.05
 
@@ -48,7 +47,6 @@ def plot_hoeffding_eb_t_ci_width_ratios(root_folder: str, output_path: str):
     n_max = 10**9
 
     sigma_t=0.22
-    V_mp = sigma_t**2
 
     n = np.logspace(np.log10(n_min), np.log10(n_max), num=5000).astype(int)
 
@@ -93,8 +91,8 @@ def main():
     # If output_path not provided, default inside root_folder
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/concentration_ineq.pdf")
 
-    plot_hoeffding_eb_t_ci_widths(root_folder, output_path)
-    plot_hoeffding_eb_t_ci_width_ratios(root_folder, output_path.replace(".pdf", "_ratios.pdf"))
+    plot_hoeffding_eb_t_ci_widths(output_path)
+    plot_hoeffding_eb_t_ci_width_ratios(output_path.replace(".pdf", "_ratios.pdf"))
 
 if __name__ == "__main__":
     main()

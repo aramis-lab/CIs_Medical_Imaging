@@ -33,7 +33,7 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
     means_micro_df_n_width =df_micro_width[(df_micro_width['method']=='percentile') & (df_micro_width['n']<=250)].sort_values(by=['metric', 'n'])
 
     num_metrics = len([m for m in metrics_macro if m not in ['accuracy', 'balanced_accuracy']]) + 1
-    fig, axes = plt.subplots(
+    _, axes = plt.subplots(
         num_metrics, 2, 
         figsize=(36, 15 * num_metrics), 
         sharex=True

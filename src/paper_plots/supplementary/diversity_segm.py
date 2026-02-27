@@ -76,7 +76,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
 
     dark_color_dict = {k: darken_color(v, 0.75) for k, v in color_dict.items()}
 
-    fig, axs = plt.subplots(4,1, figsize=(16, 24))
+    _, axs = plt.subplots(4,1, figsize=(16, 24))
 
     ### --- Plot Mean --- ###
     ax = axs[0]

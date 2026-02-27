@@ -14,7 +14,7 @@ def plot_with_iqr(ax, df, y, label, marker):
     ax.fill_between(med.index, q1.values, q3.values, alpha=0.25)
 
 
-def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=True):
+def plot_fig10_sample_needs(root_folder:str, output_path:str):
 
     plt.rcdefaults()
 
@@ -23,7 +23,6 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
     LABEL_FONTSIZE = 32
     TICK_FONTSIZE = 28 
     LEGEND_FONTSIZE = 34
-    LEGEND_TITLE_FONTSIZE = 36
 
     # Define metric lists
     metrics_segm = ["dsc", "nsd", "iou", "boundary_iou", "cldice", "hd", "hd_perc", "masd", "assd"]
@@ -53,7 +52,7 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
     #plt.rcdefaults()  # reset to default colors (blue/orange)
 
     # layout: 2 rows, 3 columns
-    fig, axes = plt.subplots(3, 2, figsize=(30, 42), sharex=False,
+    _, axes = plt.subplots(3, 2, figsize=(30, 42), sharex=False,
                             gridspec_kw={"height_ratios": [1, 1, 1]})
 
     # Define selected pairs
@@ -186,8 +185,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig10_sample_needs.pdf")
 
     # Call your plotting function
-    # plot_fig10_sample_needs(root_folder, output_path, scale_log=True)
-    plot_fig10_sample_needs(root_folder, output_path, scale_log=False)
+    plot_fig10_sample_needs(root_folder, output_path)
 
 if __name__=="__main__":
     main()

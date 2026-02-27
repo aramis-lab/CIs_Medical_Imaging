@@ -38,7 +38,7 @@ def plot_fig7bis_micro_vs_segm_mean(root_folder:str, output_path:str):
         df_classif_cov_perc = df_classif_cov[(df_classif_cov["n"]<=250)&(df_classif_cov["method"]=="percentile")]
         df_classif_width_perc = df_classif_width[(df_classif_width["n"]<=250)&(df_classif_width["method"]=="percentile")]
         
-        fig, axs = plt.subplots(1, 2, figsize=(36, 15))
+        _, axs = plt.subplots(1, 2, figsize=(36, 15))
 
         stat = stats_segm[0]
 
@@ -222,7 +222,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig7bis_micro_vs_segm_mean.pdf")
 
     # Call your plotting function
-    plot_fig7_macro_vs_segm_mean(root_folder, output_path)
+    plot_fig7bis_micro_vs_segm_mean(root_folder, output_path)
 
 if __name__ == "__main__":
     main()

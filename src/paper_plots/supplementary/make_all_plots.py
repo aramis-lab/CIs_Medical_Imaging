@@ -60,9 +60,9 @@ def make_all_plots(root_folder: str, output_folder: str, export_format: str = "p
     output_path = os.path.join(output_folder, f"tests_CCP_segm.{export_format}")
     plot_significance_matrix_segm(root_folder, output_path)
     output_path = os.path.join(output_folder, f"concentration_ineq.{export_format}")
-    plot_hoeffding_eb_t_ci_widths(root_folder, output_path)
+    plot_hoeffding_eb_t_ci_widths(output_path)
     output_path = os.path.join(output_folder, f"concentration_ineq_ratios.{export_format}")
-    plot_hoeffding_eb_t_ci_width_ratios(root_folder, output_path)
+    plot_hoeffding_eb_t_ci_width_ratios(output_path)
     pass
 
 if __name__ == "__main__":

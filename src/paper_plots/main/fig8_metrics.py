@@ -164,7 +164,6 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
 
     label_fontsize = 23
     legend_fontsize = 18
-    title_fontsize = 25
     tick_fontsize = 18
 
     # Plot Absolute Skewness

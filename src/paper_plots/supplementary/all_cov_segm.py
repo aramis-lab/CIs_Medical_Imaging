@@ -36,7 +36,7 @@ def plot_all_cov_segm(root_folder: str, output_path: str):
         "axes.facecolor": "white"
     })
 
-    fig, axs = plt.subplots(len(stats_segm), len(metrics_segm), figsize=(18*len(metrics_segm), 15*len(stats_segm)))
+    _, axs = plt.subplots(len(stats_segm), len(metrics_segm), figsize=(18*len(metrics_segm), 15*len(stats_segm)))
 
     preferred_order = ["basic", "bca", "percentile"]
     for idx1, summary_statistic in enumerate(stats_segm):
