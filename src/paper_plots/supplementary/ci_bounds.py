@@ -7,8 +7,8 @@ from ..plot_utils import method_labels, method_colors, upload_to_overleaf
 
 def plot_ci_bounds(root_folder: str, output_path: str, upload_overleaf: bool = False):
 
-    task = "Task03_Liver_L1"
-    alg_name = "CerebriuDIKU"
+    task = "Task03_Liver_L2"
+    alg_name = "17111010008"
 
     df = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
     df = df[df["score"]=="dsc"]
@@ -16,7 +16,7 @@ def plot_ci_bounds(root_folder: str, output_path: str, upload_overleaf: bool = F
 
     true_value = df["value"].to_numpy().mean()
 
-    df = pd.read_csv(os.path.join(root_folder, f"results_dsc_mean/results_dsc_mean_{task}_{alg_name}_250.csv"))
+    df = pd.read_csv(os.path.join(root_folder, f"results_dsc_median/results_dsc_median_{task}_{alg_name}_50.csv"))
 
     df = df[(df["n"]==50)]
 
@@ -28,7 +28,7 @@ def plot_ci_bounds(root_folder: str, output_path: str, upload_overleaf: bool = F
         ax = axs[i]
         upper = df[f"upper_bound_{method}"].to_numpy()
         lower = df[f"lower_bound_{method}"].to_numpy()
-        center = (upper+lower)/2
+        center = np.nanmean([lower, upper], axis=0)
         lower_all[method] = lower
         upper_all[method] = upper
     
@@ -39,11 +39,11 @@ def plot_ci_bounds(root_folder: str, output_path: str, upload_overleaf: bool = F
 
         coverage = np.mean((lower <= true_value) & (upper >= true_value))
 
-        ax.fill_betweenx(np.arange(len(indices)), lower, upper, color=method_colors[method], alpha=0.7)
-        ax.vlines(true_value, 0,10000, colors="red", linestyles="--", label="True summary statistic value")
-        ax.vlines(np.mean(center), 0,10000, colors="black", linestyles="--", label="Intervals mean center")
+        ax.hlines(np.arange(len(indices)), lower, upper, color=method_colors[method], alpha=0.5)
+        ax.vlines(true_value, 0,len(indices), colors="red", linestyles="--", label="True summary statistic value")
+        ax.vlines(np.nanmean(center), 0,len(indices), colors="black", linestyles="--", label="Intervals mean center")
         ax.axis()
-        ax.set_title("CI bounds " + method_labels[method] + " vs True Value, Coverage: " + f"{coverage:.2f}", fontsize=16)
+        ax.set_title("CI bounds " + method_labels[method] + " vs True Value, Coverage: " + f"{coverage:.3f}", fontsize=16)
         ax.set_xlabel("Confidence Interval Bounds", fontsize=14)
         ax.set_ylabel("Interval Index (lower bound sorted)", fontsize=14)
         ax.tick_params(axis='both', which='major', labelsize=12)
