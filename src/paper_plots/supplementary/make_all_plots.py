@@ -69,12 +69,12 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Generate all plots for the paper.")
     parser.add_argument("--root_folder", type=str, required=True, help="Root folder containing the data.")
-    parser.add_argument("--output_folder", type=str, required=True, help="Output folder for saving plots.")
+    parser.add_argument("--output_folder", type=str, help="Output folder for saving plots.")
     parser.add_argument("--export_format", type=str, default="pdf", help="Format for exported plots (e.g., pdf, png).")
     args = parser.parse_args()
 
     root_folder = args.root_folder
-    output_folder = args.output_folder or os.path.join(root_folder, "clean_figs/main/")
+    output_folder = args.output_folder or os.path.join(root_folder, "clean_figs/supplementary/")
     export_format = args.export_format
 
     make_all_plots(root_folder, output_folder, export_format)
