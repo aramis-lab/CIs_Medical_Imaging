@@ -54,7 +54,7 @@ def plot_bca_fail(root_folder: str, output_path: str, upload_overleaf: bool = Fa
         ax.tick_params(axis='y', labelsize=18)
         ax.tick_params(axis='x', labelsize=18)
         ax.set_ylim(0.8, 1.01)
-        ax.grid(True, axis='y', linestyle=(0, (5,10)), color='black', linewidth=0.6)
+        ax.grid(True, axis='y')
 
         ax.legend(fontsize=20)
     plt.tight_layout()

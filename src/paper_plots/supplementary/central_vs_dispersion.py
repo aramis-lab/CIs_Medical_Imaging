@@ -48,7 +48,7 @@ def plot_central_vs_dispersion(root_folder: str, output_path:str, upload_overlea
         ax.set_yticks(np.arange(0.5, 1.01, 0.05))
         ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
         ax.set_ylim(0.49, 1.01)
-        ax.grid(True, axis='y', linestyle=(0, (5,10)), color='black', linewidth=0.6)
+        ax.grid(True, axis='y')
         ax.legend(fontsize=12, loc="lower right")
 
     plt.tight_layout()
