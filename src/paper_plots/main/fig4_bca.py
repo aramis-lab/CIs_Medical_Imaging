@@ -24,7 +24,7 @@ def plot_fig4_bca(root_folder: str, output_path: str):
     df_plot = medians.merge(q1, on=['n', 'method', 'stat'], suffixes=('_median', '_q1')).merge(q3, on=['n', 'method', 'stat'])
     df_plot.rename(columns={'coverage': 'coverage_q3'}, inplace=True)
 
-    plt.figure(figsize=(20, 16))
+    plt.figure(figsize=(16, 16))
     
     for (method, stat), df_group in df_plot.groupby(['method', 'stat']):
         linestyle = '-' if stat == 'median' else '-'
@@ -52,7 +52,7 @@ def plot_fig4_bca(root_folder: str, output_path: str):
     plt.gca().yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
     plt.tick_params(axis='y', labelsize=28)
     plt.tick_params(axis='x', labelsize=28)
-    plt.ylim(0.79, 1.01)
+    plt.ylim(0.85, 1.01)
     plt.grid(True, axis='y')
 
     plt.legend(fontsize= 32)

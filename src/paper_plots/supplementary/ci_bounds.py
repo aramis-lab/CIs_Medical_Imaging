@@ -7,8 +7,8 @@ from ..plot_utils import method_labels, method_colors
 
 def plot_ci_bounds(root_folder: str, output_path: str):
 
-    task = "Task03_Liver_L2"
-    alg_name = "17111010008"
+    task = "Task03_Liver_L1"
+    alg_name = "CerebriuDIKU"
 
     df = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"), sep=";")
     df = df[df["score"]=="dsc"]
@@ -16,18 +16,21 @@ def plot_ci_bounds(root_folder: str, output_path: str):
 
     true_value = df["value"].to_numpy().mean()
 
-    df = pd.read_csv(os.path.join(root_folder, f"results_dsc_median/results_dsc_median_{task}_{alg_name}_50.csv"))
+    df = pd.read_csv(os.path.join(root_folder, f"results_dsc_mean_{task}_{alg_name}_250.csv"))
 
-    df = df[(df["n"]==50)]
+    df = df[(df["n"]==250)]
 
     fig, axs = plt.subplots(1, 3, figsize=(24, 8))
 
     lower_all = {}
     upper_all = {}
-    for i, method in enumerate(["percentile", "basic", "bca"]):
+    for i, method in enumerate(["percentile"]):
         ax = axs[i]
         upper = df[f"upper_bound_{method}"].to_numpy()
+        upper=upper[:50]
+        
         lower = df[f"lower_bound_{method}"].to_numpy()
+        lower=lower[:50]
         center = (upper+lower)/2
         lower_all[method] = lower
         upper_all[method] = upper
@@ -38,17 +41,28 @@ def plot_ci_bounds(root_folder: str, output_path: str):
         upper = upper[indices]
 
         coverage = np.mean((lower <= true_value) & (upper >= true_value))
+        y_positions = np.arange(len(indices))
 
-        ax.fill_betweenx(np.arange(len(indices)), lower, upper, color=method_colors[method])
-        ax.vlines(true_value, 0,10000, colors="red", linestyles="--", label="True summary statistic value")
-        ax.vlines(np.mean(center), 0,10000, colors="black", linestyles="--", label="Intervals mean center")
+        for i, y in enumerate(y_positions):
+            ax.hlines(
+                y=y,
+                xmin=lower[i],
+                xmax=upper[i],
+                color=method_colors[method],
+                linewidth=2
+            )
+        ax.set_xticks([])
+        ax.set_yticks([])       
+        # ax.fill_betweenx(np.arange(len(indices)), lower, upper, color=method_colors[method])
+        ax.vlines(true_value, 0,50, colors="red", linestyles="--", label="True summary statistic value", linewidth=2)
+        # ax.vlines(np.mean(center), 0,50, colors="red", linestyles="--", label="Intervals mean center")
         ax.axis()
-        ax.set_title("CI bounds " + method_labels[method] + " vs True Value, Coverage: " + f"{coverage:.2f}", fontsize=16)
-        ax.set_xlabel("Confidence Interval Bounds", fontsize=14)
-        ax.set_ylabel("Interval Index (lower bound sorted)", fontsize=14)
-        ax.tick_params(axis='both', which='major', labelsize=12)
-        ax.set_xlim(0, 1)
-        ax.legend()
+        # ax.set_title("CI bounds " + method_labels[method] + " vs True Value, Coverage: " + f"{coverage:.2f}", fontsize=16)
+        ax.set_xlabel("Confidence Interval Bounds", fontsize=20)
+        # ax.set_ylabel("Interval Index (lower bound sorted)", fontsize=14)
+        # ax.tick_params(axis='both', which='major', labelsize=12)
+        # ax.set_xlim(0, 1)
+        ax.legend(fontsize=20, loc='upper left')
 
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):

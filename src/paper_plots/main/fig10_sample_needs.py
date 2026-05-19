@@ -94,7 +94,7 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
         ax.grid(True, axis="y")
         ax.set_ylim(.80, 1)
 
-        ax.set_xlabel("Sample size", fontsize=LABEL_FONTSIZE)
+        # ax.set_xlabel("Sample size", fontsize=LABEL_FONTSIZE)
         if row < 2:
             ax.set_xscale("log")
             ax.tick_params(axis='both', labelsize=TICK_FONTSIZE)
@@ -107,14 +107,14 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
 
     
         ax.set_ylabel("Coverage (%)", fontsize=LABEL_FONTSIZE)
-        if row==0:
-            ax.set_title("Coverage (%)", fontsize=TITLE_FONTSIZE, weight='bold')
+        # if row==0:
+            # ax.set_title("Coverage (%)", fontsize=TITLE_FONTSIZE, weight='bold')
         ax.legend(fontsize=LEGEND_FONTSIZE)
 
-        # Add subplot letter
-        ax.text(0.5, 1, subplot_letters[letter_idx], transform=ax.transAxes,
-                fontsize=40, fontweight='bold', va='top', ha='right')
-        letter_idx += 1
+        # # Add subplot letter
+        # ax.text(0.5, 1, subplot_letters[letter_idx], transform=ax.transAxes,
+        #         fontsize=40, fontweight='bold', va='top', ha='right')
+        # letter_idx += 1
 
         # -------------------
         # Width (bottom row)
@@ -137,9 +137,8 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
             ax.tick_params(axis='both', labelsize=TICK_FONTSIZE)
             # ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.1f}'))
             ax.grid(True, axis="y")
-            if row==0:
-                ax.set_title("Width", fontsize=TITLE_FONTSIZE, weight='bold')
-
+            # if row==0:
+ 
 
         else:
             df_segm_w = df_segm_width_perc[(df_segm_width_perc["metric"] == 'dsc') &
@@ -153,11 +152,11 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, scale_log:bool=Tru
             ax.set_xscale("linear")
             ax.set_xlim(0, 250)
         ax.legend(fontsize=LEGEND_FONTSIZE)
-        ax.set_xlabel("Sample size", fontsize=LABEL_FONTSIZE)
+        # ax.set_xlabel("Sample size", fontsize=LABEL_FONTSIZE)
 
         # Add subplot letter
-        ax.text(0.5, 1, subplot_letters[letter_idx], transform=ax.transAxes,
-                fontsize=40, fontweight='bold', va='top', ha='right')
+        # ax.text(0.5, 1, subplot_letters[letter_idx], transform=ax.transAxes,
+        #         fontsize=40, fontweight='bold', va='top', ha='right')
         letter_idx += 1
 
     # -------------------

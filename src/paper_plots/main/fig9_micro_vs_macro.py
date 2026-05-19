@@ -35,7 +35,7 @@ def plot_fig9_micro_vs_macro(root_folder:str, output_path:str):
 
     fig, ax = plt.subplots(
         1, 1, 
-        figsize=(25, 15)
+        figsize=(30, 15)
     )
 
     ax_cov = ax
@@ -57,14 +57,16 @@ def plot_fig9_micro_vs_macro(root_folder:str, output_path:str):
         n_vals = micro_data['n'].unique()
         ax_cov.plot(n_vals, medians, marker='o', label='Accuracy', linewidth=4, markersize=10)
         ax_cov.fill_between(n_vals, q1, q3, alpha=0.2)
-    ax_cov.set_title(f'Coverage for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=38)
+    # ax_cov.set_title(f'Coverage for {metric_labels["balanced_accuracy"]} vs Accuracy', weight='bold', fontsize=38)
+    ax_cov.set_title(f'', weight='bold', fontsize=38)
+
     ax_cov.set_xlabel('Sample size', weight='bold', fontsize=28)
     ax_cov.set_ylabel('Coverage (%)', weight='bold', fontsize=28)
     ax_cov.tick_params(axis='y', labelsize=26)
     ax_cov.tick_params(axis='x', labelsize=26)
     ax_cov.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
-    ax_cov.set_ylim(0, 1.05)
-    ax_cov.set_yticks(np.arange(0.0, 1.01, 0.1))
+    ax_cov.set_ylim(0.5, 1.05)
+    ax_cov.set_yticks(np.arange(0.5, 1.01, 0.1))
     ax_cov.grid(True, axis='y')
     ax_cov.legend(fontsize=32)
     # ax_width = axes[1]

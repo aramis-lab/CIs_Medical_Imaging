@@ -92,8 +92,8 @@ def plot_fig7_macro_vs_segm_mean(root_folder:str, output_path:str):
                 ax.fill_between(df_metric['n'], df_metric['coverage_q1'], df_metric['coverage_q3'],
                                 alpha=0.6, color=color_dict_segm[metric])
 
-        ax.set_title(f"Coverage — {stat_labels[stat]}", fontsize=44, weight="bold")
-        ax.set_xlabel("Sample size", fontsize=32)
+        # ax.set_title(f"Coverage — {stat_labels[stat]}", fontsize=44, weight="bold")
+        # ax.set_xlabel("Sample size", fontsize=32)
         ax.set_ylabel("Coverage (%)", fontsize=32)
         ax.tick_params(axis="both", labelsize=24)
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
@@ -114,11 +114,11 @@ def plot_fig7_macro_vs_segm_mean(root_folder:str, output_path:str):
 
         # draw them in different corners
         leg1 = ax.legend(handles_classif, labels_classif, title="Classification metrics",
-                        fontsize=24, title_fontsize=28, loc="center right")
+                        fontsize=30, title_fontsize=32, loc="center right")
         ax.add_artist(leg1)
 
         ax.legend(handles_segm, labels_segm, title="Segmentation metrics",
-                fontsize=24, title_fontsize=28, loc="lower right")
+                fontsize=30, title_fontsize=32, loc="lower right")
 
         # ============================================================
         # WIDTH (right column)
@@ -170,8 +170,8 @@ def plot_fig7_macro_vs_segm_mean(root_folder:str, output_path:str):
                 ax.fill_between(df_metric['n'], df_metric['width_q1'], df_metric['width_q3'],
                                 alpha=0.7, color=color_dict_segm[metric])
 
-        ax.set_title(f"Width — {stat_labels[stat]}", fontsize=44, weight="bold")
-        ax.set_xlabel("Sample size", fontsize=32)
+        # ax.set_title(f"Width — {stat_labels[stat]}", fontsize=44, weight="bold")
+        # ax.set_xlabel("Sample size", fontsize=32)
         ax.set_ylabel("Width", fontsize=32)
         ax.tick_params(axis="both", labelsize=24)
         ax.grid(True, axis="y")
@@ -190,18 +190,18 @@ def plot_fig7_macro_vs_segm_mean(root_folder:str, output_path:str):
         labels_segm = [metric_labels[lab] for lab in labels_all if lab in metrics_segm]
 
         # draw them in different corners
-        leg1 = ax.legend(handles_classif, labels_classif, title="Classification metrics",
-                        fontsize=24, title_fontsize=28, loc="upper right")
-        ax.add_artist(leg1)
+        # leg1 = ax.legend(handles_classif, labels_classif, title="Classification metrics",
+        #                 fontsize=24, title_fontsize=28, loc="upper right")
+        # ax.add_artist(leg1)
 
-        ax.legend(handles_segm, labels_segm, title="Segmentation metrics",
-                fontsize=24, title_fontsize=28, loc="center right")
+        # ax.legend(handles_segm, labels_segm, title="Segmentation metrics",
+        #         fontsize=24, title_fontsize=28, loc="center right")
 
-        for ax, letter in zip(axs, ['A', 'B']):
-                ax.text(0.5, 0.98, letter, transform=ax.transAxes,
-                        fontsize=40, fontweight='bold', va='top', ha='center')
+        # for ax, letter in zip(axs, ['A', 'B']):
+        #         ax.text(0.5, 0.98, letter, transform=ax.transAxes,
+        #                 fontsize=40, fontweight='bold', va='top', ha='center')
         
-        plt.suptitle("Classification macro metrics vs Segmentation metrics", fontsize=44, weight="bold")
+        # plt.suptitle("Classification macro metrics vs Segmentation metrics", fontsize=44, weight="bold")
 
         # Global layout
         plt.tight_layout(rect=[0, 0, 1, 0.97])
