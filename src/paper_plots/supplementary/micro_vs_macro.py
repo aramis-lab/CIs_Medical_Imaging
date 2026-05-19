@@ -3,11 +3,11 @@ import os
 import numpy as np
 import argparse
 
-from ..plot_utils import metric_labels
+from ..plot_utils import metric_labels, upload_to_overleaf
 from ..df_loaders import extract_df_classif_cov, extract_df_classif_width
 
 
-def plot_micro_vs_macro_all(root_folder:str, output_path:str):
+def plot_micro_vs_macro_all(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
     
@@ -178,10 +178,14 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add micro vs macro plot for classification metrics")
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Supplementary Figure micro vs macro for all classification metrics.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
 
     args = parser.parse_args()
 
@@ -190,7 +194,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/micro_vs_macro.pdf")
 
     # Call your plotting function
-    plot_micro_vs_macro_all(root_folder, output_path)
+    plot_micro_vs_macro_all(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

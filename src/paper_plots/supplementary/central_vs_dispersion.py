@@ -4,10 +4,10 @@ import argparse
 import numpy as np
 
 from ..df_loaders import extract_df_segm_cov
-from ..plot_utils import metric_labels, stat_labels
+from ..plot_utils import metric_labels, stat_labels, upload_to_overleaf
 
 
-def plot_central_vs_dispersion(root_folder: str, output_path:str):
+def plot_central_vs_dispersion(root_folder: str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
     
@@ -57,16 +57,20 @@ def plot_central_vs_dispersion(root_folder: str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add central vs dispersion plot")
+
 def main():
     parser = argparse.ArgumentParser(description="Plot central vs dispersion statistics for medical imaging CIs.")
     parser.add_argument('--root_folder', type=str, required=True, help='Root folder containing results.')
     parser.add_argument('--output_path', type=str, required=False, help='Output path for the plot.')
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
 
     root_folder = args.root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/central_vs_dispersion.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/spread_vs_central_all.pdf")
 
-    plot_central_vs_dispersion(root_folder, output_path)
+    plot_central_vs_dispersion(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

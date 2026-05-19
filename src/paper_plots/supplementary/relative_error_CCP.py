@@ -6,7 +6,7 @@ import seaborn as sns
 import argparse
 
 from ..df_loaders import extract_df_segm_cov
-from ..plot_utils import metric_labels
+from ..plot_utils import metric_labels, upload_to_overleaf
 
 def perform_fits_segm(df_segm, metrics, stats):
     results = []
@@ -39,7 +39,7 @@ def perform_fits_segm(df_segm, metrics, stats):
     df_fit_results = pd.DataFrame(results)
     return df_fit_results
 
-def plot_rel_error_CCP_segm(root_folder:str, output_path:str):
+def plot_rel_error_CCP_segm(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -89,17 +89,21 @@ def plot_rel_error_CCP_segm(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add relative error of CCP plot for segmentation metrics")
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--root_folder', type=str, required=True,
                         help='Root folder containing results_metrics_segm directory')
     parser.add_argument('--output_path', type=str,help='Path to save the output plot')
+    parser.add_argument('--upload_overleaf', action='store_true', help='Upload the plot to Overleaf')
     args = parser.parse_args()
 
     root_folder = args.root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs", "supplementary", "relative_error_CCP_segm.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs", "supplementary", "relative_errors.pdf")
 
-    plot_rel_error_CCP_segm(root_folder, output_path)
+    plot_rel_error_CCP_segm(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

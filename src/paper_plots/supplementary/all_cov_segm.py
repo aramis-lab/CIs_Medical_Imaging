@@ -5,9 +5,9 @@ import numpy as np
 import os
 
 from ..df_loaders import extract_df_segm_cov
-from ..plot_utils import method_labels, method_colors
+from ..plot_utils import method_labels, method_colors, upload_to_overleaf
 
-def plot_all_cov_segm(root_folder: str, output_path: str):
+def plot_all_cov_segm(root_folder: str, output_path: str, upload_overleaf: bool = False):
     
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
@@ -127,18 +127,22 @@ def plot_all_cov_segm(root_folder: str, output_path: str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg=f"Update Supp Fig coverage of all methods and metrics for segmentation")
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Generate Supp Figure coverage of all methods and metrics for segmentation.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path to save the output plot.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/all_cov_segm.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/coverages_segm.pdf")
 
-    plot_all_cov_segm(root_folder, output_path)
+    plot_all_cov_segm(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

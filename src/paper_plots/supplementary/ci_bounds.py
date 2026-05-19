@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import argparse
-from ..plot_utils import method_labels, method_colors
+from ..plot_utils import method_labels, method_colors, upload_to_overleaf
 
-def plot_ci_bounds(root_folder: str, output_path: str):
+def plot_ci_bounds(root_folder: str, output_path: str, upload_overleaf: bool = False):
 
     task = "Task03_Liver_L2"
     alg_name = "17111010008"
@@ -56,15 +56,19 @@ def plot_ci_bounds(root_folder: str, output_path: str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add CI bounds plot")
+
 def main():
     parser = argparse.ArgumentParser(description="Plot CI bounds for a specific task and algorithm.")
     parser.add_argument("--root_folder", type=str, required=True, help="Root folder containing the data.")
     parser.add_argument("--output_path", type=str, required=False, help="Output path for the plot PDF.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
     root_folder = args.root_folder
     output_path = args.output_path if args.output_path else os.path.join(root_folder, "clean_figs/supplementary/ci_bounds.pdf")
 
-    plot_ci_bounds(root_folder, output_path)
+    plot_ci_bounds(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

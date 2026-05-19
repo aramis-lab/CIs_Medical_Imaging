@@ -7,7 +7,7 @@ import argparse
 from scipy.stats import skew, kurtosis
 from matplotlib.font_manager import FontProperties
 
-from ..plot_utils import metric_labels
+from ..plot_utils import metric_labels, upload_to_overleaf
 
 def compute_descriptive_stats(root_folder:str):
 
@@ -50,7 +50,7 @@ def compute_descriptive_stats(root_folder:str):
     return results_df
 
 
-def plot_descriptive_stats_segm(root_folder:str, output_path:str):
+def plot_descriptive_stats_segm(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -168,17 +168,21 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add descriptive statistics plot for segmentation metrics")
+
 def main():
     parser = argparse.ArgumentParser(description="Compute and plot descriptive statistics for segmentation metrics.")
     parser.add_argument("--root_folder", type=str, required=True, help="Root folder containing the data matrix CSV file.")
     parser.add_argument("--output_path", type=str, required=False, help="Output path for the descriptive statistics plot.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/skew_kurt_segm.pdf")
 
-    plot_descriptive_stats_segm(root_folder, output_path)
+    plot_descriptive_stats_segm(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import os
 import argparse
 import string 
-from ..plot_utils import metric_labels
+from ..plot_utils import metric_labels, upload_to_overleaf
 from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov, extract_df_segm_width, extract_df_classif_width
 
 def plot_with_iqr(ax, df, y, label, marker):
@@ -14,7 +14,7 @@ def plot_with_iqr(ax, df, y, label, marker):
     ax.fill_between(med.index, q1.values, q3.values, alpha=0.25)
 
 
-def plot_fig10_sample_needs(root_folder:str, output_path:str):
+def plot_fig10_sample_needs(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -170,6 +170,9 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str):
     plt.savefig(output_path, bbox_inches="tight")
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/main_figs/{os.path.basename(output_path)}", commit_msg="Update Fig 10 Sample Size Needs")
+
 
 
 def main():
@@ -178,6 +181,7 @@ def main():
                         help="Root folder containing the results folders.")
     parser.add_argument("--output_path", type=str, default=None,
                         help="Path to save the output figure. If not provided, defaults to 'clean_figs/main/fig10_sample_needs.pdf' inside the root folder.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
 
     root_folder = args.root_folder
@@ -185,7 +189,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig10_sample_needs.pdf")
 
     # Call your plotting function
-    plot_fig10_sample_needs(root_folder, output_path)
+    plot_fig10_sample_needs(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__=="__main__":
     main()

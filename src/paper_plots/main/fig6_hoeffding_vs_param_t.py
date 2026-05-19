@@ -4,8 +4,9 @@ import os
 import matplotlib.pyplot as plt
 from scipy.stats import t
 from ..df_loaders import extract_df_segm_width
+from ..plot_utils import upload_to_overleaf
 
-def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
+def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -32,7 +33,9 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     inferred_width_Q1 = 2 * t.ppf(0.975, n_values - 1) * np.sqrt(var_Q1.median()) / np.sqrt(n_values)
     inferred_width_Q3 = 2 * t.ppf(0.975, n_values - 1) * np.sqrt(var_Q3.median()) / np.sqrt(n_values)
     plt.figure(figsize=(8, 6))
-   # plt.plot(n_values, worst_param_t_width, label="Worst-case Parametric t Width", color='#DE8F05')
+    # plt.plot(n_values, worst_param_t_width, label="Worst-case Parametric t Width", color='#DE8F05')
+    plt.plot(n_values, hoeffding_width, label="Hoeffding", color='#0173B2', linestyle='-')
+    plt.plot(n_values, empirical_bernstein_width, label="Empirical Bernstein", color='#DE8F05', linestyle='-')
     plt.plot(
     n_values,
     inferred_width_Q1,
@@ -52,8 +55,6 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
         label=fr"Parametric t Q3 ($\hat\sigma={np.sqrt(var_Q3.median()):.4f}$)"
     )
     
-    plt.plot(n_values, hoeffding_width, label="Hoeffding", color='#0173B2', linestyle='--')
-    plt.plot(n_values, empirical_bernstein_width, label="Empirical Bernstein", color='#DE8F05', linestyle='-.')
     plt.plot(n_values, typical_param_t_width, label="Median Parametric t", color='#CC78BC')
     plt.scatter(df_percentile_median.index, df_percentile_median.values, label="Percentile, CIs of mean of DSC", color='#029E73', marker='D',zorder=5)
     plt.scatter(df_param_t_median.index, df_param_t_median.values, label="Parametric t, CIs of mean of DSC", color="#3C220C", marker='x', zorder=5)
@@ -66,14 +67,18 @@ def plot_fig6_hoeffding_vs_param_t(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/main_figs/{os.path.basename(output_path)}", commit_msg="Update Fig 6 Hoeffding vs Parametric t widths")
+
 def main():
     parser = argparse.ArgumentParser(description="Plot Hoeffding vs worst-case Parametric t widths.")
     parser.add_argument("--root_folder", type=str, required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", type=str, required=False, help="Path to save the output plot.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
     root_folder = args.root_folder
     output_path = args.output_path if args.output_path else f"{args.root_folder}/clean_figs/main/fig6_hoeffding_vs_param_t.pdf"
-    plot_fig6_hoeffding_vs_param_t(root_folder, output_path)
+    plot_fig6_hoeffding_vs_param_t(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 
 if __name__ == "__main__":
