@@ -7,8 +7,8 @@ from ..plot_utils import method_labels, method_colors, upload_to_overleaf
 
 def plot_ci_bounds(root_folder: str, output_path: str, upload_overleaf: bool = False):
 
-    task = "Task03_Liver_L2"
-    alg_name = "17111010008"
+    task = "Task01_BrainTumour_L1"
+    alg_name = "CerebriuDIKU"
 
     df = pd.read_csv(os.path.join(root_folder, "data_matrix_grandchallenge_all.csv"))
     df = df[df["score"]=="dsc"]
@@ -16,9 +16,9 @@ def plot_ci_bounds(root_folder: str, output_path: str, upload_overleaf: bool = F
 
     true_value = df["value"].to_numpy().mean()
 
-    df = pd.read_csv(os.path.join(root_folder, f"results_dsc_median/results_dsc_median_{task}_{alg_name}_50.csv"))
+    df = pd.read_csv(os.path.join(root_folder, f"results_dsc_mean/results_dsc_mean_{task}_{alg_name}_250.csv"))
 
-    df = df[(df["n"]==50)]
+    df = df[(df["n"]==75)]
 
     _, axs = plt.subplots(1, 3, figsize=(24, 8))
 
