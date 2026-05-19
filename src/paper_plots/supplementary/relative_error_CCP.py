@@ -73,12 +73,12 @@ def plot_rel_error_CCP_segm(root_folder:str, output_path:str, upload_overleaf: b
     sns.boxplot(x='metric', y='relative_error', data=df_fit_segm, order=sorted_metrics, hue="metric", showfliers=False, palette=color_dict, linewidth=1, ax=ax)
     sns.stripplot(x='metric', y='relative_error', data=df_fit_segm, order=sorted_metrics, hue="metric", jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax)
 
-    ax.set_title('', weight='bold', fontsize=16)
-    ax.set_ylabel('Relative error', weight='bold', fontsize=14)
-    ax.set_xlabel('Metric', weight='bold', fontsize=14)
+    ax.set_title('', weight='bold', fontsize=24)
+    ax.set_ylabel('Relative error', weight='bold', fontsize=20)
+    ax.set_xlabel('Metric', weight='bold', fontsize=20)
     ax.set_ylim(0, 0.06)
-    ax.tick_params(axis='x', labelsize=16)
-    ax.tick_params(axis='y', labelsize=16)
+    ax.tick_params(axis='x', labelsize=18)
+    ax.tick_params(axis='y', labelsize=18)
 
     # Adjust x-axis labels for both subplots
     xticks = ax.get_xticklabels()

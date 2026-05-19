@@ -97,12 +97,12 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, upload_overleaf: b
         if row < 2:
             ax.set_xscale("log")
             ax.tick_params(axis='both', labelsize=TICK_FONTSIZE)
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.1f}'))
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
         else:
             ax.set_xscale("linear")
             ax.set_xlim(0, 250)
             ax.tick_params(axis='both', labelsize=TICK_FONTSIZE)
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.1f}'))
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
 
     
         ax.set_ylabel("Coverage (%)", fontsize=LABEL_FONTSIZE)

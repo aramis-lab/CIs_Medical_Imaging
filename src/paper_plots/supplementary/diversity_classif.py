@@ -178,10 +178,10 @@ def plot_descriptive_stats_classif(root_folder:str, output_path:str, upload_over
         legend=False
     )
 
-    ax.set_title('Classification metric distributions', weight='bold', fontsize=15)
-    ax.set_ylabel('Score', weight='bold', fontsize=14)
-    ax.set_xlabel('', weight='bold', fontsize=14)
-    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.set_title('Classification metric distributions', weight='bold', fontsize=22)
+    ax.set_ylabel('Score', weight='bold', fontsize=20)
+    ax.set_xlabel('', weight='bold', fontsize=20)
+    ax.tick_params(axis='both', which='major', labelsize=18)
     labels = []
     for label in ax.get_xticklabels():
         if "micro" in label.get_text():
@@ -212,10 +212,10 @@ def plot_descriptive_stats_classif(root_folder:str, output_path:str, upload_over
             fontsize=10,
             title_fontproperties=FontProperties(weight='bold')
         )
-    ax.set_title('Skewness values across all dimensions', weight='bold', fontsize=15)
-    ax.tick_params(axis='both', which='major', labelsize=12)
-    ax.set_ylabel('Skewness', weight='bold', fontsize=14)
-    ax.set_xlabel('Dimension', weight='bold', fontsize=14)
+    ax.set_title('Skewness values across all dimensions', weight='bold', fontsize=22)
+    ax.tick_params(axis='both', which='major', labelsize=18)
+    ax.set_ylabel('Skewness', weight='bold', fontsize=20)
+    ax.set_xlabel('Dimension', weight='bold', fontsize=20)
     ax.set_ylim(-1,12)
 
     # Plot Kurtosis
@@ -240,11 +240,11 @@ def plot_descriptive_stats_classif(root_folder:str, output_path:str, upload_over
         title_fontproperties=FontProperties(weight='bold')
     )
 
-    ax.set_title('Kurtosis values across all dimensions', weight='bold', fontsize=15)
-    ax.set_ylabel('Kurtosis', weight='bold', fontsize=14)
-    ax.set_xlabel('Dimension', weight='bold', fontsize=14)
+    ax.set_title('Kurtosis values across all dimensions', weight='bold', fontsize=22)
+    ax.set_ylabel('Kurtosis', weight='bold', fontsize=20)
+    ax.set_xlabel('Dimension', weight='bold', fontsize=20)
     ax.set_ylim(-1,150)
-    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=18)
 
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):

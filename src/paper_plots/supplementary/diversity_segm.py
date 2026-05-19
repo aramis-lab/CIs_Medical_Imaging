@@ -93,12 +93,14 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str, upload_overlea
     sns.stripplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
     ax2.set_ylabel('Mean (unbounded metrics)', fontsize=20)
     ax2.set_ylim(0, None)
+    ax2.tick_params(axis='y', labelsize=18)
     ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
 
     # Common formatting
     ax.set_xticklabels([metric_labels[m] for m in metrics_order], fontsize=18)
     ax.set_title('Mean values across all instances',weight='bold', fontsize=20)
     ax.set_xlabel('Metric', fontsize=20)
+    ax.tick_params(axis='y', labelsize=18)
 
     ### --- Plot Standard Error --- ###
     ax = axs[1]
@@ -114,11 +116,13 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str, upload_overlea
     sns.stripplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
     ax2.set_ylabel('Standard Deviation (unbounded metrics)',fontsize=20)
     ax2.set_ylim(0, None)
+    ax2.tick_params(axis='y', labelsize=18)
     ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
 
     ax.set_xticklabels([metric_labels[m] for m in metrics_order], fontsize=18)
     ax.set_title('Standard Deviation values across all instances',weight='bold',fontsize=20)
     ax.set_xlabel('Metric', fontsize=20)
+    ax.tick_params(axis='y', labelsize=18)
 
     # Plot Skewness
     ax = axs[2]
@@ -140,6 +144,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str, upload_overlea
     ax.set_ylabel('Skewness',fontsize=20)
     ax.set_xlabel('Metric',fontsize=20)
     ax.set_ylim(-6, 10)
+    ax.tick_params(axis='y', labelsize=18)
 
     # Plot Kurtosis
     ax = axs[3]
@@ -161,6 +166,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str, upload_overlea
     ax.set_ylabel('Kurtosis',fontsize=20)
     ax.set_xlabel('Metric',fontsize=20)
     ax.set_ylim(0, 50)
+    ax.tick_params(axis='y', labelsize=18)
 
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
