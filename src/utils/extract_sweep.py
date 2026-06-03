@@ -5,13 +5,13 @@ Usage:
     python src/utils/extract_sweep.py run_plan.experiments \
         --config src/cfg/classif/config_classif.yaml
 
-    python src/utils/extract_sweep.py sweep.metric_average_pairs \
-        --config src/cfg/classif/ablations/epanechnikov_adaptive.yaml
+    python src/utils/extract_sweep.py run_plan.sweep_file \
+        --config src/cfg/classif/config_classif.yaml
 """
 
 import argparse, sys
 from pathlib import Path
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig, ListConfig
 
 
 def main():
@@ -40,8 +40,10 @@ def main():
         print(f"ERROR: Key '{args.key}' not found.", file=sys.stderr)
         print(f"Available keys: {list(cfg.keys())}", file=sys.stderr)
         sys.exit(1)
-    
-    values = OmegaConf.to_container(values, resolve=True)
+
+    # Convert OmegaConf objects to plain Python, leave scalars as-is
+    if isinstance(values, (DictConfig, ListConfig)):
+        values = OmegaConf.to_container(values, resolve=True)
 
     if isinstance(values, list):
         for v in values:
@@ -50,6 +52,7 @@ def main():
             else:
                 print(v)
     else:
+        # Scalar (string, int, bool, etc.)
         print(values)
 
 
