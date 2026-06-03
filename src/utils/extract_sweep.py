@@ -24,7 +24,7 @@ def main():
     args = parser.parse_args()
 
     config_dir = args.config_dir or str(
-        Path(__file__).resolve().parents[2] / "cfg"
+        Path(__file__).resolve().parents[1] / "cfg"
     )
 
     GlobalHydra.instance().clear()
