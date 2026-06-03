@@ -37,11 +37,18 @@ def main():
     )
 
     # ── Load config with ablation ───────────────────────────
+    if args.config_name.startswith("classif/"):
+        ablation_override = f"+classif/ablations={args.experiment}"
+    elif args.config_name.startswith("segm/"):
+        ablation_override = f"+segm/ablations={args.experiment}"
+    else:
+        ablation_override = f"+ablations={args.experiment}"
+
     GlobalHydra.instance().clear()
     with initialize_config_dir(version_base=None, config_dir=config_dir):
         cfg = compose(
             config_name=args.config_name,
-            overrides=[f"ablations={args.experiment}"],
+            overrides=[ablation_override],
         )
 
     sweep = OmegaConf.to_container(
