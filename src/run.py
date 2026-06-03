@@ -290,7 +290,7 @@ def make_kdes_segmentation(df, task, algo, config):
 
 @hydra.main(config_path="cfg", version_base="1.3.2")
 def main(cfg: DictConfig):
-
+    print(cfg.pretty())
     print(f"Running KDE for metric {cfg.metric}, subtask {cfg.task} and algorithm {cfg.algo}")
     path = os.path.join(BASE_DIR, cfg.relative_data_path)
     df = extract_df(path, cfg.metric, cfg.task)
