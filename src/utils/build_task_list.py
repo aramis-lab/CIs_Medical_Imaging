@@ -1,50 +1,41 @@
 """
 Build a task list for SLURM array jobs.
-
-For each sweep pair x each (task, algo) from instance lists,
-produce one line of Hydra overrides.
-
-Auto-detects classification (metric_average_pairs) vs 
-segmentation (metric_summary_pairs).
+Uses OmegaConf.load() directly — no Hydra composition needed.
 
 Usage:
     python src/utils/build_task_list.py \
-        --config-name config_classif \
-        --experiment epanechnikov_adaptive \
+        --ablation cfg/classif/ablations/epanechnikov_adaptive.yaml \
+        --config-name classif/config_classif \
         --instance-dir instances_list \
         --output task_lists/epanechnikov_adaptive.txt
 """
 
-import argparse
-import shlex
+import argparse, shlex, sys
 from pathlib import Path
-from hydra import compose, initialize_config_dir
-from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config-name", required=True)
-    parser.add_argument("--experiment", required=True)
+    parser.add_argument("--ablation", required=True,
+                        help="Path to ablation YAML file")
+    parser.add_argument("--config-name", required=True,
+                        help="Hydra config name for run.py overrides "
+                             "(e.g. classif/config_classif)")
     parser.add_argument("--instance-dir", default="instances_list")
     parser.add_argument("--output", required=True)
-    parser.add_argument("--config-dir", default=None)
     args = parser.parse_args()
 
-    config_dir = args.config_dir or str(
-        Path(__file__).resolve().parents[1] / "cfg"
-    )
+    ablation_path = Path(args.ablation)
+    if not ablation_path.is_file():
+        print(f"ERROR: {ablation_path} not found", file=sys.stderr)
+        sys.exit(1)
 
-    # ── Load config with ablation ───────────────────────────
-    if args.config_name.startswith("classif/"):
-        ablation_override = f"classif/{args.experiment}"
-    elif args.config_name.startswith("segm/"):
-        ablation_override = f"segm/{args.experiment}"
-    else:
-        ablation_override = args.experiment
-    cfg = OmegaConf.load(config_dir + "/" + ablation_override + ".yaml")
+    # Ablation name for Hydra override (e.g. "epanechnikov_adaptive")
+    ablation_name = ablation_path.stem
 
+    # ── Load YAML directly — no Hydra ──────────────────────
+    cfg = OmegaConf.load(ablation_path)
     sweep = OmegaConf.to_container(
         OmegaConf.select(cfg, "sweep"), resolve=True
     )
@@ -57,10 +48,9 @@ def main():
         pairs = sweep["metric_summary_pairs"]
         extra_key = "summary_stat"
     else:
-        raise ValueError(
-            "Expected 'metric_average_pairs' or 'metric_summary_pairs' "
-            "in sweep config"
-        )
+        print("ERROR: No metric_average_pairs or metric_summary_pairs "
+              "found in sweep", file=sys.stderr)
+        sys.exit(1)
 
     # ── Cross pairs × instance lists ────────────────────────
     instance_dir = Path(args.instance_dir)
@@ -72,7 +62,8 @@ def main():
         instance_file = instance_dir / f"{metric}.txt"
 
         if not instance_file.exists():
-            print(f"WARNING: {instance_file} not found, skipping {pair}")
+            print(f"WARNING: {instance_file} not found, skipping",
+                  file=sys.stderr)
             continue
 
         with open(instance_file) as fh:
@@ -81,10 +72,8 @@ def main():
                 if not raw:
                     continue
                 task, algo = raw.split(maxsplit=1)
-
-                # shlex.quote handles spaces / special chars safely
                 overrides = (
-                    f"{ablation_override}"
+                    f"ablations={ablation_name}"
                     f" metric={metric}"
                     f" {extra_key}={extra_val}"
                     f" +task={shlex.quote(task)}"
@@ -92,7 +81,6 @@ def main():
                 )
                 lines.append(overrides)
 
-    # ── Write task list ─────────────────────────────────────
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as fh:

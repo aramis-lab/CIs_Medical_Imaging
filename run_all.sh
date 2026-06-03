@@ -1,47 +1,49 @@
 #!/bin/bash
-# ================================================================
-#  run_all.sh — Read experiments from YAML, preprocess, submit jobs
-#
-#  Usage:
-#      ./run_all.sh classif/config_classif
-#      ./run_all.sh segm/config_segm
-# ================================================================
-
 set -euo pipefail
 
 module load python
 conda activate CI
 
-CONFIG_NAME=${1:?Usage: ./run_all.sh <config_name>}
+CONFIG_PATH=${1:?Usage: ./run_all.sh <config_path e.g. classif/config_classif>}
+
+CONFIG_FILE="cfg/${CONFIG_PATH}.yaml"
+CONFIG_DIR=$(dirname "$CONFIG_FILE")
+ABLATION_DIR="${CONFIG_DIR}/ablations"
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "ERROR: Config file not found: $CONFIG_FILE"
+    exit 1
+fi
 
 echo "========================================"
-echo "  Config: $CONFIG_NAME"
+echo "  Config file:   $CONFIG_FILE"
+echo "  Ablation dir:  $ABLATION_DIR"
 echo "========================================"
 
-# ── 1. Extract experiments and metrics from YAML ────────────
+# ── 1. Extract from YAML (OmegaConf.load, no Hydra) ────────
 mapfile -t EXPERIMENTS < <(
     python src/utils/extract_sweep.py run_plan.experiments \
-        --config-name="$CONFIG_NAME"
+        --config "$CONFIG_FILE"
 )
 mapfile -t ALL_METRICS < <(
     python src/utils/extract_sweep.py run_plan.all_metrics \
-        --config-name="$CONFIG_NAME"
+        --config "$CONFIG_FILE"
 )
 
 echo "Experiments : ${EXPERIMENTS[*]}"
 echo "All metrics : ${ALL_METRICS[*]}"
 echo ""
 
-# ── 2. Preprocess: generate instance lists (once for all) ───
+# ── 2. Preprocess: generate instance lists ──────────────────
 metrics_csv=$(IFS=','; echo "${ALL_METRICS[*]}")
 
 echo "Generating instance lists for: $metrics_csv"
 python src/utils/extract_df_and_make_instance_list.py \
-    --config-name="$CONFIG_NAME" -m \
+    --config-name="$CONFIG_PATH" -m \
     metric="$metrics_csv"
 echo ""
 
-# ── 3. For each experiment: build task list → sbatch ─────────
+# ── 3. For each experiment: build task list → sbatch ────────
 mkdir -p task_lists logs
 
 for EXPERIMENT in "${EXPERIMENTS[@]}"; do
@@ -50,16 +52,21 @@ for EXPERIMENT in "${EXPERIMENTS[@]}"; do
     echo "  Experiment: $EXPERIMENT"
     echo "──────────────────────────────────────"
 
+    ABLATION_FILE="${ABLATION_DIR}/${EXPERIMENT}.yaml"
     TASK_LIST="task_lists/${EXPERIMENT}.txt"
 
-    # Build task list (sweep pairs × instance lists)
-    python src/utils/build_task_list.py \
-        --config-name="$CONFIG_NAME" \
-        --experiment="$EXPERIMENT" \
-        --instance-dir=instances_list \
-        --output="$TASK_LIST"
+    if [[ ! -f "$ABLATION_FILE" ]]; then
+        echo "  ERROR: Ablation file not found: $ABLATION_FILE"
+        continue
+    fi
 
-    # Count tasks
+    # Build task list — reads YAML directly, no Hydra
+    python src/utils/build_task_list.py \
+        --ablation "$ABLATION_FILE" \
+        --config-name "$CONFIG_PATH" \
+        --instance-dir instances_list \
+        --output "$TASK_LIST"
+
     NUM_TASKS=$(wc -l < "$TASK_LIST")
 
     if [[ "$NUM_TASKS" -eq 0 ]]; then
@@ -70,7 +77,7 @@ for EXPERIMENT in "${EXPERIMENTS[@]}"; do
     echo "  Submitting $NUM_TASKS tasks..."
     sbatch --array=0-$((NUM_TASKS - 1)) \
            --job-name="exp_${EXPERIMENT}" \
-           --export=ALL,CONFIG_NAME="$CONFIG_NAME",TASK_LIST="$TASK_LIST" \
+           --export=ALL,CONFIG_PATH="$CONFIG_PATH",TASK_LIST="$TASK_LIST" \
            array_job.sh
 
     echo ""
