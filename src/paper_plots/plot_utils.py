@@ -53,10 +53,6 @@ import subprocess
 import shutil
 from pathlib import Path
 
-OVERLEAF_REPO = Path(subprocess.check_output(
-    ["git", "rev-parse", "--show-toplevel"], text=True
-).strip()).parent.parent / "overleaf_CI_project"
-
 def upload_to_overleaf(src_path, dest_path, commit_msg=None):
     """
     Copy a local file into the Overleaf project and push it.
@@ -66,6 +62,9 @@ def upload_to_overleaf(src_path, dest_path, commit_msg=None):
         dest_path: Target path inside the Overleaf project (e.g. "figures/plot.pdf")
         commit_msg: Optional commit message
     """
+    OVERLEAF_REPO = Path(subprocess.check_output(
+    ["git", "rev-parse", "--show-toplevel"], text=True
+    ).strip()).parent.parent / "overleaf_CI_project"
     src = Path(src_path)
     dest = OVERLEAF_REPO / dest_path
 
