@@ -8,7 +8,7 @@ from matplotlib.font_manager import FontProperties
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score, roc_auc_score, average_precision_score, matthews_corrcoef
 from scipy.special import softmax
 import matplotlib.gridspec as gridspec
-from ..plot_utils import metric_labels
+from ..plot_utils import metric_labels, upload_to_overleaf
 
 
 def multivariate_skewness_kurtosis(logits, eps=1e-5):
@@ -117,7 +117,7 @@ def compute_descriptive_stats(root_folder:str):
     return results_df
 
 
-def plot_descriptive_stats_classif(root_folder:str, output_path:str):
+def plot_descriptive_stats_classif(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -178,10 +178,10 @@ def plot_descriptive_stats_classif(root_folder:str, output_path:str):
         legend=False
     )
 
-    ax.set_title('Classification metric distributions', weight='bold', fontsize=15)
-    ax.set_ylabel('Score', weight='bold', fontsize=14)
-    ax.set_xlabel('', weight='bold', fontsize=14)
-    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.set_title('Classification metric distributions', weight='bold', fontsize=22)
+    ax.set_ylabel('Score', weight='bold', fontsize=20)
+    ax.set_xlabel('', weight='bold', fontsize=20)
+    ax.tick_params(axis='both', which='major', labelsize=18)
     labels = []
     for label in ax.get_xticklabels():
         if "micro" in label.get_text():
@@ -212,10 +212,10 @@ def plot_descriptive_stats_classif(root_folder:str, output_path:str):
             fontsize=10,
             title_fontproperties=FontProperties(weight='bold')
         )
-    ax.set_title('Skewness values across all dimensions', weight='bold', fontsize=15)
-    ax.tick_params(axis='both', which='major', labelsize=12)
-    ax.set_ylabel('Skewness', weight='bold', fontsize=14)
-    ax.set_xlabel('Dimension', weight='bold', fontsize=14)
+    ax.set_title('Skewness values across all dimensions', weight='bold', fontsize=22)
+    ax.tick_params(axis='both', which='major', labelsize=18)
+    ax.set_ylabel('Skewness', weight='bold', fontsize=20)
+    ax.set_xlabel('Dimension', weight='bold', fontsize=20)
     ax.set_ylim(-1,12)
 
     # Plot Kurtosis
@@ -240,11 +240,11 @@ def plot_descriptive_stats_classif(root_folder:str, output_path:str):
         title_fontproperties=FontProperties(weight='bold')
     )
 
-    ax.set_title('Kurtosis values across all dimensions', weight='bold', fontsize=15)
-    ax.set_ylabel('Kurtosis', weight='bold', fontsize=14)
-    ax.set_xlabel('Dimension', weight='bold', fontsize=14)
+    ax.set_title('Kurtosis values across all dimensions', weight='bold', fontsize=22)
+    ax.set_ylabel('Kurtosis', weight='bold', fontsize=20)
+    ax.set_xlabel('Dimension', weight='bold', fontsize=20)
     ax.set_ylim(-1,150)
-    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.tick_params(axis='both', which='major', labelsize=18)
 
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
@@ -252,17 +252,21 @@ def plot_descriptive_stats_classif(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add descriptive stats for classification plot")
+
 def main():
     parser = argparse.ArgumentParser(description="Compute and plot descriptive statistics for classification metrics.")
     parser.add_argument("--root_folder", type=str, required=True, help="Root folder containing the data matrix CSV file.")
     parser.add_argument("--output_path", type=str, required=False, help="Output path for the descriptive statistics plot.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/skew_kurt_classif.pdf")
 
-    plot_descriptive_stats_classif(root_folder, output_path)
+    plot_descriptive_stats_classif(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

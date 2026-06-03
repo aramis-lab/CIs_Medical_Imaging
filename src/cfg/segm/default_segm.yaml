@@ -1,16 +1,23 @@
-ci_methods: ["basic", "percentile", "bca", "agresti_coull", "wilson", "exact", "wald", "logit_transform", "delong"]
-
+ci_methods: ["param_t", "param_z", "basic", "percentile", "bca"]
 # Possible values for metrics (for reference, you will use one at a time)
 metric:
-  - "accuracy"
-  - "f1_score"
-  - "balanced_accuracy"
-  - "mcc"
-  - "auc"
-  - "ap"
+  - "dsc"
+  - "nsd"
+  - "iou"
+  - "boundary_iou"
+  - "cldice"
+  - "masd"
+  - "assd"
+  - "hd"
+  - "hd_perc"
 
-average: ["macro", "micro"]
 # Possible values for summary_stat (choose one from here)
+summary_stat:
+  - "mean"
+  - "median"
+  - "trimmed_mean"
+  - "std"
+  - "iqr_length"
 
 kernel:
   - "gaussian"
@@ -21,20 +28,21 @@ kernel:
   - "linear"
 
 adaptive_bandwidth: true
+trim_bandwidth: true
 
 # Trimmed mean thresholds (adjustable)
+trimmed_mean_threshold: 0.25
 
-# sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
-sample_sizes: [5000]
+sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
 
 # Path to the data file, relative to the repository root
-relative_data_path : "../data_matrix_classification.csv"
+relative_data_path : "../data_matrix_grandchallenge_all.csv"
 
 # Path to the output directory for saving results, relative to the repository root
-relative_output_dir: "../results_big"
+relative_output_dir: "../results_segm"
 
 # Number of samples to draw from KDE
-n_samples: 3500
+n_samples: 10000
 
 # Number of bootstrap samples for CI methods that require it
-n_bootstrap: 3499
+n_bootstrap: 9999

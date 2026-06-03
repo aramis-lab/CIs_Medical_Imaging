@@ -7,7 +7,7 @@ import argparse
 from scipy.stats import skew, kurtosis
 from matplotlib.font_manager import FontProperties
 
-from ..plot_utils import metric_labels
+from ..plot_utils import metric_labels, upload_to_overleaf
 
 def compute_descriptive_stats(root_folder:str):
 
@@ -50,7 +50,7 @@ def compute_descriptive_stats(root_folder:str):
     return results_df
 
 
-def plot_descriptive_stats_segm(root_folder:str, output_path:str):
+def plot_descriptive_stats_segm(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -93,12 +93,14 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     sns.stripplot(x='Metric', y='Mean', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
     ax2.set_ylabel('Mean (unbounded metrics)', fontsize=20)
     ax2.set_ylim(0, None)
+    ax2.tick_params(axis='y', labelsize=18)
     ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
 
     # Common formatting
     ax.set_xticklabels([metric_labels[m] for m in metrics_order], fontsize=18)
     ax.set_title('Mean values across all instances',weight='bold', fontsize=20)
     ax.set_xlabel('Metric', fontsize=20)
+    ax.tick_params(axis='y', labelsize=18)
 
     ### --- Plot Standard Error --- ###
     ax = axs[1]
@@ -114,11 +116,13 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     sns.stripplot(x='Metric', y='Standard deviation', data=results_df[results_df['Metric'].isin(unbounded_metrics)], hue='Metric', jitter=True, alpha=0.6, palette=dark_color_dict, legend=False, ax=ax2, dodge=False)
     ax2.set_ylabel('Standard Deviation (unbounded metrics)',fontsize=20)
     ax2.set_ylim(0, None)
+    ax2.tick_params(axis='y', labelsize=18)
     ax.vlines([len(bounded_metrics)-0.5], ymin=ax.get_ylim()[0], ymax=ax2.get_ylim()[1], color='gray', linestyle='--', linewidth=1.5)
 
     ax.set_xticklabels([metric_labels[m] for m in metrics_order], fontsize=18)
     ax.set_title('Standard Deviation values across all instances',weight='bold',fontsize=20)
     ax.set_xlabel('Metric', fontsize=20)
+    ax.tick_params(axis='y', labelsize=18)
 
     # Plot Skewness
     ax = axs[2]
@@ -140,6 +144,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     ax.set_ylabel('Skewness',fontsize=20)
     ax.set_xlabel('Metric',fontsize=20)
     ax.set_ylim(-6, 10)
+    ax.tick_params(axis='y', labelsize=18)
 
     # Plot Kurtosis
     ax = axs[3]
@@ -161,6 +166,7 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     ax.set_ylabel('Kurtosis',fontsize=20)
     ax.set_xlabel('Metric',fontsize=20)
     ax.set_ylim(0, 50)
+    ax.tick_params(axis='y', labelsize=18)
 
     plt.tight_layout()
     if not os.path.exists(os.path.dirname(output_path)):
@@ -168,17 +174,21 @@ def plot_descriptive_stats_segm(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add descriptive statistics plot for segmentation metrics")
+
 def main():
     parser = argparse.ArgumentParser(description="Compute and plot descriptive statistics for segmentation metrics.")
     parser.add_argument("--root_folder", type=str, required=True, help="Root folder containing the data matrix CSV file.")
     parser.add_argument("--output_path", type=str, required=False, help="Output path for the descriptive statistics plot.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/skew_kurt_segm.pdf")
 
-    plot_descriptive_stats_segm(root_folder, output_path)
+    plot_descriptive_stats_segm(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

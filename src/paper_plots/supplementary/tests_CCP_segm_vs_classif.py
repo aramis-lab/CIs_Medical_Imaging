@@ -9,7 +9,7 @@ from scipy.stats import permutation_test
 import argparse
 
 from ..df_loaders import extract_df_segm_cov, extract_df_classif_cov
-from ..plot_utils import metric_labels, stat_labels, method_labels
+from ..plot_utils import metric_labels, stat_labels, method_labels, upload_to_overleaf
 
 def perform_fits_segm(df_segm, metrics, stats):
     results = []
@@ -105,12 +105,15 @@ def perform_pairwise_tests(df_fit_results, df_fit_results_classif):
     return p_values
 
 def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
-    
-    m = len(next(iter(next(iter(p_vals.values())).values())).keys())
-    n = len(next(iter(next(iter(next(iter(p_vals.values())).values())).values())).keys())
-    num_comparisons = max(m, n)
+    num_comparisons = sum(
+        p_val is not None
+        for method_dict in p_vals.values()
+        for stat_dict in method_dict.values()
+        for metric1_dict in stat_dict.values()
+        for p_val in metric1_dict.values()
+    )
 
-    if bonferroni_correction:
+    if bonferroni_correction and num_comparisons > 0:
         alphas_corrected = alphas / num_comparisons
     else:
         alphas_corrected = alphas
@@ -129,7 +132,7 @@ def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correcti
                         significance[method][stat][metric1][metric2] = 0
     return significance
 
-def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
+def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -267,16 +270,20 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add significance matrix comparing segmentation and classification metrics")
+
 def main():
     parser = argparse.ArgumentParser(description="Perform pairwise significance tests on segmentation CI coverage fits vs classification macro CI coverage fits.")
     parser.add_argument('--root_folder', type=str, required=True, help='Root folder containing results_metrics_segm and results_metrics_classif_macro')
     parser.add_argument('--output_path', type=str, required=False, help='Output path for the significance matrix plot.')
+    parser.add_argument('--upload_overleaf', action='store_true', help='Upload the plot to Overleaf')
     args = parser.parse_args()
 
     root_folder = args.root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/tests_CCP_segm_vs_classif.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/pairwise_comp_classif_segm.pdf")
 
-    plot_significance_matrix_segm_vs_classif(root_folder, output_path)
+    plot_significance_matrix_segm_vs_classif(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

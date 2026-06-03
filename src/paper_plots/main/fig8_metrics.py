@@ -8,10 +8,10 @@ from scipy.stats import skew, kurtosis
 import os
 import argparse
 
-from ..plot_utils import metric_labels, stat_labels
+from ..plot_utils import metric_labels, stat_labels, upload_to_overleaf
 from ..df_loaders import extract_df_segm_cov
 
-def plot_fig8_metrics(root_folder:str, output_path:str):
+def plot_fig8_metrics(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -216,10 +216,14 @@ def plot_fig8_metrics(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/main_figs/{os.path.basename(output_path)}", commit_msg="Update Fig 8 Metrics analysis")
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Figure 7 segmentation metrics.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
 
     args = parser.parse_args()
 
@@ -228,7 +232,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig8_metrics.pdf")
 
     # Call your plotting function
-    plot_fig8_metrics(root_folder, output_path)
+    plot_fig8_metrics(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__=="__main__":
     main()

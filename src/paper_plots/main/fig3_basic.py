@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import argparse
 
 from ..df_loaders import extract_df_segm_cov, extract_df_classif_cov
-from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels
+from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels, upload_to_overleaf
 
-def plot_fig3_basic(root_folder: str, output_path: str):
+def plot_fig3_basic(root_folder: str, output_path: str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
@@ -109,10 +109,14 @@ def plot_fig3_basic(root_folder: str, output_path: str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/main_figs/{os.path.basename(output_path)}", commit_msg="Update Fig 3 basic coverage plot")
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Figure 3 basic is the worst bootstrap.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
 
     args = parser.parse_args()
 
@@ -121,7 +125,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig3_basic.pdf")
 
     # Call your plotting function
-    plot_fig3_basic(root_folder, output_path)
+    plot_fig3_basic(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

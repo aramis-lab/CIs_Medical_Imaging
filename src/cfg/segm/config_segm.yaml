@@ -1,0 +1,28 @@
+defaults:
+  - default_segm
+
+# ---- Single-run scalar defaults ----
+metric: dsc
+summary_stat: mean
+kernel: epanechnikov
+adaptive_bandwidth: true
+trim_bandwidth: true
+
+# ---- Run plan ----
+run_plan:
+  all_metrics:
+    - dsc
+    - nsd
+    - iou
+    - boundary_iou
+    - cldice
+    - masd
+    - assd
+    - hd
+    - hd_perc
+  experiments:
+    - epanechnikov_adaptive_trimmed
+    - epanechnikov_adaptive
+    - epanechnikov_scott
+    - gaussian_adaptive
+    - gaussian_scott

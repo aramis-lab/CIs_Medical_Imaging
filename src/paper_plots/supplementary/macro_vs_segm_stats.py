@@ -4,11 +4,11 @@ import numpy as np
 import seaborn as sns
 import argparse
 
-from ..plot_utils import metric_labels, stat_labels
+from ..plot_utils import metric_labels, stat_labels, upload_to_overleaf
 from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov, extract_df_segm_width, extract_df_classif_width
 
 
-def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
+def plot_macro_vs_segm_stats(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
         plt.rcdefaults()
 
@@ -95,11 +95,11 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                                         alpha=0.6, color=color_dict_segm[metric])
 
                 ax.set_title(f"Coverage — {stat_labels[stat]}", fontsize=44, weight="bold")
-                ax.set_xlabel("Sample size", fontsize=32)
-                ax.set_ylabel("Coverage (%)", fontsize=32)
+                ax.set_xlabel("Sample size", fontsize=40)
+                ax.set_ylabel("Coverage (%)", fontsize=40)
                 ax.set_yticks(np.arange(0.5, 1.01, 0.05))
                 ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
-                ax.tick_params(axis='both', which='major', labelsize=24)
+                ax.tick_params(axis='both', which='major', labelsize=36)
                 ax.grid(True, axis="y")
                 ax.set_ylim(0.49, 1.01)
                 # ===== SEPARATE LEGENDS =====
@@ -173,10 +173,10 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                                         alpha=0.7, color=color_dict_segm[metric])
 
                 ax.set_title(f"Width — {stat_labels[stat]}", fontsize=44, weight="bold")
-                ax.set_xlabel("Sample size", fontsize=32)
-                ax.set_ylabel("Width", fontsize=32)
+                ax.set_xlabel("Sample size", fontsize=40)
+                ax.set_ylabel("Width", fontsize=40)
                 ax.set_yticks(np.arange(0.0, 1.01, 0.1))
-                ax.tick_params(axis='both', which='both', labelsize=24)
+                ax.tick_params(axis='both', which='both', labelsize=36)
                 ax.set_ylim(-0.01, 1.01)
                 ax.grid(True, axis="y")
 
@@ -202,17 +202,21 @@ def plot_macro_vs_segm_stats(root_folder:str, output_path:str):
                         fontsize=24, title_fontsize=28, loc="center right")
 
         # Global layout
-        plt.suptitle("CI Comparison: Classification Macro vs Segmentation", fontsize=30, weight='bold')
+        plt.suptitle("CI Comparison: Classification Macro vs Segmentation", fontsize=46, weight='bold')
         plt.tight_layout(rect=[0, 0, 1, 0.97])
         if not os.path.exists(os.path.dirname(output_path)):
                 os.makedirs(os.path.dirname(output_path))
         plt.savefig(output_path)
         plt.close()
 
+        if upload_overleaf:
+            upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add macro vs segmentation stats plot")
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Supplementary Figure classification macro vs each segmentation summary statistic.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
 
     args = parser.parse_args()
 
@@ -221,7 +225,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/macro_vs_segm_stats.pdf")
 
     # Call your plotting function
-    plot_macro_vs_segm_stats(root_folder, output_path)
+    plot_macro_vs_segm_stats(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

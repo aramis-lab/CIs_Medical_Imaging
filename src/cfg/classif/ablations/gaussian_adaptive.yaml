@@ -1,0 +1,9 @@
+defaults:
+  - /classif/default_classif
+  - /classif/sweep/classif_all_pairs@sweep
+
+kernel: gaussian
+adaptive_bandwidth: true
+n_samples: 1000
+n_bootstrap: 999
+relative_output_dir: "../results_classif/gaussian_adaptive"

@@ -195,7 +195,9 @@ def make_kdes_segmentation(df, task, algo, config):
         x = np.linspace(min_val, max_val, 10000)  # You can change the resolution of x
         alphas = np.ones(len(values))
 
-        dist_to_bounds = np.min([values-a, b-values], axis=0)
+        dist_to_bounds = np.inf
+        if config.trim_bandwidth:
+            dist_to_bounds = np.min([values-a, b-values], axis=0)
 
         # Iterative weighted KDE estimation
         y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)

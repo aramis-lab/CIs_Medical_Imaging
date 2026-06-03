@@ -5,10 +5,10 @@ from matplotlib.lines import Line2D
 import os
 import argparse
 
-from ..plot_utils import method_labels, method_colors, metric_labels
+from ..plot_utils import method_labels, method_colors, metric_labels, upload_to_overleaf
 from ..df_loaders import extract_df_classif_cov, extract_df_segm_cov
 
-def plot_fig5_param_small_samples(root_folder:str, output_path:str):
+def plot_fig5_param_small_samples(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcParams.update({
     "font.family": "sans-serif",
@@ -215,10 +215,14 @@ def plot_fig5_param_small_samples(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/main_figs/{os.path.basename(output_path)}", commit_msg="Update Fig 5 parametric methods on small samples")
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Figure 5 parametric methods on very small samples.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
 
     args = parser.parse_args()
 
@@ -227,7 +231,7 @@ def main():
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/main/fig5_param_small_samples.pdf")
 
     # Call your plotting function
-    plot_fig5_param_small_samples(root_folder, output_path)
+    plot_fig5_param_small_samples(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

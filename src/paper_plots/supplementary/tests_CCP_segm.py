@@ -9,7 +9,7 @@ from scipy.stats import permutation_test
 import argparse
 
 from ..df_loaders import extract_df_segm_cov
-from ..plot_utils import metric_labels, stat_labels, method_labels
+from ..plot_utils import metric_labels, stat_labels, method_labels, upload_to_overleaf
 
 def perform_fits(df_segm, stats):
     results = []
@@ -103,9 +103,12 @@ def perform_pairwise_tests(df_fit_results):
 
 def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
     
-    m = len(next(iter(next(iter(p_vals.values())).values())).keys())
-    num_comparisons = m - 1
-
+    m = len(p_vals) # number of methods
+    n = len(next(iter(p_vals.values()))) # number of stats
+    o = len(next(iter(next(iter(p_vals.values())).values()))) # number of metrics
+    p = len(next(iter(next(iter(next(iter(p_vals.values())).values())).values()))) # number of metrics
+    num_comparisons = m*n*o*(p-1)/2 # number of pairwise comparisons per method and stat, multiplied by number of methods and stats
+    
     if bonferroni_correction:
         alphas_corrected = alphas / num_comparisons
     else:
@@ -125,7 +128,7 @@ def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correcti
                         significance[method][stat][metric1][metric2] = 0
     return significance
 
-def plot_significance_matrix_segm(root_folder:str, output_path:str):
+def plot_significance_matrix_segm(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -253,16 +256,20 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add significance matrix for segmentation metrics")
+
 def main():
     parser = argparse.ArgumentParser(description="Perform pairwise significance tests on segmentation CI coverage fits.")
     parser.add_argument('--root_folder', type=str, required=True, help='Root folder containing results_metrics_segm')
     parser.add_argument('--output_path', type=str, required=False, help='Output path for the significance matrix plot.')
+    parser.add_argument('--upload_overleaf', action='store_true', help='Upload the plot to Overleaf')
     args = parser.parse_args()
 
     root_folder = args.root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/tests_CCP_segm.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/pairwise_comp_segm_segm.pdf")
 
-    plot_significance_matrix_segm(root_folder, output_path)
+    plot_significance_matrix_segm(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

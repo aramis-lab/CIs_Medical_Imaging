@@ -1,0 +1,10 @@
+defaults:
+  - /segm/default_segm
+  - /segm/sweep/segm_all_pairs@sweep
+
+kernel: epanechnikov
+adaptive_bandwidth: true
+trim_bandwidth: true
+n_samples: 1000
+n_bootstrap: 999
+relative_output_dir: "../results_segm/epanechnikov_adaptive_trimmed"

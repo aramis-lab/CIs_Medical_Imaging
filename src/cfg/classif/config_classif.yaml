@@ -1,0 +1,23 @@
+defaults:
+  - default_classif
+
+# ---- Single-run scalar defaults ----
+metric: f1_score
+average: macro
+kernel: epanechnikov
+adaptive_bandwidth: true
+
+# ---- Run plan ----
+run_plan:
+  all_metrics:
+    - accuracy
+    - f1_score
+    - balanced_accuracy
+    - mcc
+    - auc
+    - ap
+  experiments:
+    - epanechnikov_adaptive
+    - epanechnikov_scott
+    - gaussian_adaptive
+    - gaussian_scott

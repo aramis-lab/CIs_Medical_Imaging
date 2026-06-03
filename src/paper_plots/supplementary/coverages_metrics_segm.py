@@ -6,10 +6,10 @@ import seaborn as sns
 import argparse
 
 from ..df_loaders import extract_df_segm_cov
-from ..plot_utils import metric_labels, stat_labels, method_labels
+from ..plot_utils import metric_labels, stat_labels, method_labels, upload_to_overleaf
 
 
-def plot_coverage_metrics_segm(root_folder:str, output_path:str):
+def plot_coverage_metrics_segm(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -83,14 +83,18 @@ def plot_coverage_metrics_segm(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add coverage metrics for segmentation plot")
+
 def main():
     parser = argparse.ArgumentParser(description="Generate Supp Figure coverage metrics for segmentation.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
     args = parser.parse_args()
 
     output_path = args.output_path if args.output_path else os.path.join(args.root_folder, "clean_figs", "supplementary", "cov_segm_metrics.pdf")
-    plot_coverage_metrics_segm(args.root_folder, output_path)
+    plot_coverage_metrics_segm(args.root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

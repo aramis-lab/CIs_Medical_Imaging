@@ -5,9 +5,10 @@ import seaborn as sns
 import os
 
 from ..df_loaders import extract_df_segm_cov
+from ..plot_utils import upload_to_overleaf
 
 
-def plot_cov_fail_dsc_mean(root_folder:str, output_path:str):
+def plot_cov_fail_dsc_mean(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
     
@@ -97,21 +98,25 @@ def plot_cov_fail_dsc_mean(root_folder:str, output_path:str):
     plt.savefig(output_path)
     plt.close()
 
+    if upload_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add coverage failure DSC mean plot")
+
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Generate Supp Figure coverage failure DSC mean.")
     parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
     parser.add_argument("--output_path", required=False, help="Path for the output PDF file.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
 
     args = parser.parse_args()
 
     root_folder = args.root_folder
     # If output_path not provided, default inside root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/cov_fail_dsc_mean.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/fail_dsc_mean_percentile.pdf")
 
     # Call your plotting function
-    plot_cov_fail_dsc_mean(root_folder, output_path)
+    plot_cov_fail_dsc_mean(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()
