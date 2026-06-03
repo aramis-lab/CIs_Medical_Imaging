@@ -105,11 +105,15 @@ def perform_pairwise_tests(df_fit_results, df_fit_results_classif):
     return p_values
 
 def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
-    
-    num_comparisons = len(p_vals) * len(next(iter(p_vals.values()))) * len(next(iter(next(iter(p_vals.values())).values()))) * len(next(iter(next(iter(next(iter(p_vals.values())).values())).values())))
-    print(num_comparisons)
+    num_comparisons = sum(
+        p_val is not None
+        for method_dict in p_vals.values()
+        for stat_dict in method_dict.values()
+        for metric1_dict in stat_dict.values()
+        for p_val in metric1_dict.values()
+    )
 
-    if bonferroni_correction:
+    if bonferroni_correction and num_comparisons > 0:
         alphas_corrected = alphas / num_comparisons
     else:
         alphas_corrected = alphas

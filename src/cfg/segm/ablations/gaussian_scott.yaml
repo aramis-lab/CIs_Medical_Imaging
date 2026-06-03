@@ -1,6 +1,6 @@
 defaults:
-  - /default_classif
-  - /sweep/segm_all_pairs@sweep
+  - /segm/default_segm
+  - /segm/sweep/segm_all_pairs@sweep
 
 kernel: gaussian
 adaptive_bandwidth: false

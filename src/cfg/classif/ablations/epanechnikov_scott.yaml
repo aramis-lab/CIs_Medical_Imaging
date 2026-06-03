@@ -1,6 +1,6 @@
 defaults:
-  - /default_classif
-  - /sweep/classif_all_pairs@sweep
+  - /classif/default_classif
+  - /classif/sweep/classif_all_pairs@sweep
 
 kernel: epanechnikov
 adaptive_bandwidth: false

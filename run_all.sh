@@ -3,8 +3,8 @@
 #  run_all.sh — Read experiments from YAML, preprocess, submit jobs
 #
 #  Usage:
-#      ./run_all.sh config_classif
-#      ./run_all.sh config_seg
+#      ./run_all.sh classif/config_classif
+#      ./run_all.sh segm/config_segm
 # ================================================================
 
 set -euo pipefail

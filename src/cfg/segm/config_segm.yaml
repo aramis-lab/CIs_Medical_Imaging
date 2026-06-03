@@ -10,6 +10,16 @@ trim_bandwidth: true
 
 # ---- Run plan ----
 run_plan:
+  all_metrics:
+    - dsc
+    - nsd
+    - iou
+    - boundary_iou
+    - cldice
+    - masd
+    - assd
+    - hd
+    - hd_perc
   experiments:
     - epanechnikov_adaptive_trimmed
     - epanechnikov_adaptive
