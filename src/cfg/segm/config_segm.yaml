@@ -1,0 +1,18 @@
+defaults:
+  - default_segm
+
+# ---- Single-run scalar defaults ----
+metric: dsc
+summary_stat: mean
+kernel: epanechnikov
+adaptive_bandwidth: true
+trim_bandwidth: true
+
+# ---- Run plan ----
+run_plan:
+  experiments:
+    - epanechnikov_adaptive_trimmed
+    - epanechnikov_adaptive
+    - epanechnikov_scott
+    - gaussian_adaptive
+    - gaussian_scott

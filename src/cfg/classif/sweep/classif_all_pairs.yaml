@@ -1,0 +1,10 @@
+metric_average_pairs:
+  - { metric: accuracy,          average: micro }
+  - { metric: f1_score,          average: macro }
+  - { metric: f1_score,          average: micro }
+  - { metric: balanced_accuracy, average: macro }
+  - { metric: mcc,               average: none  }
+  - { metric: auc,               average: macro }
+  - { metric: auc,               average: micro }
+  - { metric: ap,                average: macro }
+  - { metric: ap,                average: micro }
