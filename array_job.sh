@@ -28,4 +28,4 @@ echo ""
 
 # ── Run single Hydra job ────────────────────────────────────
 #    eval handles shlex-quoted values (e.g. +task='my task')
-eval python src/run.py --config-name="$CONFIG_NAME" "$OVERRIDES"
+eval python src/run.py --config-name="$CONFIG_NAME" $OVERRIDES
