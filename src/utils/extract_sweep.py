@@ -27,19 +27,17 @@ def main():
         Path(__file__).resolve().parents[1] / "cfg"
     )
 
-    GlobalHydra.instance().clear()
-    with initialize_config_dir(version_base=None, config_dir=config_dir):
-        cfg = compose(config_name=args.config_name, overrides=args.overrides)
-        values = OmegaConf.select(cfg, args.key)
+    cfg = OmegaConf.load(config_dir + "/" + args.config_name + ".yaml")
+    values = OmegaConf.select(cfg, args.key)
 
-        if values is None:
-            raise KeyError(f"Key '{args.key}' not found in config")
+    if values is None:
+        raise KeyError(f"Key '{args.key}' not found in config")
 
-        if isinstance(values, (list, tuple)):
-            for v in values:
-                print(v)
-        else:
-            print(values)
+    if isinstance(values, (list, tuple)):
+        for v in values:
+            print(v)
+    else:
+        print(values)
 
 
 if __name__ == "__main__":
