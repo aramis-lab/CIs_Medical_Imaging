@@ -1,3 +1,4 @@
+# @package _global_
 metric_summary_pairs:
   # ── DSC ────────────────────────────
   - { metric: dsc,          summary_stat: mean          }

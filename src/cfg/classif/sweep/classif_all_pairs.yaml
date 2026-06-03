@@ -1,3 +1,4 @@
+# @package _global_
 metric_average_pairs:
   - { metric: accuracy,          average: micro }
   - { metric: f1_score,          average: macro }

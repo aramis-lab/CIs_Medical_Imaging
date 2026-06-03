@@ -1,3 +1,4 @@
+# @package _global_
 ci_methods: ["param_t", "param_z", "basic", "percentile", "bca"]
 # Possible values for metrics (for reference, you will use one at a time)
 metric:

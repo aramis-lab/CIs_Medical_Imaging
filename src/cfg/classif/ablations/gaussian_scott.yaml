@@ -1,3 +1,4 @@
+# @package _global_
 defaults:
   - /classif/default_classif
   - /classif/sweep/classif_all_pairs@sweep

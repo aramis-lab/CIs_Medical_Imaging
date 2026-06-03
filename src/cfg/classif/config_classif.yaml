@@ -1,3 +1,4 @@
+# @package _global_
 defaults:
   - default_classif
   - _self_
