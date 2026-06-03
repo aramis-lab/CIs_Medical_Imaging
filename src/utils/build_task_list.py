@@ -38,13 +38,12 @@ def main():
 
     # ── Load config with ablation ───────────────────────────
     if args.config_name.startswith("classif/"):
-        ablation_override = f"+classif/ablations={args.experiment}"
+        ablation_override = f"classif/{args.experiment}"
     elif args.config_name.startswith("segm/"):
-        ablation_override = f"+segm/ablations={args.experiment}"
+        ablation_override = f"segm/{args.experiment}"
     else:
-        ablation_override = f"+ablations={args.experiment}"
-
-    cfg = OmegaConf.load(config_dir + "/" + args.config_name + ".yaml")
+        ablation_override = args.experiment
+    cfg = OmegaConf.load(config_dir + "/" + ablation_override + ".yaml")
 
     sweep = OmegaConf.to_container(
         OmegaConf.select(cfg, "sweep"), resolve=True
