@@ -4,12 +4,6 @@ defaults:
   - optional ablations: null
   - _self_
 
-# ---- Single-run scalar defaults ----
-metric: f1_score
-average: macro
-kernel: epanechnikov
-adaptive_bandwidth: true
-
 # ---- Run plan ----
 run_plan:
   all_metrics:

@@ -2,15 +2,16 @@
 set -euo pipefail
 
 module load python
+eval "$(conda shell.bash hook)"
 conda activate CI
 
 CONFIG_PATH=${1:?Usage: ./run_all.sh <config_path e.g. classif/config_classif>}
 
-# ── Resolve paths ───────────────────────────────────────────
-CFG_ROOT="src/cfg"                              # ← Fix here
+CFG_ROOT="src/cfg"
 CONFIG_FILE="${CFG_ROOT}/${CONFIG_PATH}.yaml"
-CONFIG_DIR=$(dirname "$CONFIG_FILE")
-ABLATION_DIR="${CONFIG_DIR}/ablations"
+CONFIG_DIR=$(dirname "$CONFIG_PATH")          # e.g. "classif"
+ABLATION_GROUP="${CONFIG_DIR}/ablations"       # e.g. "classif/ablations"
+HYDRA_CONFIG_NAME="$CONFIG_PATH"
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
     echo "ERROR: Config file not found: $CONFIG_FILE"
@@ -18,11 +19,10 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 fi
 
 echo "========================================"
-echo "  Config file:   $CONFIG_FILE"
-echo "  Ablation dir:  $ABLATION_DIR"
+echo "  Config file:     $CONFIG_FILE"
+echo "  Ablation group:  $ABLATION_GROUP"
 echo "========================================"
 
-# ── 1. Extract from YAML (OmegaConf.load, no Hydra) ────────
 mapfile -t EXPERIMENTS < <(
     python src/utils/extract_sweep.py run_plan.experiments \
         --config "$CONFIG_FILE"
@@ -32,20 +32,27 @@ mapfile -t ALL_METRICS < <(
         --config "$CONFIG_FILE"
 )
 
+SWEEP_FILE_REL=$(python src/utils/extract_sweep.py run_plan.sweep_file \
+    --config "$CONFIG_FILE")
+SWEEP_FILE="${CFG_ROOT}/${SWEEP_FILE_REL}"
+
+if [[ ! -f "$SWEEP_FILE" ]]; then
+    echo "ERROR: Sweep file not found: $SWEEP_FILE"
+    exit 1
+fi
+
 echo "Experiments : ${EXPERIMENTS[*]}"
 echo "All metrics : ${ALL_METRICS[*]}"
+echo "Sweep file  : $SWEEP_FILE"
 echo ""
 
-# ── 2. Preprocess: generate instance lists ──────────────────
 metrics_csv=$(IFS=','; echo "${ALL_METRICS[*]}")
-
 echo "Generating instance lists for: $metrics_csv"
 python src/utils/extract_df_and_make_instance_list.py \
     --config-name="$CONFIG_PATH" -m \
     metric="$metrics_csv"
 echo ""
 
-# ── 3. For each experiment: build task list → sbatch ────────
 mkdir -p task_lists logs
 
 for EXPERIMENT in "${EXPERIMENTS[@]}"; do
@@ -54,18 +61,12 @@ for EXPERIMENT in "${EXPERIMENTS[@]}"; do
     echo "  Experiment: $EXPERIMENT"
     echo "──────────────────────────────────────"
 
-    ABLATION_FILE="${ABLATION_DIR}/${EXPERIMENT}.yaml"
     TASK_LIST="task_lists/${EXPERIMENT}.txt"
 
-    if [[ ! -f "$ABLATION_FILE" ]]; then
-        echo "  ERROR: Ablation file not found: $ABLATION_FILE"
-        continue
-    fi
-
-    # Build task list — reads YAML directly, no Hydra
     python src/utils/build_task_list.py \
-        --experiment "$ABLATION_FILE" \
-        --config-name "$CONFIG_PATH" \
+        --ablation-name "$EXPERIMENT" \
+        --ablation-group "$ABLATION_GROUP" \
+        --sweep "$SWEEP_FILE" \
         --instance-dir instances_list \
         --output "$TASK_LIST"
 
@@ -79,7 +80,7 @@ for EXPERIMENT in "${EXPERIMENTS[@]}"; do
     echo "  Submitting $NUM_TASKS tasks..."
     sbatch --array=0-$((NUM_TASKS - 1)) \
            --job-name="exp_${EXPERIMENT}" \
-           --export=ALL,CONFIG_PATH="$CONFIG_PATH",TASK_LIST="$TASK_LIST" \
+           --export=ALL,HYDRA_CONFIG_NAME="$HYDRA_CONFIG_NAME",TASK_LIST="$TASK_LIST" \
            array_job.sh
 
     echo ""
