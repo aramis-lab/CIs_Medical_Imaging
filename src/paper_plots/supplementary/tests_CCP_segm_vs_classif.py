@@ -106,9 +106,8 @@ def perform_pairwise_tests(df_fit_results, df_fit_results_classif):
 
 def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
     
-    m = len(next(iter(next(iter(p_vals.values())).values())).keys())
-    n = len(next(iter(next(iter(next(iter(p_vals.values())).values())).values())).keys())
-    num_comparisons = max(m, n)
+    num_comparisons = len(p_vals) * len(next(iter(p_vals.values()))) * len(next(iter(next(iter(p_vals.values())).values()))) * len(next(iter(next(iter(next(iter(p_vals.values())).values())).values())))
+    print(num_comparisons)
 
     if bonferroni_correction:
         alphas_corrected = alphas / num_comparisons
@@ -278,7 +277,7 @@ def main():
     args = parser.parse_args()
 
     root_folder = args.root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/pairwise_comp_segm_classif.pdf")
+    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/pairwise_comp_classif_segm.pdf")
 
     plot_significance_matrix_segm_vs_classif(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 

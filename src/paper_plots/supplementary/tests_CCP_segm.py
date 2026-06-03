@@ -103,9 +103,12 @@ def perform_pairwise_tests(df_fit_results):
 
 def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
     
-    m = len(next(iter(next(iter(p_vals.values())).values())).keys())
-    num_comparisons = m - 1
-
+    m = len(p_vals) # number of methods
+    n = len(next(iter(p_vals.values()))) # number of stats
+    o = len(next(iter(next(iter(p_vals.values())).values()))) # number of metrics
+    p = len(next(iter(next(iter(next(iter(p_vals.values())).values())).values()))) # number of metrics
+    num_comparisons = m*n*o*(p-1)/2 # number of pairwise comparisons per method and stat, multiplied by number of methods and stats
+    
     if bonferroni_correction:
         alphas_corrected = alphas / num_comparisons
     else:
