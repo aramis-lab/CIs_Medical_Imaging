@@ -25,4 +25,4 @@ run_plan:
     - gaussian_adaptive
     - gaussian_scott
   
-  sweep_file: sweep/classif_all_metrics.yaml
+  sweep_file: sweep/classif_all_pairs.yaml
