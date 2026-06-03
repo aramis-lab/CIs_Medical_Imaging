@@ -44,12 +44,7 @@ def main():
     else:
         ablation_override = f"+ablations={args.experiment}"
 
-    GlobalHydra.instance().clear()
-    with initialize_config_dir(version_base=None, config_dir=config_dir):
-        cfg = compose(
-            config_name=args.config_name,
-            overrides=[ablation_override],
-        )
+    cfg = OmegaConf.load(config_dir + "/" + args.config_name + ".yaml")
 
     sweep = OmegaConf.to_container(
         OmegaConf.select(cfg, "sweep"), resolve=True
