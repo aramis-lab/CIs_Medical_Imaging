@@ -6,7 +6,9 @@ conda activate CI
 
 CONFIG_PATH=${1:?Usage: ./run_all.sh <config_path e.g. classif/config_classif>}
 
-CONFIG_FILE="cfg/${CONFIG_PATH}.yaml"
+# ── Resolve paths ───────────────────────────────────────────
+CFG_ROOT="src/cfg"                              # ← Fix here
+CONFIG_FILE="${CFG_ROOT}/${CONFIG_PATH}.yaml"
 CONFIG_DIR=$(dirname "$CONFIG_FILE")
 ABLATION_DIR="${CONFIG_DIR}/ablations"
 
