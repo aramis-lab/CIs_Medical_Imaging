@@ -22,7 +22,7 @@ conda activate CI
 #    Lines are 1-indexed in sed, SLURM_ARRAY_TASK_ID is 0-indexed
 OVERRIDES=$(sed -n "$((SLURM_ARRAY_TASK_ID + 1))p" "$TASK_LIST")
 
-echo "Config:    $CONFIG_PATH"
+echo "Config:    $HYDRA_CONFIG_NAME"
 echo "Task list: $TASK_LIST"
 echo "Task ID:   $SLURM_ARRAY_TASK_ID"
 echo "Overrides: $OVERRIDES"
@@ -30,4 +30,4 @@ echo ""
 
 # ── Run single Hydra job ────────────────────────────────────
 #    eval handles shlex-quoted values (e.g. +task='my task')
-eval python src/run.py --config-name="$CONFIG_PATH" $OVERRIDES
+eval python src/run.py --config-name="$HYDRA_CONFIG_NAME" $OVERRIDES
