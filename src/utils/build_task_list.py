@@ -90,7 +90,7 @@ def main():
 
                 # shlex.quote handles spaces / special chars safely
                 overrides = (
-                    f"ablations={args.experiment}"
+                    f"{ablation_override}"
                     f" metric={metric}"
                     f" {extra_key}={extra_val}"
                     f" +task={shlex.quote(task)}"
