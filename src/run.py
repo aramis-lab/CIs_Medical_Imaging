@@ -90,7 +90,7 @@ def make_kdes_classification(df, task, algo, config):
     all_rows = defaultdict(dict)
     RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
     for n in tqdm(config.sample_sizes):
-        output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{task}_{algo}_{n}.csv")
+        output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}__{config.average}_{task}_{algo}_{n}.csv")
         if os.path.exists(output_path):
             existing_results = pd.read_csv(output_path)
             if existing_results.shape[0]>=config.n_samples: # Already computed
@@ -161,7 +161,7 @@ def make_kdes_classification(df, task, algo, config):
         if not os.path.exists(RESULTS_DIR):
             os.makedirs(RESULTS_DIR)
         results.to_csv(output_path, index=False)
-        average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{task}_{algo}_{n}.csv"), index=False)
+        average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{config.average}_{task}_{algo}_{n}.csv"), index=False)
 
 def make_kdes_segmentation(df, task, algo, config):
     # Retrieve configuration and set up variables
