@@ -14,6 +14,8 @@
 # ── CONFIG_NAME and TASK_LIST come from --export in run_all.sh ──
 
 module load python
+
+eval "$(conda shell.bash hook)"
 conda activate CI
 
 # ── Read the override line for this array task ──────────────
