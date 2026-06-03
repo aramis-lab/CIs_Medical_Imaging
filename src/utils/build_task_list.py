@@ -45,7 +45,7 @@ def main():
     with initialize_config_dir(version_base=None, config_dir=config_dir):
         cfg = compose(
             config_name=args.config_name,
-            overrides=[f"ablations={args.experiment}"],
+            overrides=[f"+ablations={args.experiment}"],
         )
 
     cfg = OmegaConf.to_container(cfg, resolve=True)
@@ -105,7 +105,7 @@ def main():
                     continue
                 task, algo = raw.split(maxsplit=1)
                 overrides = (
-                    f"ablations={args.experiment}"
+                    f"+ablations={args.experiment}"
                     f" metric={metric}"
                     f" {extra_key}={extra_val}"
                     f" +task={shlex.quote(task)}"
