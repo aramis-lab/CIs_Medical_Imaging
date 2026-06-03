@@ -1,6 +1,7 @@
 # @package _global_
 defaults:
   - default_segm
+  - optional_ablations: null
   - _self_
 
 # ---- Single-run scalar defaults ----
@@ -28,3 +29,4 @@ run_plan:
     - epanechnikov_scott
     - gaussian_adaptive
     - gaussian_scott
+  sweep_file: sweep/segm_all_pairs.yaml

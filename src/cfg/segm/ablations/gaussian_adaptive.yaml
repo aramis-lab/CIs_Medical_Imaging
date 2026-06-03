@@ -1,8 +1,4 @@
 # @package _global_
-defaults:
-  - /segm/default_segm
-  - /segm/sweep/segm_all_pairs@sweep
-
 kernel: gaussian
 adaptive_bandwidth: true
 trim_bandwidth: false

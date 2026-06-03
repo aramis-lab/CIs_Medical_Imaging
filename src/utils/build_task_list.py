@@ -1,44 +1,76 @@
 """
 Build a task list for SLURM array jobs.
-Uses OmegaConf.load() directly — no Hydra composition needed.
+
+Loads the sweep file referenced in run_plan.sweep_file,
+crosses sweep pairs with instance lists.
 
 Usage:
     python src/utils/build_task_list.py \
-        --ablation cfg/classif/ablations/epanechnikov_adaptive.yaml \
         --config-name classif/config_classif \
+        --experiment epanechnikov_adaptive \
         --instance-dir instances_list \
         --output task_lists/epanechnikov_adaptive.txt
 """
 
-import argparse, shlex, sys
+import argparse, shlex, sys, os
 from pathlib import Path
+from hydra import compose, initialize_config_dir
+from hydra.core.global_hydra import GlobalHydra
 from omegaconf import OmegaConf
+
+
+def find_config_dir():
+    """Resolve src/cfg from script location."""
+    return str(Path(__file__).resolve().parent.parent / "cfg")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--ablation", required=True,
-                        help="Path to ablation YAML file")
-    parser.add_argument("--config-name", required=True,
-                        help="Hydra config name for run.py overrides "
-                             "(e.g. classif/config_classif)")
+    parser.add_argument("--config-name", required=True)
+    parser.add_argument("--experiment", required=True)
     parser.add_argument("--instance-dir", default="instances_list")
     parser.add_argument("--output", required=True)
+    parser.add_argument("--config-dir", default=None)
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
-    ablation_path = Path(args.ablation)
-    if not ablation_path.is_file():
-        print(f"ERROR: {ablation_path} not found", file=sys.stderr)
+    config_dir = str(Path(args.config_dir or find_config_dir()).resolve())
+
+    if not os.path.isdir(config_dir):
+        print(f"ERROR: config dir not found: {config_dir}", file=sys.stderr)
         sys.exit(1)
 
-    # Ablation name for Hydra override (e.g. "epanechnikov_adaptive")
-    ablation_name = ablation_path.stem
+    # ── Compose config with ablation ────────────────────────
+    GlobalHydra.instance().clear()
+    with initialize_config_dir(version_base=None, config_dir=config_dir):
+        cfg = compose(
+            config_name=args.config_name,
+            overrides=[f"ablations={args.experiment}"],
+        )
 
-    # ── Load YAML directly — no Hydra ──────────────────────
-    cfg = OmegaConf.load(ablation_path)
+    cfg = OmegaConf.to_container(cfg, resolve=True)
+
+    # ── Load sweep file referenced in config ────────────────
+    sweep_file = cfg.get("run_plan", {}).get("sweep_file")
+    if sweep_file is None:
+        print("ERROR: run_plan.sweep_file not found in config",
+              file=sys.stderr)
+        sys.exit(1)
+
+    sweep_path = Path(config_dir) / sweep_file
+    if not sweep_path.is_file():
+        print(f"ERROR: Sweep file not found: {sweep_path}",
+              file=sys.stderr)
+        sys.exit(1)
+
     sweep = OmegaConf.to_container(
-        OmegaConf.select(cfg, "sweep"), resolve=True
+        OmegaConf.load(sweep_path), resolve=True
     )
+
+    if args.debug:
+        print(f"Config dir:  {config_dir}", file=sys.stderr)
+        print(f"Sweep file:  {sweep_path}", file=sys.stderr)
+        print(f"Sweep keys:  {list(sweep.keys())}", file=sys.stderr)
 
     # ── Detect pair type ────────────────────────────────────
     if "metric_average_pairs" in sweep:
@@ -49,7 +81,7 @@ def main():
         extra_key = "summary_stat"
     else:
         print("ERROR: No metric_average_pairs or metric_summary_pairs "
-              "found in sweep", file=sys.stderr)
+              "in sweep file", file=sys.stderr)
         sys.exit(1)
 
     # ── Cross pairs × instance lists ────────────────────────
@@ -73,7 +105,7 @@ def main():
                     continue
                 task, algo = raw.split(maxsplit=1)
                 overrides = (
-                    f"ablations={ablation_name}"
+                    f"ablations={args.experiment}"
                     f" metric={metric}"
                     f" {extra_key}={extra_val}"
                     f" +task={shlex.quote(task)}"
