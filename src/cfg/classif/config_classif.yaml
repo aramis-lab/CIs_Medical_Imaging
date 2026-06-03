@@ -1,5 +1,6 @@
 defaults:
   - default_classif
+  - _self_
 
 # ---- Single-run scalar defaults ----
 metric: f1_score

@@ -1,5 +1,6 @@
 defaults:
   - default_segm
+  - _self_
 
 # ---- Single-run scalar defaults ----
 metric: dsc
