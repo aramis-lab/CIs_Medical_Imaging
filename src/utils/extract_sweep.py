@@ -40,8 +40,10 @@ def main():
         print(f"ERROR: Key '{args.key}' not found.", file=sys.stderr)
         print(f"Available keys: {list(cfg.keys())}", file=sys.stderr)
         sys.exit(1)
+    
+    values = OmegaConf.to_container(values, resolve=True)
 
-    if isinstance(values, (list, tuple)):
+    if isinstance(values, list):
         for v in values:
             if isinstance(v, dict):
                 print(";".join(f"{k}={val}" for k, val in v.items()))
