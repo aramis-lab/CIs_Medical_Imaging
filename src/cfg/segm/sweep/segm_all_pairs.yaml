@@ -56,8 +56,8 @@ metric_summary_pairs:
   - { metric: hd,           summary_stat: iqr_length    }
 
   # ── HD95 ───────────────────────────
-  - { metric: hd95,         summary_stat: mean          }
-  - { metric: hd95,         summary_stat: median        }
-  - { metric: hd95,         summary_stat: trimmed_mean  }
-  - { metric: hd95,         summary_stat: std           }
-  - { metric: hd95,         summary_stat: iqr_length    }
+  - { metric: hd_perc,         summary_stat: mean          }
+  - { metric: hd_perc,         summary_stat: median        }
+  - { metric: hd_perc,         summary_stat: trimmed_mean  }
+  - { metric: hd_perc,         summary_stat: std           }
+  - { metric: hd_perc,         summary_stat: iqr_length    }

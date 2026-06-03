@@ -9,7 +9,7 @@ metric:
   - "masd"
   - "assd"
   - "hd"
-  - "hd95"
+  - "hd_perc"
 
 # Possible values for summary_stat (choose one from here)
 summary_stat:
