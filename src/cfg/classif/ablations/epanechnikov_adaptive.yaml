@@ -6,3 +6,4 @@ kernel: epanechnikov
 adaptive_bandwidth: true
 n_samples: 1000
 n_bootstrap: 999
+relative_output_dir: "../results_classif/epanechnikov_adaptive"
