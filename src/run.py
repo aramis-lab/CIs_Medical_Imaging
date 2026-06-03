@@ -158,6 +158,8 @@ def make_kdes_classification(df, task, algo, config):
         else:
             average_results = pd.DataFrame()
 
+        if not os.path.exists(RESULTS_DIR):
+            os.makedirs(RESULTS_DIR)
         results.to_csv(output_path, index=False)
         average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{task}_{algo}_{n}.csv"), index=False)
 
@@ -285,6 +287,8 @@ def make_kdes_segmentation(df, task, algo, config):
         else:
             average_results = pd.DataFrame()
 
+        if not os.path.exists(RESULTS_DIR):
+            os.makedirs(RESULTS_DIR)
         results.to_csv(output_path, index=False)
         average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv"), index=False)
 
