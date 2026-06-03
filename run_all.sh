@@ -64,7 +64,7 @@ for EXPERIMENT in "${EXPERIMENTS[@]}"; do
 
     # Build task list — reads YAML directly, no Hydra
     python src/utils/build_task_list.py \
-        --ablation "$ABLATION_FILE" \
+        --experiment "$ABLATION_FILE" \
         --config-name "$CONFIG_PATH" \
         --instance-dir instances_list \
         --output "$TASK_LIST"
