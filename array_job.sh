@@ -6,7 +6,7 @@
 #SBATCH --nodes=1
 #SBATCH -A zcd@cpu
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --qos=qos_cpu-t3
 #SBATCH --partition=cpu_p1
 #SBATCH --hint=nomultithread
@@ -23,20 +23,41 @@ echo "Task ID:      $SLURM_ARRAY_TASK_ID"
 echo "Overrides:    $OVERRIDES"
 echo ""
 
-# ── Start background memory monitor ────────────────────────
-PEAK_MEM=0
+# ── Memory monitor using cgroup (SLURM-reliable) ───────────
+MEM_LOG=$(mktemp /tmp/memlog.XXXXXX)
+
 monitor_memory() {
-    while kill -0 "$1" 2>/dev/null; do
-        # RSS in KB from /proc
-        MEM_KB=$(ps -o rss= -p "$1" 2>/dev/null || echo 0)
-        # Include child processes
-        CHILDREN_KB=$(ps -o rss= --ppid "$1" 2>/dev/null | awk '{s+=$1} END {print s+0}')
-        TOTAL_KB=$((MEM_KB + CHILDREN_KB))
-        if (( TOTAL_KB > PEAK_MEM )); then
-            PEAK_MEM=$TOTAL_KB
+    local pid=$1
+    local peak=0
+    while kill -0 "$pid" 2>/dev/null; do
+        # Method 1: cgroup (most reliable on SLURM)
+        if [[ -f /sys/fs/cgroup/memory/slurm/uid_$(id -u)/job_${SLURM_JOB_ID}/memory.usage_in_bytes ]]; then
+            mem=$(cat /sys/fs/cgroup/memory/slurm/uid_$(id -u)/job_${SLURM_JOB_ID}/memory.usage_in_bytes 2>/dev/null || echo 0)
+            mem_mb=$((mem / 1048576))
+        # Method 2: cgroup v2
+        elif [[ -f /sys/fs/cgroup/system.slice/slurmstepd.scope/job_${SLURM_JOB_ID}/memory.current ]]; then
+            mem=$(cat /sys/fs/cgroup/system.slice/slurmstepd.scope/job_${SLURM_JOB_ID}/memory.current 2>/dev/null || echo 0)
+            mem_mb=$((mem / 1048576))
+        # Method 3: sum all descendant processes
+        else
+            mem_kb=0
+            for p in $(pgrep -P "$pid" 2>/dev/null) "$pid"; do
+                rss=$(ps -o rss= -p "$p" 2>/dev/null || echo 0)
+                mem_kb=$((mem_kb + rss))
+            done
+            mem_mb=$((mem_kb / 1024))
         fi
-        sleep 5
+
+        if (( mem_mb > peak )); then
+            peak=$mem_mb
+        fi
+
+        # Log every sample for debugging
+        echo "$(date +%H:%M:%S) ${mem_mb}MB" >> "$MEM_LOG"
+
+        sleep 2  # Sample every 2 seconds (faster than before)
     done
+    echo "$peak" > "${MEM_LOG}.peak"
 }
 
 # ── Run the job ─────────────────────────────────────────────
@@ -57,6 +78,12 @@ wait "$MONITOR_PID" 2>/dev/null
 END_TIME=$(date +%s)
 ELAPSED=$((END_TIME - START_TIME))
 
+# ── Read peak memory ───────────────────────────────────────
+PEAK_MEM=0
+if [[ -f "${MEM_LOG}.peak" ]]; then
+    PEAK_MEM=$(cat "${MEM_LOG}.peak")
+fi
+
 # ── Print summary ──────────────────────────────────────────
 echo ""
 echo "========================================"
@@ -64,15 +91,18 @@ echo "  JOB SUMMARY"
 echo "========================================"
 echo "  Exit code:    $EXIT_CODE"
 echo "  Wall time:    ${ELAPSED}s ($(date -ud @${ELAPSED} +%H:%M:%S))"
-echo "  Peak memory:  $((PEAK_MEM / 1024)) MB ($((PEAK_MEM / 1048576)) GB)"
+echo "  Peak memory:  ${PEAK_MEM} MB ($((PEAK_MEM / 1024)) GB)"
 echo "  CPUs:         $SLURM_CPUS_PER_TASK"
+
+if [[ $EXIT_CODE -eq 137 ]]; then
+    echo "  STATUS:       *** OOM KILLED ***"
+    echo "  Last 5 memory samples:"
+    tail -5 "$MEM_LOG" 2>/dev/null | sed 's/^/    /'
+fi
+
 echo "========================================"
 
-# ── Also get SLURM's own accounting ────────────────────────
-echo ""
-echo "SLURM accounting:"
-sstat -j "${SLURM_JOB_ID}.batch" \
-    --format=AveCPU,AveRSS,MaxRSS,AveVMSize,MaxVMSize \
-    2>/dev/null || echo "  (sstat not available)"
+# ── Cleanup ────────────────────────────────────────────────
+rm -f "$MEM_LOG" "${MEM_LOG}.peak"
 
 exit $EXIT_CODE
