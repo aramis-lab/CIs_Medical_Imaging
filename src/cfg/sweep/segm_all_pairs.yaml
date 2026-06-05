@@ -35,30 +35,30 @@ metric_summary_pairs:
   - { metric: cldice,       summary_stat: std           }
   - { metric: cldice,       summary_stat: iqr_length    }
 
-  # ── MASD ───────────────────────────
-  - { metric: masd,         summary_stat: mean          }
-  - { metric: masd,         summary_stat: median        }
-  - { metric: masd,         summary_stat: trimmed_mean  }
-  - { metric: masd,         summary_stat: std           }
-  - { metric: masd,         summary_stat: iqr_length    }
+  # # ── MASD ───────────────────────────
+  # - { metric: masd,         summary_stat: mean          }
+  # - { metric: masd,         summary_stat: median        }
+  # - { metric: masd,         summary_stat: trimmed_mean  }
+  # - { metric: masd,         summary_stat: std           }
+  # - { metric: masd,         summary_stat: iqr_length    }
 
-  # ── ASSD ───────────────────────────
-  - { metric: assd,         summary_stat: mean          }
-  - { metric: assd,         summary_stat: median        }
-  - { metric: assd,         summary_stat: trimmed_mean  }
-  - { metric: assd,         summary_stat: std           }
-  - { metric: assd,         summary_stat: iqr_length    }
+  # # ── ASSD ───────────────────────────
+  # - { metric: assd,         summary_stat: mean          }
+  # - { metric: assd,         summary_stat: median        }
+  # - { metric: assd,         summary_stat: trimmed_mean  }
+  # - { metric: assd,         summary_stat: std           }
+  # - { metric: assd,         summary_stat: iqr_length    }
 
-  # ── HD ─────────────────────────────
-  - { metric: hd,           summary_stat: mean          }
-  - { metric: hd,           summary_stat: median        }
-  - { metric: hd,           summary_stat: trimmed_mean  }
-  - { metric: hd,           summary_stat: std           }
-  - { metric: hd,           summary_stat: iqr_length    }
+  # # ── HD ─────────────────────────────
+  # - { metric: hd,           summary_stat: mean          }
+  # - { metric: hd,           summary_stat: median        }
+  # - { metric: hd,           summary_stat: trimmed_mean  }
+  # - { metric: hd,           summary_stat: std           }
+  # - { metric: hd,           summary_stat: iqr_length    }
 
-  # ── HD95 ───────────────────────────
-  - { metric: hd_perc,         summary_stat: mean          }
-  - { metric: hd_perc,         summary_stat: median        }
-  - { metric: hd_perc,         summary_stat: trimmed_mean  }
-  - { metric: hd_perc,         summary_stat: std           }
-  - { metric: hd_perc,         summary_stat: iqr_length    }
+  # # ── HD95 ───────────────────────────
+  # - { metric: hd_perc,         summary_stat: mean          }
+  # - { metric: hd_perc,         summary_stat: median        }
+  # - { metric: hd_perc,         summary_stat: trimmed_mean  }
+  # - { metric: hd_perc,         summary_stat: std           }
+  # - { metric: hd_perc,         summary_stat: iqr_length    }
