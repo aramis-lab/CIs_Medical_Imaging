@@ -12,15 +12,17 @@ def plot_all_cov_classif(root_folder: str, output_path: str, upload_overleaf: bo
     folder_path_micro = os.path.join(root_folder, "results_metrics_classif")
     file_prefix_micro = "aggregated_results"
     metrics_micro = ["accuracy", "auc", "f1_score", "ap"]
+    averages_micro = ["micro"]
 
-    df_micro = extract_df_classif_cov(folder_path_micro, file_prefix_micro, metrics_micro)
-    df_mcc = extract_df_classif_cov(folder_path_micro, file_prefix_micro, ["mcc"])
+    df_micro = extract_df_classif_cov(folder_path_micro, file_prefix_micro, metrics_micro, averages_micro)
+    df_mcc = extract_df_classif_cov(folder_path_micro, file_prefix_micro, ["mcc"], ["none"])
 
     folder_path_macro = os.path.join(root_folder, "results_metrics_classif_macro")
     file_prefix_macro = "aggregated_results"
     metrics_macro = ["balanced_accuracy", "auc", "f1_score", "ap"]
+    averages_macro = ["macro"]
 
-    df_macro = extract_df_classif_cov(folder_path_macro, file_prefix_macro, metrics_macro)
+    df_macro = extract_df_classif_cov(folder_path_macro, file_prefix_macro, metrics_macro, averages_macro)
 
     # Set Nature-style: clean, minimal, sans-serif, no grid, no top/right spines
     plt.rcParams.update({

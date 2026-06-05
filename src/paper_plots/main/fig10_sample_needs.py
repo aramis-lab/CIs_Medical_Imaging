@@ -27,6 +27,7 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, upload_overleaf: b
     # Define metric lists
     metrics_segm = ["dsc", "nsd", "iou", "boundary_iou", "cldice", "hd", "hd_perc", "masd", "assd"]
     metrics_classif = ["balanced_accuracy", "auc", "ap", "f1_score"]
+    averages_classif = ["macro"]  # Only macro-averaged metrics for classification
     stats_segm = ["mean"]
 
     # Load segmentation data
@@ -38,8 +39,8 @@ def plot_fig10_sample_needs(root_folder:str, output_path:str, upload_overleaf: b
     # Load classification data
     folder_path_classif = os.path.join(root_folder, "results_metrics_classif_macro")
     file_prefix_classif = "aggregated_results"
-    df_classif_cov = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
-    df_classif_width = extract_df_classif_width(folder_path_classif, file_prefix_classif, metrics_classif)
+    df_classif_cov = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif, averages_classif)
+    df_classif_width = extract_df_classif_width(folder_path_classif, file_prefix_classif, metrics_classif, averages_classif)
 
  
     # Filter by percentile method

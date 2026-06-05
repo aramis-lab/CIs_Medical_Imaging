@@ -22,9 +22,10 @@ def plot_fig7_macro_vs_segm_mean(root_folder:str, output_path:str, upload_overle
         folder_path_classif = os.path.join(root_folder, "results_metrics_classif_macro")
         file_prefix_classif = "aggregated_results"
         metrics_classif = ["auc", "ap", "balanced_accuracy", "f1_score"]
+        averages_classif = ["macro"]
 
-        df_classif_cov = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
-        df_classif_width = extract_df_classif_width(folder_path_classif, file_prefix_classif, metrics_classif)
+        df_classif_cov = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif, averages_classif)
+        df_classif_width = extract_df_classif_width(folder_path_classif, file_prefix_classif, metrics_classif, averages_classif)
 
         # Color palettes
         palette_segm = sns.color_palette("Blues", len(metrics_segm)+4)

@@ -23,9 +23,10 @@ def plot_micro_vs_segm_stats(root_folder:str, output_path:str, upload_overleaf: 
         folder_path_classif = os.path.join(root_folder, "results_metrics_classif")
         file_prefix_classif = "aggregated_results"
         metrics_classif = ["auc", "ap", "accuracy", "f1_score"]
+        averages_classif = ["micro"]
 
-        df_classif_cov = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
-        df_classif_width = extract_df_classif_width(folder_path_classif, file_prefix_classif, metrics_classif)
+        df_classif_cov = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif, averages_classif)
+        df_classif_width = extract_df_classif_width(folder_path_classif, file_prefix_classif, metrics_classif, averages_classif)
 
         # Color palettes
         palette_segm = sns.color_palette("Blues", len(metrics_segm)+4)

@@ -145,10 +145,11 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str, u
     df_segm = df_segm[df_segm['method'] == 'percentile']
 
     metrics_classif = ["balanced_accuracy", "ap", "auc", "f1_score"]
+    averages_classif = ["macro"]
 
     folder_path_classif = os.path.join(root_folder, "results_metrics_classif_macro")
     file_prefix_classif = "aggregated_results"
-    df_classif = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
+    df_classif = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif, averages_classif)
     df_classif = df_classif[df_classif['method'] == 'percentile']
 
     df_fit_results_segm = perform_fits_segm(df_segm, metrics_segm, stats_segm)

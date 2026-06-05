@@ -14,16 +14,18 @@ def plot_micro_vs_macro_all(root_folder:str, output_path:str, upload_overleaf: b
     folder_path_micro = os.path.join(root_folder, "results_metrics_classif")
     file_prefix_micro = "aggregated_results"
     metrics_micro =['accuracy', "auc", "f1_score", "ap"]
+    averages_micro = ["micro"]
 
-    df_micro = extract_df_classif_cov(folder_path_micro, file_prefix_micro, metrics_micro)
-    df_micro_width = extract_df_classif_width(folder_path_micro, file_prefix_micro, metrics_micro)
+    df_micro = extract_df_classif_cov(folder_path_micro, file_prefix_micro, metrics_micro, averages_micro)
+    df_micro_width = extract_df_classif_width(folder_path_micro, file_prefix_micro, metrics_micro, averages_micro)
 
     folder_path_macro = os.path.join(root_folder, "results_metrics_classif_macro")
     file_prefix_macro = "aggregated_results"
     metrics_macro =['balanced_accuracy', "auc", "f1_score", "ap"]
+    averages_macro = ["macro"]
 
-    df_macro = extract_df_classif_cov(folder_path_macro, file_prefix_macro, metrics_macro)
-    df_macro_width = extract_df_classif_width(folder_path_macro, file_prefix_macro, metrics_macro)
+    df_macro = extract_df_classif_cov(folder_path_macro, file_prefix_macro, metrics_macro, averages_macro)
+    df_macro_width = extract_df_classif_width(folder_path_macro, file_prefix_macro, metrics_macro, averages_macro)
 
     # Choose layout: each metric gets 2 columns (coverage + width)
     means_macro_df_n=df_macro[(df_macro['method']=='percentile') & (df_macro['n']<=250)].sort_values(by=['metric', 'n'])

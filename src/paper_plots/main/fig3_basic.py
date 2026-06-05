@@ -18,8 +18,9 @@ def plot_fig3_basic(root_folder: str, output_path: str, upload_overleaf: bool = 
     folder_path_classif = os.path.join(root_folder, "results_metrics_classif")
     file_prefix_classif = "aggregated_results"
     metrics_classif = ["accuracy"]
+    averages_classif = ["micro"]
 
-    df_classif = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif)
+    df_classif = extract_df_classif_cov(folder_path_classif, file_prefix_classif, metrics_classif, averages_classif)
 
     fig, axs = plt.subplots(1, 2, figsize=(30, 15), sharey=True)
 
