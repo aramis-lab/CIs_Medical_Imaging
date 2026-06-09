@@ -85,21 +85,39 @@ def make_kdes_classification(df, task, algo, config):
                         "ap" : ["y_score", "y_true_bin"]
     }
 
-    original_arguments = {a : locals()[a] for a in metric_arguments[config.metric]}
+    original_arguments = {a: locals()[a] for a in metric_arguments[config.metric]}
     true_value = metric(average=config.average, **original_arguments)
     all_rows = defaultdict(dict)
     RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
+
+    if not os.path.exists(RESULTS_DIR):
+        os.makedirs(RESULTS_DIR)
+
+    raw_output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}__{config.average}_{task}_{algo}.csv")
+    agg_output_path = os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{config.average}_{task}_{algo}.csv")
+
+    # Load existing raw results if available
+    existing_results = None
+    if os.path.exists(raw_output_path):
+        existing_results = pd.read_csv(raw_output_path)
+
     for n in tqdm(config.sample_sizes):
-        output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}__{config.average}_{task}_{algo}_{n}.csv")
-        if os.path.exists(output_path):
-            existing_results = pd.read_csv(output_path)
-            if existing_results.shape[0]>=config.n_samples: # Already computed
+        # Check if this n already has enough results in the existing file
+        if existing_results is not None:
+            existing_for_n = existing_results[
+                (existing_results["subtask"] == task)
+                & (existing_results["alg_name"] == algo)
+                & (existing_results["n"] == n)
+            ]
+            if existing_for_n.shape[0] >= config.n_samples:
                 print(f"Skipping n = {n}, results already exist")
                 continue
             else:
                 print(f"Computing CIs for n = {n}")
-            del existing_results
-        samples, sim_labels = sample_weighted_kde_multivariate(values, labels, config.kernel, config.n_samples * n, alphas)
+
+        samples, sim_labels = sample_weighted_kde_multivariate(
+            values, labels, config.kernel, config.n_samples * n, alphas
+        )
         samples = samples.reshape(config.n_samples, n, -1)
         samples = softmax(samples)
         sim_labels = sim_labels.reshape(config.n_samples, n)
@@ -108,60 +126,90 @@ def make_kdes_classification(df, task, algo, config):
             print(method)
             for batch_start in range(0, config.n_samples, batch_size):
                 batch_end = min(batch_start + batch_size, config.n_samples)
-                
-                CIs = compute_CIs_classification(sim_labels[batch_start:batch_end], samples[batch_start:batch_end], 
-                                                 config.metric, method, average=config.average, n_bootstrap=config.n_bootstrap)
-                
-                # Precompute vectorized components for speed
+
+                CIs = compute_CIs_classification(
+                    sim_labels[batch_start:batch_end],
+                    samples[batch_start:batch_end],
+                    config.metric,
+                    method,
+                    average=config.average,
+                    n_bootstrap=config.n_bootstrap,
+                )
+
                 lower_bounds = CIs[:, 0]
                 upper_bounds = CIs[:, 1]
                 widths = upper_bounds - lower_bounds
                 contains_true = (lower_bounds <= true_value) & (true_value <= upper_bounds)
-                proportion_oob = ((lower_bounds < 0) * (-lower_bounds) + (upper_bounds > 1) * (upper_bounds - 1)) / widths
+                proportion_oob = (
+                    (lower_bounds < 0) * (-lower_bounds)
+                    + (upper_bounds > 1) * (upper_bounds - 1)
+                ) / widths
 
                 for sample_index in range(batch_start, batch_end):
                     key = (task, algo, n, sample_index)
-                    all_rows[key].update({
-                    "subtask": task,
-                    "alg_name": algo,
-                    "n": n,
-                    "sample_index": sample_index,
-                    "true_value": true_value,
-                    f"lower_bound_{method}": lower_bounds[sample_index - batch_start],
-                    f"upper_bound_{method}": upper_bounds[sample_index - batch_start],
-                    f"contains_true_stat_{method}": contains_true[sample_index - batch_start],
-                    f"width_{method}": widths[sample_index - batch_start],
-                    f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
-                    })
+                    all_rows[key].update(
+                        {
+                            "subtask": task,
+                            "alg_name": algo,
+                            "n": n,
+                            "sample_index": sample_index,
+                            "true_value": true_value,
+                            f"lower_bound_{method}": lower_bounds[sample_index - batch_start],
+                            f"upper_bound_{method}": upper_bounds[sample_index - batch_start],
+                            f"contains_true_stat_{method}": contains_true[sample_index - batch_start],
+                            f"width_{method}": widths[sample_index - batch_start],
+                            f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
+                        }
+                    )
 
-        results = pd.DataFrame(data = all_rows.values())
+    # ── Merge new results with existing, deduplicate, sort, and write ──
 
-        results = results.drop_duplicates(["subtask", "alg_name", "n", "sample_index"])
+    new_results = pd.DataFrame(data=all_rows.values())
 
-        # Compute averages for each (task, algo, n) triplet and ci method
-        avg_rows = []
+    if existing_results is not None and not new_results.empty:
+        # New rows override old rows on the same key (keep="last")
+        results = pd.concat([existing_results, new_results], ignore_index=True)
+    elif existing_results is not None:
+        results = existing_results
+    elif not new_results.empty:
+        results = new_results
+    else:
+        results = pd.DataFrame()
+
+    if not results.empty:
+        key_cols = ["subtask", "alg_name", "n", "sample_index"]
+        results = results.drop_duplicates(subset=key_cols, keep="last")
+        results = results.sort_values(by=key_cols).reset_index(drop=True)
+
+        # ── Aggregated results (recomputed from the full merged raw data) ──
         group_cols = ["subtask", "alg_name", "n"]
+        avg_dfs = []
         for method in ci_methods:
-            avg_df = results.groupby(group_cols).agg({
-            f"contains_true_stat_{method}": "mean",
-            f"width_{method}": "mean",
-            f"proportion_oob_{method}": "mean"
-            }).reset_index()
-            avg_df = avg_df.rename(columns={
-            f"contains_true_stat_{method}": f"coverage_{method}"
-            })
-            avg_rows.append(avg_df)
-        if avg_rows:
-            average_results = avg_rows[0]
-            for df in avg_rows[1:]:
+            avg_df = (
+                results.groupby(group_cols)
+                .agg(
+                    {
+                        f"contains_true_stat_{method}": "mean",
+                        f"width_{method}": "mean",
+                        f"proportion_oob_{method}": "mean",
+                    }
+                )
+                .reset_index()
+                .rename(columns={f"contains_true_stat_{method}": f"coverage_{method}"})
+            )
+            avg_dfs.append(avg_df)
+
+        if avg_dfs:
+            average_results = avg_dfs[0]
+            for df in avg_dfs[1:]:
                 average_results = pd.merge(average_results, df, on=group_cols, how="outer")
+            average_results = average_results.sort_values(by=group_cols).reset_index(drop=True)
         else:
             average_results = pd.DataFrame()
 
-        if not os.path.exists(RESULTS_DIR):
-            os.makedirs(RESULTS_DIR)
-        results.to_csv(output_path, index=False)
-        average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{config.average}_{task}_{algo}_{n}.csv"), index=False)
+        # ── Write both files ──
+        results.to_csv(raw_output_path, index=False)
+        average_results.to_csv(agg_output_path, index=False)
 
 def make_kdes_segmentation(df, task, algo, config):
     # Retrieve configuration and set up variables
@@ -218,19 +266,33 @@ def make_kdes_segmentation(df, task, algo, config):
     all_rows = defaultdict(dict)
 
     RESULTS_DIR = os.path.join(BASE_DIR, config.relative_output_dir)
+
+    if not os.path.exists(RESULTS_DIR):
+        os.makedirs(RESULTS_DIR)
+
+    raw_output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}_{task}_{algo}.csv")
+    agg_output_path = os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{config.summary_stat}_{task}_{algo}.csv")
+
+    # Load existing raw results if available
+    existing_results = None
+    if os.path.exists(raw_output_path):
+        existing_results = pd.read_csv(raw_output_path)
+
     for n in tqdm(config.sample_sizes):
-        output_path = os.path.join(RESULTS_DIR, f"results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv")
-        if os.path.exists(output_path):
-            # Check if results already exist
-            print(f"Output path {output_path} already exists, checking if results are sufficient")
-            existing_results = pd.read_csv(output_path)
-            if existing_results.shape[0]>=config.n_samples: # Already computed
+        # Check if this n already has enough results in the existing file
+        if existing_results is not None:
+            existing_for_n = existing_results[
+                (existing_results["subtask"] == task)
+                & (existing_results["alg_name"] == algo)
+                & (existing_results["n"] == n)
+            ]
+            if existing_for_n.shape[0] >= config.n_samples:
                 print(f"Skipping n = {n}, results already exist")
                 continue
             else:
                 print(f"Computing CIs for n = {n}")
-            del existing_results
-        if not is_continuous(config.metric): # For discrete metrics, KDE makes no sense, we sample uniformly
+
+        if not is_continuous(config.metric):
             samples = np.random.choice(values, size=config.n_samples * n, replace=True).reshape(config.n_samples, n)
         else:
             samples = sample_weighted_kde(y, x, config.n_samples * n, a, b).reshape(config.n_samples, n)
@@ -240,57 +302,79 @@ def make_kdes_segmentation(df, task, algo, config):
             for batch_start in range(0, config.n_samples, batch_size):
                 batch_end = min(batch_start + batch_size, config.n_samples)
                 batch_samples = samples[batch_start:batch_end]
-                CIs = compute_CIs_segmentation(batch_samples, method, config.summary_stat, statistic, config.trimmed_mean_threshold, a, b)
+                CIs = compute_CIs_segmentation(
+                    batch_samples, method, config.summary_stat,
+                    statistic, config.trimmed_mean_threshold, a, b
+                )
 
-                # Precompute vectorized components for speed
                 lower_bounds = CIs[:, 0]
                 upper_bounds = CIs[:, 1]
                 widths = upper_bounds - lower_bounds
                 contains_true = (lower_bounds <= true_value) & (true_value <= upper_bounds)
-                proportion_oob = ((lower_bounds < 0) * (-lower_bounds) + (upper_bounds > 1) * (upper_bounds - 1)) / widths
+                proportion_oob = (
+                    (lower_bounds < 0) * (-lower_bounds)
+                    + (upper_bounds > 1) * (upper_bounds - 1)
+                ) / widths
 
                 for sample_index in range(batch_start, batch_end):
                     key = (task, algo, n, sample_index)
                     all_rows[key].update({
-                    "subtask": task,
-                    "alg_name": algo,
-                    "n": n,
-                    "sample_index": sample_index,
-                    f"lower_bound_{method}": lower_bounds[sample_index - batch_start],
-                    f"upper_bound_{method}": upper_bounds[sample_index - batch_start],
-                    f"contains_true_stat_{method}": contains_true[sample_index - batch_start],
-                    f"width_{method}": widths[sample_index - batch_start],
-                    f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
+                        "subtask": task,
+                        "alg_name": algo,
+                        "n": n,
+                        "sample_index": sample_index,
+                        f"lower_bound_{method}": lower_bounds[sample_index - batch_start],
+                        f"upper_bound_{method}": upper_bounds[sample_index - batch_start],
+                        f"contains_true_stat_{method}": contains_true[sample_index - batch_start],
+                        f"width_{method}": widths[sample_index - batch_start],
+                        f"proportion_oob_{method}": proportion_oob[sample_index - batch_start],
                     })
 
-        results = pd.DataFrame(data = all_rows.values())
+    # ── Merge new results with existing, deduplicate, sort, and write ──
 
-        results = results.drop_duplicates(["subtask", "alg_name", "n", "sample_index"])
-        
-        # Compute averages for each (task, algo, n) triplet and ci method
-        avg_rows = []
+    new_results = pd.DataFrame(data=all_rows.values())
+
+    if existing_results is not None and not new_results.empty:
+        results = pd.concat([existing_results, new_results], ignore_index=True)
+    elif existing_results is not None:
+        results = existing_results
+    elif not new_results.empty:
+        results = new_results
+    else:
+        results = pd.DataFrame()
+
+    if not results.empty:
+        key_cols = ["subtask", "alg_name", "n", "sample_index"]
+        results = results.drop_duplicates(subset=key_cols, keep="last")
+        results = results.sort_values(by=key_cols).reset_index(drop=True)
+
+        # ── Aggregated results (recomputed from the full merged raw data) ──
         group_cols = ["subtask", "alg_name", "n"]
+        avg_dfs = []
         for method in ci_methods:
-            avg_df = results.groupby(group_cols).agg({
-            f"contains_true_stat_{method}": "mean",
-            f"width_{method}": "mean",
-            f"proportion_oob_{method}": "mean"
-            }).reset_index()
-            avg_df = avg_df.rename(columns={
-            f"contains_true_stat_{method}": f"coverage_{method}"
-            })
-            avg_rows.append(avg_df)
-        if avg_rows:
-            average_results = avg_rows[0]
-            for df in avg_rows[1:]:
+            avg_df = (
+                results.groupby(group_cols)
+                .agg({
+                    f"contains_true_stat_{method}": "mean",
+                    f"width_{method}": "mean",
+                    f"proportion_oob_{method}": "mean",
+                })
+                .reset_index()
+                .rename(columns={f"contains_true_stat_{method}": f"coverage_{method}"})
+            )
+            avg_dfs.append(avg_df)
+
+        if avg_dfs:
+            average_results = avg_dfs[0]
+            for df in avg_dfs[1:]:
                 average_results = pd.merge(average_results, df, on=group_cols, how="outer")
+            average_results = average_results.sort_values(by=group_cols).reset_index(drop=True)
         else:
             average_results = pd.DataFrame()
 
-        if not os.path.exists(RESULTS_DIR):
-            os.makedirs(RESULTS_DIR)
-        results.to_csv(output_path, index=False)
-        average_results.to_csv(os.path.join(RESULTS_DIR, f"aggregated_results_{config.metric}_{config.summary_stat}_{task}_{algo}_{n}.csv"), index=False)
+        # ── Write both files ──
+        results.to_csv(raw_output_path, index=False)
+        average_results.to_csv(agg_output_path, index=False)
 
 @hydra.main(config_path="cfg", version_base="1.3.2")
 def main(cfg: DictConfig):
