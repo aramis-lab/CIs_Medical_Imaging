@@ -1,11 +1,11 @@
 # @package _global_
 metric_summary_pairs:
-  # # ── DSC ────────────────────────────
-  # - { metric: dsc,          summary_stat: mean          }
-  # - { metric: dsc,          summary_stat: median        }
-  # - { metric: dsc,          summary_stat: trimmed_mean  }
-  # - { metric: dsc,          summary_stat: std           }
-  # - { metric: dsc,          summary_stat: iqr_length    }
+  # ── DSC ────────────────────────────
+  - { metric: dsc,          summary_stat: mean          }
+  - { metric: dsc,          summary_stat: median        }
+  - { metric: dsc,          summary_stat: trimmed_mean  }
+  - { metric: dsc,          summary_stat: std           }
+  - { metric: dsc,          summary_stat: iqr_length    }
 
   # # ── NSD ────────────────────────────
   # - { metric: nsd,          summary_stat: mean          }
@@ -14,12 +14,12 @@ metric_summary_pairs:
   # - { metric: nsd,          summary_stat: std           }
   # - { metric: nsd,          summary_stat: iqr_length    }
 
-  # ── IoU ────────────────────────────
-  - { metric: iou,          summary_stat: mean          }
-  - { metric: iou,          summary_stat: median        }
-  - { metric: iou,          summary_stat: trimmed_mean  }
-  - { metric: iou,          summary_stat: std           }
-  - { metric: iou,          summary_stat: iqr_length    }
+  # # ── IoU ────────────────────────────
+  # - { metric: iou,          summary_stat: mean          }
+  # - { metric: iou,          summary_stat: median        }
+  # - { metric: iou,          summary_stat: trimmed_mean  }
+  # - { metric: iou,          summary_stat: std           }
+  # - { metric: iou,          summary_stat: iqr_length    }
 
   # # ── Boundary IoU ───────────────────
   # - { metric: boundary_iou, summary_stat: mean          }
