@@ -11,7 +11,7 @@ def load_yaml(path):
         return yaml.safe_load(f)
 
 
-def fuse_aggregated_results(results_dir, pattern, output_name):
+def fuse_aggregated_results(results_dir, pattern, output_name, delete_files=False):
     """
     Find all aggregated CSVs matching `pattern`, concatenate them,
     deduplicate, sort, write one fused file, and delete the originals.
@@ -58,9 +58,10 @@ def fuse_aggregated_results(results_dir, pattern, output_name):
     print(f"  Wrote fused file: {output_path} ({len(combined)} rows)")
 
     # Delete original per-(task, algo) files
-    for fpath in matched_files:
-        os.remove(fpath)
-        print(f"    Deleted: {fpath}")
+    if delete_files:
+        for fpath in matched_files:
+            os.remove(fpath)
+            print(f"    Deleted: {fpath}")
 
 
 def extract_pairs(sweep_file, task_type):
@@ -136,6 +137,11 @@ def main():
         choices=["segm", "classif"],
         help="Type of task: 'segm' (uses summary_stat) or 'classif' (uses average).",
     )
+    parser.add_argument(
+        "--delete_files",
+        action="store_true",
+        help="If set, delete the original per-(task, algo) CSV files after fusion. (Default: False)",
+    )
     args = parser.parse_args()
 
     pairs, group_key = extract_pairs(args.sweep_file, args.task_type)
@@ -150,7 +156,7 @@ def main():
         pattern = f"aggregated_results_{metric}_{group_val}_*.csv"
         output_name = f"aggregated_results_{metric}_{group_val}.csv"
 
-        fuse_aggregated_results(args.results_dir, pattern, output_name)
+        fuse_aggregated_results(args.results_dir, pattern, output_name, delete_files=args.delete_files)
         print()
 
 
