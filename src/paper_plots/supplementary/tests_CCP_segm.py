@@ -42,7 +42,7 @@ def perform_fits(df_segm, stats):
     df_fit_results = pd.DataFrame(results)
     return df_fit_results
 
-def perform_pairwise_tests(df_fit_results):
+def perform_pairwise_tests_segm(df_fit_results):
     
     metrics = df_fit_results['metric'].unique()
     methods = df_fit_results['method'].unique()
@@ -146,7 +146,7 @@ def plot_significance_matrix_segm(root_folder:str, output_path:str, upload_overl
     median = df_fit_results.groupby(['method', 'stat', 'metric'])['beta2'].median().reset_index()
 
     print("Fitting completed.")
-    p_values = perform_pairwise_tests(df_fit_results)
+    p_values = perform_pairwise_tests_segm(df_fit_results)
     print("Pairwise tests completed.")
     significance = tell_significance(p_values, bonferroni_correction=True)
 

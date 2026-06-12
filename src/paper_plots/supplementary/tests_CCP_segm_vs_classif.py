@@ -7,7 +7,6 @@ import matplotlib.patches as mpatches
 from matplotlib.colors import ListedColormap
 from scipy.stats import permutation_test
 import argparse
-
 from ..df_loaders import extract_df_segm_cov, extract_df_classif_cov
 from ..plot_utils import metric_labels, stat_labels, method_labels, upload_to_overleaf
 
@@ -71,7 +70,7 @@ def perform_fits_classif(df_classif):
     df_fit_results = pd.DataFrame(results)
     return df_fit_results
 
-def perform_pairwise_tests(df_fit_results, df_fit_results_classif):
+def perform_pairwise_tests_segm_classif(df_fit_results, df_fit_results_classif):
 
     segm_metrics = df_fit_results['metric'].unique()
     classif_metrics = df_fit_results_classif['metric'].unique()
@@ -103,7 +102,7 @@ def perform_pairwise_tests(df_fit_results, df_fit_results_classif):
                     p_values[method][stat][metric1][metric2] = pval
 
     return p_values
-
+ 
 def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
     num_comparisons = sum(
         p_val is not None
@@ -160,7 +159,7 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str, u
     order_segm = median_segm[median_segm['stat'] == 'mean'].sort_values('beta2')['metric'].tolist()
     order_classif = median_classif.sort_values('beta2')['metric'].tolist()
     print("Fitting completed.")
-    p_values = perform_pairwise_tests(df_fit_results_segm, df_fit_results_classif)
+    p_values = perform_pairwise_tests_segm_classif(df_fit_results_segm, df_fit_results_classif)
     print("Pairwise tests completed.")
     significance = tell_significance(p_values, bonferroni_correction=True)
 
