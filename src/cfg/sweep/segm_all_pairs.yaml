@@ -28,19 +28,19 @@ metric_summary_pairs:
   # - { metric: boundary_iou, summary_stat: std           }
   # - { metric: boundary_iou, summary_stat: iqr_length    }
 
-  # ── clDice ─────────────────────────
-  - { metric: cldice,       summary_stat: mean          }
-  - { metric: cldice,       summary_stat: median        }
-  - { metric: cldice,       summary_stat: trimmed_mean  }
-  - { metric: cldice,       summary_stat: std           }
-  - { metric: cldice,       summary_stat: iqr_length    }
+  # # ── clDice ─────────────────────────
+  # - { metric: cldice,       summary_stat: mean          }
+  # - { metric: cldice,       summary_stat: median        }
+  # - { metric: cldice,       summary_stat: trimmed_mean  }
+  # - { metric: cldice,       summary_stat: std           }
+  # - { metric: cldice,       summary_stat: iqr_length    }
 
-  # # ── MASD ───────────────────────────
-  # - { metric: masd,         summary_stat: mean          }
-  # - { metric: masd,         summary_stat: median        }
-  # - { metric: masd,         summary_stat: trimmed_mean  }
-  # - { metric: masd,         summary_stat: std           }
-  # - { metric: masd,         summary_stat: iqr_length    }
+  # ── MASD ───────────────────────────
+  - { metric: masd,         summary_stat: mean          }
+  - { metric: masd,         summary_stat: median        }
+  - { metric: masd,         summary_stat: trimmed_mean  }
+  - { metric: masd,         summary_stat: std           }
+  - { metric: masd,         summary_stat: iqr_length    }
 
   # # ── ASSD ───────────────────────────
   # - { metric: assd,         summary_stat: mean          }
