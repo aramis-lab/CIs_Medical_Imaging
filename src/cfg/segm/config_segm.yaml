@@ -27,6 +27,6 @@ run_plan:
     # - epanechnikov_adaptive_trimmed
     # - epanechnikov_adaptive
     # - epanechnikov_scott
-    - gaussian_adaptive
-    # - gaussian_scott
+    # - gaussian_adaptive
+    - gaussian_scott
   sweep_file: sweep/segm_all_pairs.yaml
