@@ -14,12 +14,12 @@ metric_summary_pairs:
   # - { metric: nsd,          summary_stat: std           }
   # - { metric: nsd,          summary_stat: iqr_length    }
 
-  # # ── IoU ────────────────────────────
-  # - { metric: iou,          summary_stat: mean          }
-  # - { metric: iou,          summary_stat: median        }
-  # - { metric: iou,          summary_stat: trimmed_mean  }
-  # - { metric: iou,          summary_stat: std           }
-  # - { metric: iou,          summary_stat: iqr_length    }
+  # ── IoU ────────────────────────────
+  - { metric: iou,          summary_stat: mean          }
+  - { metric: iou,          summary_stat: median        }
+  - { metric: iou,          summary_stat: trimmed_mean  }
+  - { metric: iou,          summary_stat: std           }
+  - { metric: iou,          summary_stat: iqr_length    }
 
   # # ── Boundary IoU ───────────────────
   # - { metric: boundary_iou, summary_stat: mean          }
@@ -35,12 +35,12 @@ metric_summary_pairs:
   # - { metric: cldice,       summary_stat: std           }
   # - { metric: cldice,       summary_stat: iqr_length    }
 
-  # ── MASD ───────────────────────────
-  - { metric: masd,         summary_stat: mean          }
-  - { metric: masd,         summary_stat: median        }
-  - { metric: masd,         summary_stat: trimmed_mean  }
-  - { metric: masd,         summary_stat: std           }
-  - { metric: masd,         summary_stat: iqr_length    }
+  # # ── MASD ───────────────────────────
+  # - { metric: masd,         summary_stat: mean          }
+  # - { metric: masd,         summary_stat: median        }
+  # - { metric: masd,         summary_stat: trimmed_mean  }
+  # - { metric: masd,         summary_stat: std           }
+  # - { metric: masd,         summary_stat: iqr_length    }
 
   # ── ASSD ───────────────────────────
   - { metric: assd,         summary_stat: mean          }
