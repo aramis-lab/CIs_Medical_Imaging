@@ -14,22 +14,11 @@ from ...utils import extract_df
 #  Curve computation helpers
 # ─────────────────────────────────────────────────────────────
 
-def precision_at_fraction_curve(pos_scores, neg_scores, fractions):
-    """Precision evaluated at specified fractions of the ranked list."""
-    all_scores = np.concatenate([pos_scores, neg_scores])
-    labels = np.concatenate([np.ones(len(pos_scores)),
-                             np.zeros(len(neg_scores))])
-    n = len(all_scores)
-    sorted_labels = labels[np.argsort(-all_scores)]
-    cumsum = np.cumsum(sorted_labels)
-    k_values = np.unique(np.clip((fractions * n).astype(int), 1, n))
-    precisions = cumsum[k_values - 1] / k_values
-    actual_fractions = k_values / n
-    return actual_fractions, precisions
+N_GRID_POINTS = 100
 
 
 def compute_roc_points(pos_scores, neg_scores, n_thresholds=2000):
-    """Memory-safe ROC via searchsorted."""
+    """Memory-safe ROC via searchsorted. Returns (fpr, tpr)."""
     lo = min(pos_scores.min(), neg_scores.min()) - 1e-10
     hi = max(pos_scores.max(), neg_scores.max()) + 1e-10
     thresholds = np.linspace(hi, lo, n_thresholds)
@@ -41,6 +30,26 @@ def compute_roc_points(pos_scores, neg_scores, n_thresholds=2000):
     return fpr, tpr
 
 
+def compute_precision_at_fraction(pos_scores, neg_scores, n_thresholds=2000):
+    """
+    Precision curve parameterized by fraction of data examined.
+    Returns (fractions, precisions), analogous to (fpr, tpr) for ROC.
+    """
+    all_scores = np.concatenate([pos_scores, neg_scores])
+    labels = np.concatenate([np.ones(len(pos_scores)),
+                             np.zeros(len(neg_scores))])
+    n = len(all_scores)
+    sorted_labels = labels[np.argsort(-all_scores)]
+    cumsum = np.cumsum(sorted_labels)
+
+    # Evaluate at n_thresholds evenly spaced k values
+    k_values = np.unique(np.linspace(1, n, n_thresholds).astype(int))
+    fractions = k_values / n
+    precisions = cumsum[k_values - 1] / k_values
+
+    return fractions, precisions
+
+
 def _split_pos_neg_micro(scores, labels_bin):
     """Flatten scores and labels for micro averaging."""
     flat_s = scores.ravel()
@@ -48,124 +57,146 @@ def _split_pos_neg_micro(scores, labels_bin):
     return flat_s[flat_l == 1], flat_s[flat_l == 0]
 
 
+def _interpolate_on_grid(x_raw, y_raw, grid):
+    """Sort by x_raw and interpolate y_raw onto a common grid."""
+    idx = np.argsort(x_raw)
+    return np.interp(grid, x_raw[idx], y_raw[idx])
+
+
 # ─────────────────────────────────────────────────────────────
-#  Per-instance: compute 100 QQ points (micro only)
+#  Per-instance: compute curve values on shared grids (micro)
 # ─────────────────────────────────────────────────────────────
 
-N_QQ_POINTS = 100
-
-
-def compute_micro_qq_points(scores, labels_bin, kde_scores, kde_labels_bin):
+def compute_micro_curve_points(scores, labels_bin, kde_scores, kde_labels_bin):
     """
-    At 100 evaluation grid points, compute (original, KDE) value pairs
-    for ROC (TPR) and Precision@K, using micro averaging.
+    For one instance, compute original and KDE curve values
+    interpolated onto shared grids.
 
-    For ROC: 100 common FPR grid points → 100 (TPR_orig, TPR_kde) pairs.
-    For P@K: 100 common fraction grid points → 100 (P_orig, P_kde) pairs.
+    ROC:  shared FPR grid  → TPR values
+    P@K:  shared fraction grid → Precision values
 
     Returns
     -------
-    tpr_orig, tpr_kde : (100,) — ROC QQ points
-    pk_orig, pk_kde   : (100,) — Precision@K QQ points
+    roc_orig, roc_kde : (N_GRID_POINTS,) — TPR on shared FPR grid
+    pk_orig,  pk_kde  : (N_GRID_POINTS,) — Precision on shared fraction grid
     """
     o_pos, o_neg = _split_pos_neg_micro(scores, labels_bin)
     k_pos, k_neg = _split_pos_neg_micro(kde_scores, kde_labels_bin)
 
-    # ── ROC: evaluate at 100 common FPR grid points ──
-    fpr_grid = np.linspace(0, 1, N_QQ_POINTS)
+    # ── ROC: raw curves → interpolate onto shared FPR grid ──
+    fpr_grid = np.linspace(0, 1, N_GRID_POINTS)
 
     fpr_o, tpr_o = compute_roc_points(o_pos, o_neg)
-    idx = np.argsort(fpr_o)
-    tpr_orig = np.interp(fpr_grid, fpr_o[idx], tpr_o[idx])
+    roc_orig = _interpolate_on_grid(fpr_o, tpr_o, fpr_grid)
 
     fpr_k, tpr_k = compute_roc_points(k_pos, k_neg)
-    idx = np.argsort(fpr_k)
-    tpr_kde = np.interp(fpr_grid, fpr_k[idx], tpr_k[idx])
+    roc_kde = _interpolate_on_grid(fpr_k, tpr_k, fpr_grid)
 
-    # ── Precision@K: evaluate at 100 common fraction grid points ──
-    frac_grid = np.linspace(0.005, 1.0, N_QQ_POINTS)
+    # ── P@K: raw curves → interpolate onto shared fraction grid ──
+    frac_grid = np.linspace(0.005, 1.0, N_GRID_POINTS)
 
-    f_o, p_o = precision_at_fraction_curve(o_pos, o_neg, frac_grid)
-    pk_orig = np.interp(frac_grid, f_o, p_o)
+    frac_o, prec_o = compute_precision_at_fraction(o_pos, o_neg)
+    pk_orig = _interpolate_on_grid(frac_o, prec_o, frac_grid)
 
-    f_k, p_k = precision_at_fraction_curve(k_pos, k_neg, frac_grid)
-    pk_kde = np.interp(frac_grid, f_k, p_k)
+    frac_k, prec_k = compute_precision_at_fraction(k_pos, k_neg)
+    pk_kde = _interpolate_on_grid(frac_k, prec_k, frac_grid)
 
-    return tpr_orig, tpr_kde, pk_orig, pk_kde
+    return roc_orig, roc_kde, pk_orig, pk_kde
 
 
 # ─────────────────────────────────────────────────────────────
-#  Aggregate QQ plots (2 panels: ROC + Precision@K)
+#  Aggregate plot: overlay + deviation (4 panels)
 # ─────────────────────────────────────────────────────────────
 
-def plot_aggregate_qq(tpr_orig_mat, tpr_kde_mat, pk_orig_mat, pk_kde_mat,
-                      save_path=None):
+def plot_aggregate_curves(roc_orig_mat, roc_kde_mat,
+                          pk_orig_mat, pk_kde_mat,
+                          save_path=None):
     """
-    Two-panel QQ plot summarizing score ordering preservation
-    across all (task, algorithm) instances.
+    Four-panel figure summarizing curve agreement across all instances.
 
-    At each of the 100 shared grid points, we have one (orig, kde) pair
-    per instance. The QQ plot shows orig on x-axis, kde on y-axis.
-    Perfect preservation → all points on y = x diagonal.
-
-    Displays:
-      - Faint per-instance curves (sorted by orig for clean rendering)
-      - Median curve across instances
-      - IQR (Q1–Q3) band across instances
+    Top row:    Mean curve overlay (Original vs KDE) with ±1 std bands
+    Bottom row: Pointwise deviation (KDE − Original) with median + IQR
 
     Parameters
     ----------
-    tpr_orig_mat, tpr_kde_mat : (N_instances, 100) — ROC TPR values
-    pk_orig_mat, pk_kde_mat   : (N_instances, 100) — Precision@K values
+    roc_orig_mat, roc_kde_mat : (N_instances, N_GRID_POINTS)
+        TPR values on shared FPR grid.
+    pk_orig_mat, pk_kde_mat : (N_instances, N_GRID_POINTS)
+        Precision values on shared fraction grid.
     """
-    n_instances = tpr_orig_mat.shape[0]
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5.5))
+    n_inst = roc_orig_mat.shape[0]
 
-    def _qq(ax, orig_mat, kde_mat, title, axis_label):
-        n_inst, n_pts = orig_mat.shape
+    fpr_grid  = np.linspace(0, 1, N_GRID_POINTS)
+    frac_grid = np.linspace(0.005, 1.0, N_GRID_POINTS)
 
-        # ── Per-instance faint curves ──
-        alpha = max(0.03, min(0.3, 5.0 / n_inst))
-        for i in range(n_inst):
-            order = np.argsort(orig_mat[i])
-            ax.plot(orig_mat[i, order], kde_mat[i, order],
-                    color='grey', alpha=alpha, lw=0.5, rasterized=True)
+    fig, axes = plt.subplots(2, 2, figsize=(13, 11))
 
-        # ── Summary: at each grid point, percentiles across instances ──
-        med_orig = np.nanmedian(orig_mat, axis=0)
-        med_kde  = np.nanmedian(kde_mat, axis=0)
-        q1_kde   = np.nanpercentile(kde_mat, 25, axis=0)
-        q3_kde   = np.nanpercentile(kde_mat, 75, axis=0)
+    # ═════════════════════════════════════════════════════════
+    #  Top row: Mean curve overlay
+    # ═════════════════════════════════════════════════════════
 
-        # Sort by median-orig so fill_between renders correctly
-        order = np.argsort(med_orig)
-        x     = med_orig[order]
-        y_med = med_kde[order]
-        y_q1  = q1_kde[order]
-        y_q3  = q3_kde[order]
+    def _overlay(ax, grid, orig_mat, kde_mat, xlabel, ylabel, title):
+        mean_orig = np.nanmean(orig_mat, axis=0)
+        std_orig  = np.nanstd(orig_mat, axis=0)
+        mean_kde  = np.nanmean(kde_mat, axis=0)
+        std_kde   = np.nanstd(kde_mat, axis=0)
 
-        ax.plot([0, 1], [0, 1], 'k--', lw=1.5, alpha=0.6,
-                label='Perfect preservation')
-        ax.fill_between(x, y_q1, y_q3, alpha=0.3, color='dodgerblue',
-                        label='IQR (Q1–Q3)')
-        ax.plot(x, y_med, '-', color='dodgerblue', lw=2.5, label='Median')
+        ax.fill_between(grid, mean_orig - std_orig, mean_orig + std_orig,
+                        alpha=0.2, color='blue')
+        ax.plot(grid, mean_orig, 'b-', lw=2, label='Original (mean ± std)')
 
-        ax.set_xlabel(f'{axis_label} (Original)', fontsize=11)
-        ax.set_ylabel(f'{axis_label} (KDE)', fontsize=11)
+        ax.fill_between(grid, mean_kde - std_kde, mean_kde + std_kde,
+                        alpha=0.2, color='red')
+        ax.plot(grid, mean_kde, 'r--', lw=2, label='KDE (mean ± std)')
+
+        ax.set_xlabel(xlabel, fontsize=11)
+        ax.set_ylabel(ylabel, fontsize=11)
         ax.set_title(title, fontsize=13, fontweight='bold')
-        ax.set_xlim(-0.02, 1.02)
-        ax.set_ylim(-0.02, 1.02)
-        ax.set_aspect('equal')
-        ax.legend(fontsize=9, loc='lower right')
+        ax.legend(fontsize=9)
 
-    _qq(axes[0], tpr_orig_mat, tpr_kde_mat,
-        'ROC — QQ Plot', 'TPR')
+    _overlay(axes[0, 0], fpr_grid, roc_orig_mat, roc_kde_mat,
+             'FPR', 'TPR', 'ROC — Curve Overlay')
+    axes[0, 0].plot([0, 1], [0, 1], 'k:', alpha=0.3)
 
-    _qq(axes[1], pk_orig_mat, pk_kde_mat,
-        'Precision@K — QQ Plot', 'Precision')
+    _overlay(axes[0, 1], frac_grid, pk_orig_mat, pk_kde_mat,
+             'Fraction of data examined', 'Precision',
+             'Precision@K — Curve Overlay')
+
+    # ═════════════════════════════════════════════════════════
+    #  Bottom row: Pointwise deviation (KDE − Original)
+    # ═════════════════════════════════════════════════════════
+
+    def _deviation(ax, grid, orig_mat, kde_mat, xlabel, title):
+        diff_mat = kde_mat - orig_mat  # (N_instances, N_GRID_POINTS)
+
+        med = np.nanmedian(diff_mat, axis=0)
+        q1  = np.nanpercentile(diff_mat, 25, axis=0)
+        q3  = np.nanpercentile(diff_mat, 75, axis=0)
+        p5  = np.nanpercentile(diff_mat, 5, axis=0)
+        p95 = np.nanpercentile(diff_mat, 95, axis=0)
+
+        ax.fill_between(grid, p5, p95, alpha=0.15, color='dodgerblue',
+                        label='5th–95th percentile')
+        ax.fill_between(grid, q1, q3, alpha=0.3, color='dodgerblue',
+                        label='IQR (Q1–Q3)')
+        ax.plot(grid, med, '-', color='dodgerblue', lw=2.5,
+                label='Median')
+        ax.axhline(0, color='black', ls='--', lw=1.5, alpha=0.6)
+
+        ax.set_xlabel(xlabel, fontsize=11)
+        ax.set_ylabel('KDE − Original', fontsize=11)
+        ax.set_title(title, fontsize=13, fontweight='bold')
+        ax.legend(fontsize=9)
+
+    _deviation(axes[1, 0], fpr_grid, roc_orig_mat, roc_kde_mat,
+               'FPR', 'ROC — Pointwise Deviation')
+
+    _deviation(axes[1, 1], frac_grid, pk_orig_mat, pk_kde_mat,
+               'Fraction of data examined',
+               'Precision@K — Pointwise Deviation')
 
     fig.suptitle(
-        f'KDE Score Ordering Preservation ({n_instances} task × algorithm instances)',
+        f'KDE Score Ordering Preservation ({n_inst} task × algorithm instances)',
         fontsize=14, fontweight='bold', y=1.02
     )
     plt.tight_layout()
@@ -180,16 +211,16 @@ def plot_aggregate_qq(tpr_orig_mat, tpr_kde_mat, pk_orig_mat, pk_kde_mat,
 
 
 # ─────────────────────────────────────────────────────────────
-#  Single-instance KDE + QQ computation
+#  Single-instance KDE + curve computation
 # ─────────────────────────────────────────────────────────────
 
 def compute_instance(df_path, task, algo):
     """
-    Run KDE for one (task, algo) pair and return micro QQ points.
+    Run KDE for one (task, algo) pair and return micro curve points.
 
     Returns
     -------
-    tuple of 4 arrays (tpr_orig, tpr_kde, pk_orig, pk_kde), each (100,)
+    tuple of 4 arrays (roc_orig, roc_kde, pk_orig, pk_kde), each (N_GRID_POINTS,)
     or None on failure.
     """
     try:
@@ -226,10 +257,12 @@ def compute_instance(df_path, task, algo):
         labels_bin = label_binarize_vectorized(labels, n_classes)
         scores = softmax(values)
 
-        return compute_micro_qq_points(scores, labels_bin, kde_scores, kde_labels_bin)
+        return compute_micro_curve_points(
+            scores, labels_bin, kde_scores, kde_labels_bin
+        )
 
     except Exception as e:
-        print(f" error: {e}")
+        print(f"  error: {e}")
         return None
 
 
@@ -245,7 +278,7 @@ if __name__ == "__main__":
     df_path = os.path.join(BASE_DIR, df_name)
 
     parser = argparse.ArgumentParser(
-        description="KDE score ordering preservation — aggregate QQ analysis"
+        description="KDE score ordering preservation — aggregate analysis"
     )
     parser.add_argument("--output_folder", type=str, default=BASE_DIR)
     args = parser.parse_args()
@@ -254,8 +287,8 @@ if __name__ == "__main__":
     tasks = df["subtask"].unique()
     algos = df["alg_name"].unique()
 
-    # ── Collect QQ points across all (task, algo) instances ──
-    all_tpr_orig, all_tpr_kde = [], []
+    # ── Collect curve points across all (task, algo) instances ──
+    all_roc_orig, all_roc_kde = [], []
     all_pk_orig,  all_pk_kde  = [], []
 
     for task in tasks:
@@ -263,9 +296,9 @@ if __name__ == "__main__":
             print(f"  {task} / {algo} …", end="")
             result = compute_instance(df_path, task, str(algo))
             if result is not None:
-                tpr_o, tpr_k, pk_o, pk_k = result
-                all_tpr_orig.append(tpr_o)
-                all_tpr_kde.append(tpr_k)
+                roc_o, roc_k, pk_o, pk_k = result
+                all_roc_orig.append(roc_o)
+                all_roc_kde.append(roc_k)
                 all_pk_orig.append(pk_o)
                 all_pk_kde.append(pk_k)
                 print(" ✓")
@@ -273,18 +306,19 @@ if __name__ == "__main__":
                 print()
 
     # ── Aggregate and plot ──
-    if len(all_tpr_orig) == 0:
-        print("\nNo valid instances found. Cannot produce QQ plots.")
+    if len(all_roc_orig) == 0:
+        print("\nNo valid instances found.")
     else:
-        tpr_orig_mat = np.vstack(all_tpr_orig)   # (N_instances, 100)
-        tpr_kde_mat  = np.vstack(all_tpr_kde)
+        roc_orig_mat = np.vstack(all_roc_orig)  # (N_instances, N_GRID_POINTS)
+        roc_kde_mat  = np.vstack(all_roc_kde)
         pk_orig_mat  = np.vstack(all_pk_orig)
         pk_kde_mat   = np.vstack(all_pk_kde)
 
-        print(f"\n  Collected {tpr_orig_mat.shape[0]} valid instances.")
+        print(f"\n  Collected {roc_orig_mat.shape[0]} valid instances.")
 
-        plot_aggregate_qq(
-            tpr_orig_mat, tpr_kde_mat,
+        plot_aggregate_curves(
+            roc_orig_mat, roc_kde_mat,
             pk_orig_mat,  pk_kde_mat,
-            save_path=os.path.join(args.output_folder, "score_ordering_qq.pdf")
+            save_path=os.path.join(args.output_folder,
+                                   "score_ordering_preservation.pdf")
         )
