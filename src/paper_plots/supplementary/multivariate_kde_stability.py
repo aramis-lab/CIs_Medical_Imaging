@@ -3,6 +3,7 @@ from scipy.stats import ks_2samp, rankdata
 import matplotlib.pyplot as plt
 import argparse
 import os
+import pandas as pd
 
 from ...kde import sample_weighted_kde_multivariate
 from ...kernels import get_kernel
@@ -354,9 +355,15 @@ if __name__ == "__main__":
     df_path = os.path.join(BASE_DIR, df_name)
     
     parser = argparse.ArgumentParser(description="Run empirical stability analysis on classification data.")
-    parser.add_argument("--task", type=str, required=True, help="Task name for analysis.")
-    parser.add_argument("--algo", type=str, required=True, help="Algorithm name for analysis.")
     parser.add_argument("--output_folder", type=str, default=BASE_DIR, help="Directory to save output plots and results.")
     args = parser.parse_args()
 
-    empirical_stability_analysis(df_path, args.output_folder, args.task, args.algo)
+    df = pd.read_csv(df_path)
+    tasks = df["task"].unique()
+    algos = df["alg_name"].unique()
+
+    for task in tasks:
+        for algo in algos:
+            print(f"\nRunning empirical stability analysis for task: {task}, algorithm: {algo}")
+
+            empirical_stability_analysis(df_path, args.output_folder, task, algo)
