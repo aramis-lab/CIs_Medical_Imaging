@@ -129,38 +129,7 @@ def plot_aggregate_curves(roc_orig_mat, roc_kde_mat,
     fpr_grid  = np.linspace(0, 1, N_GRID_POINTS)
     frac_grid = np.linspace(0.005, 1.0, N_GRID_POINTS)
 
-    fig, axes = plt.subplots(2, 2, figsize=(13, 11))
-
-    # ═════════════════════════════════════════════════════════
-    #  Top row: Mean curve overlay
-    # ═════════════════════════════════════════════════════════
-
-    def _overlay(ax, grid, orig_mat, kde_mat, xlabel, ylabel, title):
-        mean_orig = np.nanmean(orig_mat, axis=0)
-        std_orig  = np.nanstd(orig_mat, axis=0)
-        mean_kde  = np.nanmean(kde_mat, axis=0)
-        std_kde   = np.nanstd(kde_mat, axis=0)
-
-        ax.fill_between(grid, mean_orig - std_orig, mean_orig + std_orig,
-                        alpha=0.2, color='blue')
-        ax.plot(grid, mean_orig, 'b-', lw=2, label='Original (mean ± std)')
-
-        ax.fill_between(grid, mean_kde - std_kde, mean_kde + std_kde,
-                        alpha=0.2, color='red')
-        ax.plot(grid, mean_kde, 'r--', lw=2, label='KDE (mean ± std)')
-
-        ax.set_xlabel(xlabel, fontsize=11)
-        ax.set_ylabel(ylabel, fontsize=11)
-        ax.set_title(title, fontsize=13, fontweight='bold')
-        ax.legend(fontsize=9)
-
-    _overlay(axes[0, 0], fpr_grid, roc_orig_mat, roc_kde_mat,
-             'FPR', 'TPR', 'ROC — Curve Overlay')
-    axes[0, 0].plot([0, 1], [0, 1], 'k:', alpha=0.3)
-
-    _overlay(axes[0, 1], frac_grid, pk_orig_mat, pk_kde_mat,
-             'Fraction of data examined', 'Precision',
-             'Precision@K — Curve Overlay')
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     # ═════════════════════════════════════════════════════════
     #  Bottom row: Pointwise deviation (KDE − Original)
@@ -188,10 +157,10 @@ def plot_aggregate_curves(roc_orig_mat, roc_kde_mat,
         ax.set_title(title, fontsize=13, fontweight='bold')
         ax.legend(fontsize=9)
 
-    _deviation(axes[1, 0], fpr_grid, roc_orig_mat, roc_kde_mat,
+    _deviation(axes[0], fpr_grid, roc_orig_mat, roc_kde_mat,
                'FPR', 'ROC — Pointwise Deviation')
 
-    _deviation(axes[1, 1], frac_grid, pk_orig_mat, pk_kde_mat,
+    _deviation(axes[1], frac_grid, pk_orig_mat, pk_kde_mat,
                'Fraction of data examined',
                'Precision@K — Pointwise Deviation')
 
