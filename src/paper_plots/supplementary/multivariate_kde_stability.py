@@ -359,7 +359,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     df = pd.read_csv(df_path)
-    tasks = df["task"].unique()
+    tasks = df["subtask"].unique()
     algos = df["alg_name"].unique()
 
     for task in tasks:
