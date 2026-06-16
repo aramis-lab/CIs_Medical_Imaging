@@ -253,6 +253,9 @@ def plot_ordering_diagnostics(
         kp, kn = _split_pos_neg_class(kde_scores, kde_labels_bin, c)
         _row(axes[i + 1], op, on, kp, kn, f"Class {c}")
 
+    if not os.path.exists(os.path.dirname(save_path)):
+        os.makedirs(os.path.dirname(save_path))
+
     plt.tight_layout()
     if save_path:
         fig.savefig(save_path, dpi=150, bbox_inches='tight')
@@ -348,7 +351,7 @@ if __name__ == "__main__":
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
     df_name = "data_matrix_classification.csv"
 
-    df_path = os.path.join(BASE_DIR, "data", df_name)
+    df_path = os.path.join(BASE_DIR, df_name)
     
     parser = argparse.ArgumentParser(description="Run empirical stability analysis on classification data.")
     parser.add_argument("--task", type=str, required=True, help="Task name for analysis.")
