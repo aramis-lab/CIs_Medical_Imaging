@@ -259,9 +259,8 @@ def plot_ordering_diagnostics(
     plt.close()
 
 
-def empirical_stability_analysis(base_dir, df_name, task, algo):
+def empirical_stability_analysis(df_path, output_folder, task, algo):
 
-    df_path = os.path.join(base_dir, df_name)
     if not os.path.exists(df_path):
         raise FileNotFoundError(f"Data matrix not found at {df_path}. Please ensure the file exists.")
     results = {}
@@ -339,7 +338,7 @@ def empirical_stability_analysis(base_dir, df_name, task, algo):
     plot_ordering_diagnostics(
         scores, labels_bin, kde_scores, kde_labels_bin,
         n_classes, task=task, algo=algo,
-        save_path=os.path.join(BASE_DIR, f"ordering_diagnostics_{task}_{algo}.pdf")
+        save_path=os.path.join(output_folder, f"ordering_diagnostics_{task}_{algo}.pdf")
     )
 
     return ordering_results
@@ -348,10 +347,13 @@ if __name__ == "__main__":
     # Load the data matrix for classification
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
     df_name = "data_matrix_classification.csv"
+
+    df_path = os.path.join(BASE_DIR, "data", df_name)
     
     parser = argparse.ArgumentParser(description="Run empirical stability analysis on classification data.")
     parser.add_argument("--task", type=str, required=True, help="Task name for analysis.")
     parser.add_argument("--algo", type=str, required=True, help="Algorithm name for analysis.")
+    parser.add_argument("--output_folder", type=str, default=BASE_DIR, help="Directory to save output plots and results.")
     args = parser.parse_args()
 
-    empirical_stability_analysis(BASE_DIR, df_name, args.task, args.algo)
+    empirical_stability_analysis(df_path, args.output_folder, args.task, args.algo)
