@@ -189,11 +189,11 @@ def plot_sample_KDE_dis_CIs(values, a, b, sample_sizes, save_path,
                              alpha=0.05, n_jobs=-1):
     orig_mean = np.mean(values)
     x = np.linspace(a, b, 1000)
-    samples_truncated, density_truncated = kde_renormalized(values, a, b, 100_000, eval_points=x)
+    samples_truncated, density_truncated = kde_renormalized(values, a, b, 10_000_000, eval_points=x)
     density_truncated /= np.trapezoid(density_truncated, x)
     truncated_kde_mean = np.mean(samples_truncated)
 
-    samples_custom, density_custom = sample_custom_kde(values, a, b, 100_000, eval_points=x, return_density=True)
+    samples_custom, density_custom = sample_custom_kde(values, a, b, 10_000_000, eval_points=x, return_density=True)
     density_custom /= np.trapezoid(density_custom, x)
     custom_kde_mean = np.mean(samples_custom)
 
@@ -217,17 +217,17 @@ def plot_sample_KDE_dis_CIs(values, a, b, sample_sizes, save_path,
         lo, hi = intervals_custom[n_s]
         axes[1].plot([lo, hi], [n_s, n_s], color='orange', lw=3)
     axes[0].set_title('KDE Estimates');  axes[0].set_xlabel('Value');  axes[0].set_ylabel('Density')
-    axes[0].legend(loc="upper right", bbox_to_anchor=(1.1, 1.0))
+    axes[0].legend(loc="upper left")
     axes[1].set_title('Bootstrap Percentile Confidence Intervals')
     axes[1].set_xlabel('KDE Estimate');  axes[1].set_ylabel('Sample Size')
-    axes[1].axvline(orig_mean, color='black', linestyle='--', label=f'Original Mean: {orig_mean:.4f}')
-    axes[1].axvline(truncated_kde_mean,  color='blue',   linestyle='-',  label=f'Truncated KDE Mean: {truncated_kde_mean:.4f}')
-    axes[1].axvline(custom_kde_mean,  color='red',   linestyle='--', label=f'Proposed KDE Mean: {custom_kde_mean:.4f}')
+    axes[1].axvline(orig_mean, color='black', linestyle='--', label=f'Original Mean: {100*orig_mean:.2f}%')
+    axes[1].axvline(truncated_kde_mean,  color='blue',   linestyle='-',  label=f'Truncated KDE Mean: {100*truncated_kde_mean:.2f}%')
+    axes[1].axvline(custom_kde_mean,  color='red',   linestyle='--', label=f'Proposed KDE Mean: {100*custom_kde_mean:.2f}%')
     # ── Add legend entries for the CI intervals ──
     axes[1].plot([], [], color='orange',      lw=3, label='Proposed KDE CI')
     axes[1].plot([], [], color='deepskyblue', lw=3, label='Truncated KDE CI')
     axes[1].set_yscale('log')
-    axes[1].legend(loc="upper right", bbox_to_anchor=(1.1, 1.0))
+    axes[1].legend(loc="upper right", bbox_to_anchor=(1.3, 1.0))
     plt.savefig(save_path, bbox_inches='tight')
     plt.close()
 
