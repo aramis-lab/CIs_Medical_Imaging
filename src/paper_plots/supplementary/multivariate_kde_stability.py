@@ -289,5 +289,5 @@ if __name__ == "__main__":
             roc_orig_mat, roc_kde_mat,
             pk_orig_mat,  pk_kde_mat,
             save_path=os.path.join(args.output_folder,
-                                   "score_ordering_preservation.pdf")
+                                   "clean_figs/supplementary/score_ordering_preservation.pdf")
         )

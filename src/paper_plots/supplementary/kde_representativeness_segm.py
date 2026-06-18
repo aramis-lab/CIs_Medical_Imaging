@@ -241,5 +241,5 @@ if __name__ == "__main__":
         plot_aggregate_cdf_curves(
             cdf_orig_mat, cdf_kde_mat,
             save_path=os.path.join(args.output_folder,
-                                   "cdf_preservation_segmentation.pdf")
+                                   "clean_figs/supplementary/cdf_preservation_segmentation.pdf")
         )
