@@ -213,7 +213,7 @@ def plot_sample_KDE_dis_CIs(values, a, b, sample_sizes, save_path,
     axes[0].plot(x, density_custom, color='red', label='Proposed KDE Estimate', linestyle='--')
     for n_s in sample_sizes:
         lo, hi = intervals_truncated[n_s]
-        axes[1].plot([lo, hi], [n_s*1.1, n_s*1.1], color='blue', lw=3)
+        axes[1].plot([lo, hi], [n_s*1.1, n_s*1.1], color='deepskyblue', lw=3)
         lo, hi = intervals_custom[n_s]
         axes[1].plot([lo, hi], [n_s, n_s], color='orange', lw=3)
     axes[0].set_title('KDE Estimates');  axes[0].set_xlabel('Value');  axes[0].set_ylabel('Density')
