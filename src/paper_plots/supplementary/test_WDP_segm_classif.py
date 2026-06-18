@@ -8,6 +8,7 @@ import matplotlib.patches as mpatches
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import wilcoxon
 import seaborn as sns
+from .make_fit import df_fit_results, df_fit_results_micro, df_fit_results_macro,df_fit_results_wdp,df_fit_results_classif_wdp, segm_path, micro_path
 
 metric_labels = {
     'dsc': 'DSC',
@@ -141,19 +142,18 @@ def perform_pairwise_tests_wdp_segm_classif(df_fit_results, df_fit_results_class
 
     segm_metrics = df_fit_results['metric'].unique()
     classif_metrics = df_fit_results_classif['metric'].unique()
-    methods = df_fit_results_classif['method'].unique()
+    methods = ['basic', 'bca', 'percentile']
     stats = df_fit_results['stat'].unique()
     p_values = {met : {s : {m : {m2: None for m2 in segm_metrics} for m in classif_metrics} for s in stats} for met in methods}
 
     for method in methods:
 
         for stat in stats:
-         
+        
             if (stat != 'mean') and (method in ['param_z', 'param_t']):
                 continue
             for metric1 in classif_metrics:
                 for metric2 in segm_metrics:
-                    
                     data_metric1 = df_fit_results_classif[(df_fit_results_classif["method"]==method) & (df_fit_results_classif['metric'] == metric1)]
                     data_metric2 = df_fit_results[(df_fit_results["method"]==method) & (df_fit_results['metric'] == metric2)& (df_fit_results['stat'] == stat)]
                     def statistic(x, y):
@@ -164,7 +164,7 @@ def perform_pairwise_tests_wdp_segm_classif(df_fit_results, df_fit_results_class
                         statistic,
                         vectorized=False,
                         n_resamples=50000,
-                        alternative='two-sided'
+                        alternative='greater'
                     )
                     pval = res.pvalue
 
@@ -305,7 +305,7 @@ def plot_significance_matrix_wdp_segm_classif(significance,p_values):
                 for j, metric2 in enumerate(metrics_classif):
                     p_val = p_values.get(method, {}).get(stat, {}).get(metric2, {}).get(metric1, None)
                     if p_val is not None:
-                        pval_row.append(f"{p_val:.4f}" if p_val >= 0.0001 else "<0.0001")
+                        pval_row.append(f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001")
                     else:
                         pval_row.append("0")
                 pval_matrix.append(pval_row)
@@ -372,14 +372,13 @@ def plot_significance_matrix_wdp_segm_classif(significance,p_values):
 
 
 def main():
-    segm_path='../../../../results_metrics_segm'
-    classif_path='../../../../results_metrics_classif'
+    segm_path='../results_metrics_segm'
+    classif_path='../results_metrics_classif'
     print('fitting ccp')
-    df_fit_results=fit_wdp_segm(segm_path)
-    valid_fits=df_fit_results[df_fit_results['R2']<=0.1]
-    df_fit_results_classif=fit_wdp_classif(classif_path, 'micro')
-    valid_fits_classif=df_fit_results_classif[df_fit_results_classif['R2']<=0.1]
-    
+    # df_fit_results=fit_wdp_segm(segm_path)
+    valid_fits=df_fit_results_wdp[df_fit_results_wdp['R2']<=0.1]
+    # df_fit_results_classif=fit_wdp_classif(classif_path, 'micro')
+    valid_fits_classif=df_fit_results_classif_wdp[df_fit_results_classif_wdp['R2']<=0.1]
     print('performing tests')
     p_values=perform_pairwise_tests_wdp_segm_classif(valid_fits, valid_fits_classif)
     print('significance')
@@ -387,4 +386,3 @@ def main():
     print('making plot')
     plot_significance_matrix_wdp_segm_classif(significance, p_values)
 
-# main()

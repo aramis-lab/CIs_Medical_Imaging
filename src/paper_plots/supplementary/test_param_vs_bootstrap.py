@@ -132,7 +132,7 @@ def perform_pairwise_tests_param_boot(task, path):
 
                 res = permutation_test(
                     (data_param['coverage_values'].iloc[0], data_boot['coverage_values'].iloc[0]),
-                    statistic,
+                    statistic,permutation_type='samples',
                     vectorized=False,
                     n_resamples=50000,
                     alternative='greater'
@@ -268,7 +268,7 @@ def plot_significance_matrix_param_boot(significance,p_values, task):
             for j, param in enumerate(param_methods):
                 p_val = p_values.get(metric, {}).get(boot, {}).get(param, None)
                 if p_val is not None:
-                    pval_row.append(f"{p_val:.4f}" if p_val >= 0.0001 else "<0.0001")
+                    pval_row.append(f"{p_val:6f}" if p_val >= 0.0001 else "<0.0001")
                 else:
                     pval_row.append("0")
             pval_matrix.append(pval_row)

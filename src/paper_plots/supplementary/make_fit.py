@@ -9,7 +9,7 @@ def fit_ccp_classif(classif_path,agreg_type):
         metrics= ["accuracy","ap", "auc", "f1_score"]
     else:
         metrics= ["balanced_accuracy","ap", "auc", "f1_score"]
-    methods=['basic', 'bca', 'percentile']
+    methods=['basic', 'bca', 'percentile',"wilson","agresti_coull" ,"wald", "exact"]
     for metric in metrics:
         
         path=os.path.join(classif_path,f'aggregated_results_{metric}.csv')
@@ -20,7 +20,8 @@ def fit_ccp_classif(classif_path,agreg_type):
             for algo in df_task['alg_name'].unique():
                     df_algo = df_task[df_task['alg_name'] == algo]
                     for method in methods:
-                        
+                        if (method in ["wilson","agresti_coull" ,"wald", "exact"]) and (metric !='accuracy'):
+                            continue
                         n_values = df_algo['n'].to_numpy()
                         coverages = df_algo[f'contains_true_stat_{method}'].to_numpy()
                         Y = 0.95 - coverages
@@ -123,7 +124,7 @@ def fit_wdp_classif(classif_path,agreg_type):
         metrics= ["accuracy","ap", "auc", "f1_score"]
     else:
         metrics= ["balanced_accuracy","ap", "auc", "f1_score"]
-    methods=['basic', 'bca', 'percentile']
+    methods=['basic', 'bca', 'percentile',"wilson","agresti_coull" ,"wald"]
     for metric in metrics:
         
         path=os.path.join(classif_path,f'aggregated_results_{metric}.csv')
@@ -134,7 +135,8 @@ def fit_wdp_classif(classif_path,agreg_type):
             for algo in df_task['alg_name'].unique():
                     df_algo = df_task[df_task['alg_name'] == algo]
                     for method in methods:
-
+                        if (method in ["wilson","agresti_coull" ,"wald", "exact"]) and (metric !='accuracy'):
+                            continue
                         n_values = df_algo['n'].to_numpy()
                         width_norms = df_algo[f'width_{method}'].to_numpy()
                         Y = width_norms

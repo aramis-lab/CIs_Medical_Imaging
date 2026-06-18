@@ -25,46 +25,47 @@ df_fit_results_micro=df_fit_results_micro[df_fit_results_micro['R2']<=0.1]
 df_fit_results_macro=df_fit_results_macro[df_fit_results_macro['R2']<=0.1]
 df_fit_results_wdp=df_fit_results_wdp[df_fit_results_wdp['R2']<=0.1]
 df_fit_results_classif_wdp=df_fit_results_classif_wdp[df_fit_results_classif_wdp['R2']<=0.1]
-print('testing micro macro')
-pvalues_micro_macro,i= perform_pairwise_tests_micro_macro(df_fit_results_micro, df_fit_results_macro)
-with open("../pvalues/pvalues_micro_macro.json", "w") as f:
-    json.dump(pvalues_micro_macro, f, indent=4)
 
-print('testing basic')
-pvalues_basic_classif_micro=perform_pairwise_tests_basic_classif(df_fit_results_micro)
-pvalues_basic_classif_macro=perform_pairwise_tests_basic_classif(df_fit_results_macro)
-pvalues_basic=perform_pairwise_tests_basic(df_fit_results)
+# print('testing micro macro')
+# pvalues_micro_macro,i= perform_pairwise_tests_micro_macro(df_fit_results_micro, df_fit_results_macro)
+# with open("../pvalues/pvalues_micro_macro.json", "w") as f:
+#     json.dump(pvalues_micro_macro, f, indent=4)
 
-with open("../pvalues/pvalues_basic.json", "w") as f:
-    json.dump(pvalues_basic, f, indent=4)
+# print('testing basic')
+# pvalues_basic_classif_micro=perform_pairwise_tests_basic_classif(df_fit_results_micro)
+# pvalues_basic_classif_macro=perform_pairwise_tests_basic_classif(df_fit_results_macro)
+# pvalues_basic=perform_pairwise_tests_basic(df_fit_results)
 
-with open("../pvalues/pvalues_basic_classif_macro.json", "w") as f:
-    json.dump(pvalues_basic_classif_macro, f, indent=4)
+# with open("../pvalues/pvalues_basic.json", "w") as f:
+#     json.dump(pvalues_basic, f, indent=4)
 
-with open("../pvalues/pvalues_basic_classif_micro.json", "w") as f:
-    json.dump(pvalues_basic_classif_micro, f, indent=4)
+# with open("../pvalues/pvalues_basic_classif_macro.json", "w") as f:
+#     json.dump(pvalues_basic_classif_macro, f, indent=4)
+
+# with open("../pvalues/pvalues_basic_classif_micro.json", "w") as f:
+#     json.dump(pvalues_basic_classif_micro, f, indent=4)
 
 
 
-print('testing param boot')
-pvalues_param_boot_segm= perform_pairwise_tests_param_boot('segm', segm_path)
-pvalues_param_boot_classif= perform_pairwise_tests_param_boot('classif',micro_path)
+# print('testing param boot')
+# pvalues_param_boot_segm= perform_pairwise_tests_param_boot('segm', segm_path)
+# pvalues_param_boot_classif= perform_pairwise_tests_param_boot('classif',micro_path)
 
-with open("../pvalues/pvalues_param_boot_classif.json", "w") as f:
-    json.dump(pvalues_param_boot_classif, f, indent=4)
+# with open("../pvalues/pvalues_param_boot_classif.json", "w") as f:
+#     json.dump(pvalues_param_boot_classif, f, indent=4)
 
-with open("../pvalues/pvalues_param_boot_segm.json", "w") as f:
-    json.dump(pvalues_param_boot_segm, f, indent=4)
+# with open("../pvalues/pvalues_param_boot_segm.json", "w") as f:
+#     json.dump(pvalues_param_boot_segm, f, indent=4)
 
-print('testing spread central')
-pvalues_spread_central= perform_pairwise_tests_spread_central(df_fit_results)
-with open("../pvalues/pvalues_spread_central.json", "w") as f:
-    json.dump(pvalues_spread_central, f, indent=4)
+# print('testing spread central')
+# pvalues_spread_central= perform_pairwise_tests_spread_central(df_fit_results)
+# with open("../pvalues/pvalues_spread_central.json", "w") as f:
+#     json.dump(pvalues_spread_central, f, indent=4)
 
-print('testing wdp segm classif')
-pvalues_wdp_segm_classif= perform_pairwise_tests_wdp_segm_classif(df_fit_results_wdp, df_fit_results_classif_wdp)
-with open("../pvalues/pvalues_wdp_segm_classif.json", "w") as f:
-    json.dump(pvalues_wdp_segm_classif, f, indent=4)
+# print('testing wdp segm classif')
+# pvalues_wdp_segm_classif= perform_pairwise_tests_wdp_segm_classif(df_fit_results_wdp, df_fit_results_classif_wdp)
+# with open("../pvalues/pvalues_wdp_segm_classif.json", "w") as f:
+#     json.dump(pvalues_wdp_segm_classif, f, indent=4)
 
 print('testing segm classif')
 pvalues_segm_classif_micro = perform_pairwise_tests_segm_classif(df_fit_results, df_fit_results_micro)
@@ -76,13 +77,14 @@ with open("../pvalues/pvalues_segm_classif_micro.json", "w") as f:
 with open("../pvalues/pvalues_segm_classif_macro.json", "w") as f:
     json.dump(pvalues_segm_classif_macro, f, indent=4)
 
-print('testing segm')
-pvalues_segm= perform_pairwise_tests_segm(df_fit_results)
+# print('testing segm')
+# pvalues_segm= perform_pairwise_tests_segm(df_fit_results)
 
-with open("../pvalues/pvalues_segm.json", "w") as f:
-    json.dump(pvalues_segm, f, indent=4)
+# with open("../pvalues/pvalues_segm.json", "w") as f:
+#     json.dump(pvalues_segm, f, indent=4)
 
 tests=['basic_classif', 'basic','micro_macro', 'param_boot','spread_central','wdp_segm_classif','segm_classif','segm']
+
 
 def tell_significance(tests, alphas=np.array([0.001, 0.01, 0.05])):
    

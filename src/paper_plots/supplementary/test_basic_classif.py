@@ -7,60 +7,61 @@ from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import wilcoxon
-from ..plot_utils import metric_labels, stat_labels, method_labels
+# from ..plot_utils import metric_labels, stat_labels, method_labels
+# from mlxtend.evaluate import permutation_test
 
 import seaborn as sns
 
-# metric_labels = {
-#     'dsc': 'DSC',
-#     'iou': 'IoU',
-#     'nsd': 'NSD',
-#     'boundary_iou': 'Boundary IoU',
-#     'cldice': 'clDice',
-#     'assd': 'ASSD',
-#     'masd' : 'MASD',
-#     'hd': 'HD',
-#     'hd_perc': 'HD95',
-#     'balanced_accuracy': 'Balanced Accuracy',
-#     'ap': 'AP',
-#     'auc': 'AUC',
-#     'f1_score': 'F1 Score',
-#     'accuracy': 'Accuracy',
-#     "mcc": "MCC"
-# }
+metric_labels = {
+    'dsc': 'DSC',
+    'iou': 'IoU',
+    'nsd': 'NSD',
+    'boundary_iou': 'Boundary IoU',
+    'cldice': 'clDice',
+    'assd': 'ASSD',
+    'masd' : 'MASD',
+    'hd': 'HD',
+    'hd_perc': 'HD95',
+    'balanced_accuracy': 'Balanced Accuracy',
+    'ap': 'AP',
+    'auc': 'AUC',
+    'f1_score': 'F1 Score',
+    'accuracy': 'Accuracy',
+    "mcc": "MCC"
+}
 
-# stat_labels = {
-#     'mean': 'Mean',
-#     'median': 'Median',
-#     'std': 'Standard Deviation',
-#     'trimmed_mean': 'Trimmed Mean',
-#     'iqr_length': 'IQR Length'
-# }
+stat_labels = {
+    'mean': 'Mean',
+    'median': 'Median',
+    'std': 'Standard Deviation',
+    'trimmed_mean': 'Trimmed Mean',
+    'iqr_length': 'IQR Length'
+}
 
-# method_labels = {
-#     "basic": "Basic",
-#     "percentile": "Percentile",
-#     "bca": "BCa",
-#     "delong": "DeLong",
-#     "logit_transform": "Logit Transform",
-#     "wilson": "Wilson",
-#     "agresti_coull" : "Agresti-Coull",
-#     "exact" : "Exact \n(Clopper-Pearson)",
-#     "wald" : 'Wald',
-#     "param_t" : "Parametric t",
-#     "param_z" : "Parametric z"
-# }
+method_labels = {
+    "basic": "Basic",
+    "percentile": "Percentile",
+    "bca": "BCa",
+    "delong": "DeLong",
+    "logit_transform": "Logit Transform",
+    "wilson": "Wilson",
+    "agresti_coull" : "Agresti-Coull",
+    "exact" : "Exact \n(Clopper-Pearson)",
+    "wald" : 'Wald',
+    "param_t" : "Parametric t",
+    "param_z" : "Parametric z"
+}
 
-# method_colors = {
-#     "basic": "#D4461F",
-#     "percentile": "#8E5EE8", 
-#     "bca" : "#FF9742",
-#     "wilson" : "#DFCF3E", 
-#     "agresti_coull" : "#5D9336", 
-#     "exact" : "#DB4ADB", 
-#     "wald" : "#367F9C",
-#     "param_t" : "#999999", 
-#     "param_z" : "#A7C7E7"}
+method_colors = {
+    "basic": "#D4461F",
+    "percentile": "#8E5EE8", 
+    "bca" : "#FF9742",
+    "wilson" : "#DFCF3E", 
+    "agresti_coull" : "#5D9336", 
+    "exact" : "#DB4ADB", 
+    "wald" : "#367F9C",
+    "param_t" : "#999999", 
+    "param_z" : "#A7C7E7"}
 
 def fit_ccp(classif_path,agreg_type):
     results = []
@@ -111,30 +112,32 @@ def perform_pairwise_tests_basic_classif(df_fit_results):
 
    
     for metric in metrics:
-        
-        for j in methods:
-
+        # print(metric)
+        for j in ['bca', 'percentile',"wald", "exact","agresti_coull", "wilson"]:
+          
             
-            if (j in ["wilson","agresti_coull" ,"wald"]) & (metric!='accuracy'):
+            if (j in ["wilson","agresti_coull" ,"wald", "exact"]) & (metric!='accuracy'):
                 continue
             data_basic = df_fit_results[(df_fit_results["method"]=='basic') & (df_fit_results['metric'] == metric)]
-            data_methods= df_fit_results[(df_fit_results["method"]==j) & (df_fit_results['metric'] == metric)]
             
+            data_methods= df_fit_results[(df_fit_results["method"]==j) & (df_fit_results['metric'] == metric)]
+            # print(data_basic['beta2'].mean(),data_methods['beta2'].mean())
             grp1 = (
                 data_basic
                 .groupby(['task', 'algo'])['beta2']
                 .mean()
                 .reset_index(name='beta1')
             )
+            
             grp2 = (
                 data_methods
                 .groupby(['task', 'algo'])['beta2']
                 .mean()
                 .reset_index(name='beta2')
             )
-
+            
             merged = pd.merge(grp1, grp2, on=['task', 'algo'], how='inner')
-
+            
             merged = merged.dropna(subset=['beta1', 'beta2'])
 
             if len(merged) < 2:
@@ -145,11 +148,18 @@ def perform_pairwise_tests_basic_classif(df_fit_results):
 
                 res = permutation_test(
                     (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
-                    statistic,
+                    statistic,permutation_type='samples',
                     vectorized=False,
                     n_resamples=50000,
                     alternative='greater'
                 )
+                # res = permutation_test(
+                #     merged['beta1'].to_numpy(), merged['beta2'].to_numpy(),
+                #     paired=True,
+                #     func=statistic,
+                #     seed=0, num_rounds=50000
+                # )
+
                 pval = res.pvalue
             p_values[metric][j] = pval
 
@@ -249,9 +259,9 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
 
 
 def plot_significance_matrix_basic_classif(significance, p_values, type):
-
+    
     plt.rcdefaults()
-    main_methods = [ 'bca', 'percentile']
+    main_methods = ['bca', 'percentile']
     if type=='macro':
         metric_order = ["balanced_accuracy","ap", "auc", "f1_score"]
         methods=main_methods
@@ -259,7 +269,7 @@ def plot_significance_matrix_basic_classif(significance, p_values, type):
         metric_order = ["accuracy","ap", "auc", "f1_score"]
         methods=main_methods+["wilson","agresti_coull" ,"wald"]
     
-    
+    # methods=list(next(iter(significance.values())).keys())
     metrics_all = metric_order
     fig, ax = plt.subplots(1, 1, figsize=(15, 12))
 
@@ -270,6 +280,7 @@ def plot_significance_matrix_basic_classif(significance, p_values, type):
     for i, metric in enumerate(metrics_all):
        
         for j, method in enumerate(methods):
+
             val = significance.get(metric, {}).get(method, None)
             global_matrix[i, j] = min(3, val) if val is not None else 0
         
@@ -286,7 +297,7 @@ def plot_significance_matrix_basic_classif(significance, p_values, type):
                 pval_row.append("0")
             else:
                 pval_row.append(
-                    f"{p_val:.4f}" if p_val >= 0.0001 else "<0.0001"
+                    f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
                 )
 
         pval_matrix.append(pval_row)
@@ -341,6 +352,7 @@ def plot_significance_matrix_basic_classif(significance, p_values, type):
     plt.tight_layout()
     plt.savefig(f"../clean_figs/supplementary/test_basic_classif_{type}.pdf")
     plt.show()
+
 def main(agreg_type):
     if agreg_type=='micro':
         path='../../../../results_metrics_classif'
@@ -348,7 +360,7 @@ def main(agreg_type):
         path='../../../../results_metrics_classif_macro'
     print('fitting ccp')
     df_fit_results=fit_ccp(path,agreg_type)
-    valid_fits=df_fit_results[df_fit_results['R2']<=0.1]
+    valid_fits=df_fit_results[df_fit_results['R2']<=0.2]
     print('performing tests')
     p_values=perform_pairwise_tests_basic_classif(valid_fits)
     print('significance')

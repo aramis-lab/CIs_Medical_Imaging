@@ -102,7 +102,7 @@ def fit_ccp(segm_path):
 def perform_pairwise_tests_spread_central(df_fit_results):
     
     metrics = df_fit_results['metric'].unique()
-    methods = df_fit_results['method'].unique()
+    methods = ['bca', 'basic', 'percentile']
     stats = [['mean', 'std'],['median', 'iqr_length']]
     stat_couples=['mean vs std','median vs iqr_length']
    
@@ -142,10 +142,10 @@ def perform_pairwise_tests_spread_central(df_fit_results):
 
                     res = permutation_test(
                         (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
-                        statistic,
+                        statistic,permutation_type='samples',
                         vectorized=False,
                         n_resamples=50000,
-                        alternative='two-sided'
+                        alternative='less'
                     )
                     pval = res.pvalue
                 p_values[metric][method][name] = pval
@@ -287,7 +287,7 @@ def plot_significance_matrix_spread_central(significance, p_values):
                     pval_row.append("0")
                 else:
                     pval_row.append(
-                        f"{p_val:.4f}" if p_val >= 0.0001 else "<0.0001"
+                        f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
                     )
 
             pval_matrix.append(pval_row)

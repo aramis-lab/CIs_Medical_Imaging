@@ -144,7 +144,7 @@ def perform_pairwise_tests_micro_macro(df_fit_results, df_fit_results_macro):
                 i+=1
                 res = permutation_test(
                     (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
-                    statistic,
+                    statistic,permutation_type='samples',
                     vectorized=False,
                     n_resamples=50000,
                     alternative='less'
@@ -254,7 +254,7 @@ def plot_significance_matrix_micro_macro(significance, p_values):
 
     plt.rcdefaults()
     
-    methods=list(significance.keys())
+    methods=['bca', 'basic', 'percentile']
     metrics_all = list(next(iter(significance.values())).keys())
     fig, ax = plt.subplots(1, 1, figsize=(15, 12))
 
@@ -282,7 +282,7 @@ def plot_significance_matrix_micro_macro(significance, p_values):
                 pval_row.append("0")
             else:
                 pval_row.append(
-                    f"{p_val:.4f}" if p_val >= 0.0001 else "<0.0001"
+                    f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
                 )
 
         pval_matrix.append(pval_row)

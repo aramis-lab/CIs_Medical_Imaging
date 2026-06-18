@@ -16,10 +16,10 @@ from .test_param_vs_bootstrap import get_pvalues_param_boot, reconstruct_param_b
 from .test_spread_vs_central import get_pvalues_spread_central, reconstruct_spread_central
 
 from .test_WDP_segm_classif import get_pvalues_wdp_segm_classif, reconstruct_wdp_segm_classif
-# from .tests_CCP_segm_vs_classif import get_pvalues_segm_classif
-# from .tests_CCP_segm import get_pvalues_segm
+from .tests_CCP_segm_vs_classif import get_pvalues_segm_classif, reconstruct_segm_classif
+from .tests_CCP_segm import get_pvalues_segm, reconstruct_segm
 
-tests=['basic_classif', 'basic','micro_macro', 'param_boot','spread_central','wdp_segm_classif']
+tests=['basic_classif', 'basic','micro_macro', 'param_boot','spread_central','wdp_segm_classif', 'segm_classif', 'segm']
 
 def tell_significance(tests, alphas=np.array([0.001, 0.01, 0.05])):
    
@@ -60,7 +60,20 @@ def tell_significance(tests, alphas=np.array([0.001, 0.01, 0.05])):
             pvals.append({'test':test+ "_"+'classif', 
                           'pvalues':pvalue2,
                           'Key':key2})
-         
+        elif test =='segm_classif':
+            with open(f"../pvalues/pvalues_{test}_micro.json", "r") as f:
+                pvalues1 = json.load(f)
+            with open(f"../pvalues/pvalues_{test}_macro.json", "r") as f:
+                pvalues2 = json.load(f)
+            pvalue1,key1=globals()[f'get_pvalues_{test}'](pvalues1)
+            pvalue2,key2=globals()[f'get_pvalues_{test}'](pvalues2)
+            pvals.append({'test':test + "_"+'micro', 
+                          'pvalues':pvalue1, 
+                          'Key':key1})
+            
+            pvals.append({'test':test+ "_"+'macro', 
+                          'pvalues':pvalue2,
+                          'Key':key2})
         else:
             with open(f"../pvalues/pvalues_{test}.json", "r") as f:
                 pvalues = json.load(f)
@@ -73,7 +86,7 @@ def tell_significance(tests, alphas=np.array([0.001, 0.01, 0.05])):
 
     pvalues_df=pd.DataFrame(pvals)
 
-    pvals = np.asarray(np.concatenate(pvalues_df['pvalues'].values).ravel())
+    pvals = np.concatenate(pvalues_df["pvalues"].to_list())
     
     reject, qvals, _, _ = multipletests(
         pvals,
@@ -82,23 +95,35 @@ def tell_significance(tests, alphas=np.array([0.001, 0.01, 0.05])):
    
     significance=[]
     i=0
-    for test in pvalues_df['test'].unique():
-        pvalues_test=pvalues_df[pvalues_df['test']==test]
-        
-        qvalues_test=qvals[i: i+len(pvalues_test['pvalues'].iloc[0])]
-        i+=len(pvalues_test['pvalues'])+1
+    for _, row in pvalues_df.iterrows():
+        test = row["test"]
+        pvalues_test = row["pvalues"]
+        keys = row["Key"]
+        print(test)
+        # pvalues_test=pvalues_df[pvalues_df['test']==test]
+        n = len(pvalues_test)
+
+        qvalues_test = qvals[i: i + n]
+        i += n
+
+        # qvalues_test=qvals[i: i+len(pvalues_test['pvalues'])]
+        # i+=len(pvalues_test['pvalues'])+1
         with open(f"../pvalues/pvalues_{test}.json", "r") as f:
                 pvalues = json.load(f)
         if test in ['basic_classif_micro', 'basic_classif_macro']:
-            q_vals_dict,significant_dict=globals()[f'reconstruct_basic_classif'](qvalues_test, pvalues_test['Key'].iloc[0],pvalues,alphas)
+            q_vals_dict,significant_dict=globals()[f'reconstruct_basic_classif'](qvalues_test, keys,pvalues,alphas)
           
         elif test in ['param_boot_segm', "param_boot_classif"]:
-            # print(pvalues_test['Key'].iloc[0])
-            significant_dict=globals()[f'reconstruct_param_boot'](qvalues_test, pvalues_test['Key'].iloc[0],pvalues,alphas)
+            # print(keys)
+            significant_dict=globals()[f'reconstruct_param_boot'](qvalues_test, keys,pvalues,alphas)
         elif test == 'wdp_segm_classif':
-            significant_dict=globals()[f'reconstruct_{test}'](qvalues_test, pvalues_test['Key'].iloc[0],pvalues,alphas)
+            significant_dict=globals()[f'reconstruct_{test}'](qvalues_test, keys,pvalues,alphas)
+        elif test in ['segm_classif_micro', 'segm_classif_macro']:
+            significant_dict=globals()[f'reconstruct_segm_classif'](qvalues_test, keys,pvalues,alphas)
+        elif test=='segm':
+            significant_dict=globals()[f'reconstruct_{test}'](qvalues_test, keys,pvalues,alphas)
         else:
-            q_vals_dict,significant_dict=globals()[f'reconstruct_{test}'](qvalues_test, pvalues_test['Key'].iloc[0],pvalues,alphas)
+            q_vals_dict,significant_dict=globals()[f'reconstruct_{test}'](qvalues_test, keys,pvalues,alphas)
 
         significance.append({'test':test, 
                        'significance':significant_dict})

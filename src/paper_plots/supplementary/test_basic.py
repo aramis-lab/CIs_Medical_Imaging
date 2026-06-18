@@ -103,7 +103,7 @@ def fit_ccp(segm_path):
 def perform_pairwise_tests_basic(df_fit_results):
 
     metrics = df_fit_results['metric'].unique()
-    methods = df_fit_results['method'].unique()
+    methods = ['bca', 'percentile', 'param_z', 'param_t']
     stats = df_fit_results['stat'].unique()
     p_values = {stat : {metric : {m : None for m in methods} for metric in metrics} for stat in stats}
 
@@ -144,10 +144,10 @@ def perform_pairwise_tests_basic(df_fit_results):
 
                     res = permutation_test(
                         (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
-                        statistic,
+                        statistic,permutation_type='samples',
                         vectorized=False,
                         n_resamples=50000,
-                        alternative='two-sided'
+                        alternative='greater'
                     )
                     pval = res.pvalue
                 p_values[stat][metric][j] = pval
@@ -293,7 +293,7 @@ def plot_significance_matrix_basic(significance, p_values):
                     pval_row.append("0")
                 else:
                     pval_row.append(
-                        f"{p_val:.4f}" if p_val >= 0.0001 else "<0.0001"
+                        f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
                     )
 
             pval_matrix.append(pval_row)

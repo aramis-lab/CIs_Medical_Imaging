@@ -17,9 +17,12 @@ from .test_spread_vs_central import plot_significance_matrix_spread_central, get
 
 from .test_WDP_segm_classif import plot_significance_matrix_wdp_segm_classif, get_pvalues_wdp_segm_classif
 
+from .tests_CCP_segm import plot_significance_matrix_segm, get_pvalues_segm
+
+from .tests_CCP_segm_vs_classif import plot_significance_matrix_segm_classif, get_pvalues_segm_classif
 from .make_correction_fdr import tell_significance
 
-tests=['basic_classif', 'basic','micro_macro', 'param_boot','spread_central','wdp_segm_classif']
+tests=['basic_classif', 'basic','micro_macro', 'param_boot','spread_central','wdp_segm_classif', 'segm', 'segm_classif']
 significance= tell_significance(tests)
 
 for test in significance['test'].unique(): 
@@ -41,6 +44,11 @@ for test in significance['test'].unique():
             task='classif'
             # print(pvalues_test['Key'].iloc[0])
         globals()[f'plot_significance_matrix_param_boot'](significance_test,pvalues, task)
-
+    elif test in ['segm_classif_micro', 'segm_classif_macro']:
+        if test=='segm_classif_micro':
+            task='micro'
+        else:
+            task='macro'
+        globals()[f'plot_significance_matrix_segm_classif'](significance_test,pvalues, task)
     else:
         globals()[f'plot_significance_matrix_{test}'](significance_test,pvalues)
