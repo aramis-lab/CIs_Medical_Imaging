@@ -229,6 +229,7 @@ def plot_sample_KDE_dis_CIs(values, a, b, sample_sizes, save_path,
     plt.close()
 
 if __name__ == "__main__":
+    np.random.seed(42)  # For reproducibility of the sampling
     BASE_DIR = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "../../../..")
     )
