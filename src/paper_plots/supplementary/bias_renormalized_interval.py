@@ -223,6 +223,9 @@ def plot_sample_KDE_dis_CIs(values, a, b, sample_sizes, save_path,
     axes[1].axvline(orig_mean, color='black', linestyle='--', label=f'Original Mean: {orig_mean:.4f}')
     axes[1].axvline(truncated_kde_mean,  color='blue',   linestyle='-',  label=f'Truncated KDE Mean: {truncated_kde_mean:.4f}')
     axes[1].axvline(custom_kde_mean,  color='red',   linestyle='--', label=f'Proposed KDE Mean: {custom_kde_mean:.4f}')
+    # ── Add legend entries for the CI intervals ──
+    axes[1].plot([], [], color='orange',      lw=3, label='Proposed KDE CI')
+    axes[1].plot([], [], color='deepskyblue', lw=3, label='Truncated KDE CI')
     axes[1].set_yscale('log')
     axes[1].legend(loc="upper right", bbox_to_anchor=(1.1, 1.0))
     plt.savefig(save_path, bbox_inches='tight')
