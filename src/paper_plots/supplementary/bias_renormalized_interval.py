@@ -250,4 +250,4 @@ if __name__ == "__main__":
     a, b = get_bounds(metric)
     sample_sizes = [10, 32, 100, 316, 1000, 3162, 10000, 31623, 100000]
     plot_sample_KDE_dis_CIs(values, a, b, sample_sizes, save_path = os.path.join(args.output_folder, f"clean_figs/supplementary/bias_renormalized_interval.pdf"),
-                             n_bootstrap=999, n_repetitions=10, alpha=0.05)
+                             n_bootstrap=999, n_repetitions=100, alpha=0.05)
