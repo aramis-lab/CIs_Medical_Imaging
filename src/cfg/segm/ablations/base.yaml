@@ -1,0 +1,7 @@
+# @package _global_
+kernel: epanechnikov
+adaptive_bandwidth: true
+trim_bandwidth: true
+n_samples: 10000
+n_bootstrap: 9999
+relative_output_dir: "../results_segm/base_exp"
