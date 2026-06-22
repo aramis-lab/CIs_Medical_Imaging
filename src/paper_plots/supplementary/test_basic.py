@@ -100,72 +100,74 @@ def fit_ccp(segm_path):
     return(df_fit_results)
 
 
-def perform_pairwise_tests_basic(df_fit_results):
+def perform_pairwise_tests_basic(df_results):
 
-    metrics = df_fit_results['metric'].unique()
+    metrics = df_results['metric'].unique()
     methods = ['bca', 'percentile', 'param_z', 'param_t']
-    stats = df_fit_results['stat'].unique()
-    p_values = {stat : {metric : {m : None for m in methods} for metric in metrics} for stat in stats}
+    stats = df_results['stat'].unique()
+    n_values=df_results['n'].unique()
+    p_values = {n: {stat : {metric : {m : None for m in methods} for metric in metrics} for stat in stats} for n in n_values}
+    for n in n_values:
 
-    for stat in stats:
-       
-        for metric in metrics:
-           
-            for j in methods:
+        for stat in stats:
+        
+            for metric in metrics:
+            
+                for j in methods:
 
+                    
+                    if (j in ['param_z', 'param_t']) & (stat!='mean'):
+                        continue 
+                    data_basic = df_results[(df_results["method"]=='basic') & (df_results["stat"]==stat) & (df_results['metric'] == metric)]
+                    data_methods= df_results[(df_results["method"]==j) & (df_results["stat"]==stat) & (df_results['metric'] == metric)]
                 
-                if (j in ['param_z', 'param_t']) & (stat!='mean'):
-                    continue 
-                data_basic = df_fit_results[(df_fit_results["method"]=='basic') & (df_fit_results["stat"]==stat) & (df_fit_results['metric'] == metric)]
-                data_methods= df_fit_results[(df_fit_results["method"]==j) & (df_fit_results["stat"]==stat) & (df_fit_results['metric'] == metric)]
-             
-                grp1 = (
-                    data_basic
-                    .groupby(['task', 'algo'])['beta2']
-                    .mean()
-                    .reset_index(name='beta1')
-                )
-                grp2 = (
-                    data_methods
-                    .groupby(['task', 'algo'])['beta2']
-                    .mean()
-                    .reset_index(name='beta2')
-                )
-
-                merged = pd.merge(grp1, grp2, on=['task', 'algo'], how='inner')
-
-                merged = merged.dropna(subset=['beta1', 'beta2'])
-
-                if len(merged) < 2:
-                    pval = None
-                else:
-                    def statistic(x, y):
-                        return np.mean(x) - np.mean(y)
-
-                    res = permutation_test(
-                        (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
-                        statistic,permutation_type='samples',
-                        vectorized=False,
-                        n_resamples=50000,
-                        alternative='greater'
+                    grp1 = (
+                        data_basic
+                        .groupby(['task', 'algo'])['beta2']
+                        .mean()
+                        .reset_index(name='beta1')
                     )
-                    pval = res.pvalue
-                p_values[stat][metric][j] = pval
-               
+                    grp2 = (
+                        data_methods
+                        .groupby(['task', 'algo'])['beta2']
+                        .mean()
+                        .reset_index(name='beta2')
+                    )
+
+                    merged = pd.merge(grp1, grp2, on=['task', 'algo'], how='inner')
+
+                    merged = merged.dropna(subset=['beta1', 'beta2'])
+
+                    if len(merged) < 2:
+                        pval = None
+                    else:
+                        def statistic(x, y):
+                            return np.mean(x) - np.mean(y)
+
+                        res = permutation_test(
+                            (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
+                            statistic,permutation_type='samples',
+                            vectorized=False,
+                            n_resamples=50000,
+                            alternative='greater'
+                        )
+                        pval = res.pvalue
+                    p_values[n][stat][metric][j] = pval
+                
 
     return p_values
 
 def get_pvalues_basic(p_values):
     pvals = []
     keys = []
+    for n,stat_dict in p_values.items():
+        for stat, metric_dict in stat_dict.items():
+            for metric, method_dict in metric_dict.items():
+                for method, pval in method_dict.items():
 
-    for stat, metric_dict in p_values.items():
-        for metric, method_dict in metric_dict.items():
-            for method, pval in method_dict.items():
-
-                if pval is not None and not np.isnan(pval):
-                    pvals.append(pval)
-                    keys.append((stat, metric, method))
+                    if pval is not None and not np.isnan(pval):
+                        pvals.append(pval)
+                        keys.append((n,stat, metric, method))
 
     pvals = np.asarray(pvals)
     return(pvals, keys)
@@ -173,33 +175,41 @@ def get_pvalues_basic(p_values):
 
 def reconstruct_basic(qvals, keys,pvalues,alphas):
     q_values = {
-        stat: {
-            metric: {
-                method: None
-                for method in method_dict
+        n:{
+            stat: {
+                metric: {
+                    method: None
+                    for method in method_dict
+                }
+                for metric, method_dict in metric_dict.items()
             }
-            for metric, method_dict in metric_dict.items()
+            for stat, metric_dict in stat_dict.items()
         }
-        for stat, metric_dict in pvalues.items()
+        for n, stat_dict in pvalues.items()
     }
 
     significant = {
-        stat: {
-            metric: {
-                method: False
-                for method in method_dict
+        n: {
+            stat: {
+                metric: {
+                    method: False
+                    for method in method_dict
+                }
+                for metric, method_dict in metric_dict.items()
             }
-            for metric, method_dict in metric_dict.items()
+            for stat, metric_dict in stat_dict.items()
         }
-        for stat, metric_dict in pvalues.items()
+        for n, stat_dict in pvalues.items()
     }
     
-    for (stat, metric, method), qval in zip(keys, qvals):
-        q_values[stat][metric][method] = qval
-        significant[stat][metric][method] = np.sum(qval < alphas)
+    for (n,stat, metric, method), qval in zip(keys, qvals):
+        q_values[n][stat][metric][method] = qval
+        significant[n][stat][metric][method] = np.sum(qval < alphas)
 
     return q_values,significant
     
+
+
 def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
    
 

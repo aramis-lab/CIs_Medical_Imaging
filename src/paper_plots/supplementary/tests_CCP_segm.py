@@ -47,7 +47,8 @@ def perform_pairwise_tests_segm(df_fit_results):
     metrics = df_fit_results['metric'].unique()
     methods = df_fit_results['method'].unique()
     stats = df_fit_results['stat'].unique()
-    p_values = {met : {s : {m : {m2: None for m2 in metrics} for m in metrics} for s in stats} for met in methods}
+    n_values = df_fit_results['n'].unique()
+    p_values = {n : {met : {s : {m : {m2: None for m2 in metrics} for m in metrics} for s in stats} for met in methods} for n in n_values}
 
     for method in methods:
         for stat in stats:
