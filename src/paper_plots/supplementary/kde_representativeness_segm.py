@@ -1,142 +1,22 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import argparse
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
+import argparse
 
 from ...kde import weighted_kde, sample_weighted_kde
 from ...kernels import get_kernel
 from ...intervals_and_metrics import get_bounds, is_continuous
-from ...utils import extract_df
-
-
-# ─────────────────────────────────────────────────────────────
-#  Curve computation helpers
-# ─────────────────────────────────────────────────────────────
-
-N_GRID_POINTS = 100
-
-
-def compute_ecdf(values, grid):
-    """
-    Compute the empirical CDF of `values` evaluated at `grid` points.
-    Returns (grid, cdf) — analogous to compute_roc_points returning (fpr, tpr).
-    """
-    sorted_vals = np.sort(values)
-    cdf = np.searchsorted(sorted_vals, grid, side='right') / len(sorted_vals)
-    return grid, cdf
-
-
-def _interpolate_on_grid(x_raw, y_raw, grid):
-    """Sort by x_raw and interpolate y_raw onto a common grid."""
-    idx = np.argsort(x_raw)
-    return np.interp(grid, x_raw[idx], y_raw[idx])
-
-
-# ─────────────────────────────────────────────────────────────
-#  Per-instance: compute CDF values on shared normalized grid
-# ─────────────────────────────────────────────────────────────
-
-def compute_cdf_curve_points(orig_values, kde_samples):
-    """
-    For one instance, compute original and KDE ECDFs
-    interpolated onto a shared normalized grid.
-
-    The value range is determined from the union of both samples,
-    then mapped to [0, 1] so instances with different value ranges
-    can be aggregated.
-
-    Returns
-    -------
-    cdf_orig, cdf_kde : (N_GRID_POINTS,) — CDF values on shared grid
-    """
-    # Determine range from both samples
-    lo = min(orig_values.min(), kde_samples.min())
-    hi = max(orig_values.max(), kde_samples.max())
-    if hi - lo < 1e-12:
-        hi = lo + 1e-12
-
-    # Dense raw grid in original value space
-    raw_grid = np.linspace(lo, hi, 2000)
-
-    # Compute raw ECDFs
-    raw_grid_o, cdf_o = compute_ecdf(orig_values, raw_grid)
-    raw_grid_k, cdf_k = compute_ecdf(kde_samples, raw_grid)
-
-    # Normalized grid [0, 1] for cross-instance aggregation
-    norm_grid = np.linspace(0, 1, N_GRID_POINTS)
-
-    # Map raw grid to [0, 1] and interpolate onto shared grid
-    raw_norm = (raw_grid - lo) / (hi - lo)
-    cdf_orig = _interpolate_on_grid(raw_norm, cdf_o, norm_grid)
-    cdf_kde  = _interpolate_on_grid(raw_norm, cdf_k, norm_grid)
-
-    return cdf_orig, cdf_kde
-
-
-# ─────────────────────────────────────────────────────────────
-#  Aggregate plot: overlay + deviation (2 panels)
-# ─────────────────────────────────────────────────────────────
-
-def plot_aggregate_cdf_curves(cdf_orig_mat, cdf_kde_mat, save_path=None):
-    """
-    Two-panel figure summarizing CDF agreement across all instances.
-
-    Left:  Mean CDF overlay (Original vs KDE) with ±1 std bands
-    Right: Pointwise deviation (KDE − Original) with median + IQR
-
-    Parameters
-    ----------
-    cdf_orig_mat, cdf_kde_mat : (N_instances, N_GRID_POINTS)
-        CDF values on shared normalized grid.
-    """
-    n_inst = cdf_orig_mat.shape[0]
-    norm_grid = np.linspace(0, 1, N_GRID_POINTS)
-
-    fig = plt.figure(figsize=(12, 5))
-
-    # ── Right: Pointwise deviation ──
-    diff_mat = cdf_kde_mat - cdf_orig_mat
-
-    med = np.nanmedian(diff_mat, axis=0)
-    q1  = np.nanpercentile(diff_mat, 25, axis=0)
-    q3  = np.nanpercentile(diff_mat, 75, axis=0)
-    p5  = np.nanpercentile(diff_mat, 5, axis=0)
-    p95 = np.nanpercentile(diff_mat, 95, axis=0)
-
-    plt.fill_between(norm_grid, p5, p95, alpha=0.15, color='dodgerblue',
-                    label='5th–95th percentile')
-    plt.fill_between(norm_grid, q1, q3, alpha=0.3, color='dodgerblue',
-                    label='IQR (Q1–Q3)')
-    plt.plot(norm_grid, med, '-', color='dodgerblue', lw=2.5,
-            label='Median')
-    plt.axhline(0, color='black', ls='--', lw=1.5, alpha=0.6)
-
-    plt.xlabel('Normalized metric value', fontsize=11)
-    plt.ylabel('CDF(KDE) − CDF(Original)', fontsize=11)
-    plt.title('CDF — Pointwise Deviation', fontsize=13, fontweight='bold')
-    plt.legend(fontsize=9)
-
-    fig.suptitle(
-        f'KDE CDF Preservation ({n_inst} task × algorithm instances)',
-        fontsize=14, fontweight='bold', y=1.02
-    )
-    plt.tight_layout()
-
-    if save_path:
-        d = os.path.dirname(save_path)
-        if d:
-            os.makedirs(d, exist_ok=True)
-        fig.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"  Saved → {save_path}")
-    plt.close()
-
+from itertools import product
+from tqdm import tqdm
+from scipy.stats import ks_2samp, cramervonmises_2samp, anderson_ksamp, epps_singleton_2samp, energy_distance
+from statsmodels.stats.multitest import multipletests
 
 # ─────────────────────────────────────────────────────────────
 #  Single-instance KDE + CDF computation
 # ─────────────────────────────────────────────────────────────
 
-def compute_instance(df_path, metric, task, algo):
+def compute_instance(df_, metric, task, algo):
     """
     Run KDE for one (task, algo) pair and return CDF curve points.
 
@@ -145,17 +25,16 @@ def compute_instance(df_path, metric, task, algo):
     (cdf_orig, cdf_kde) each (N_GRID_POINTS,), or None on failure.
     """
     try:
-        df = extract_df(df_path, metric, task)
+        df = df_[(df_["subtask"] == task) & (df_["score"] == metric)]
 
         values = df[df["alg_name"] == algo]["value"].to_numpy()
         values = values[~np.isnan(values)]
 
         if len(values) < 50:
-            print(f"  not enough values ({len(values)}), skipping")
             return None
 
         if not is_continuous(metric):
-            samples = np.random.choice(values, size=100_000, replace=True)
+            samples = np.random.choice(values, size=1000000, replace=True)
         else:
             a, b = get_bounds(metric)
             kernel = get_kernel("epanechnikov")
@@ -181,18 +60,120 @@ def compute_instance(df_path, metric, task, algo):
             y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
 
             # ── Sample from KDE ──
-            samples = sample_weighted_kde(y, x, 100_000, a, b)
+            samples = sample_weighted_kde(y, x, 1000000, a, b)
 
-        return compute_cdf_curve_points(values, samples)
+        return samples
 
     except Exception as e:
         print(f"  error: {e}")
         return None
 
+def evaluate_kde_2sample(original, kde_samples):
+    n = len(original)
+    ks_stat, ks_pval = ks_2samp(original, kde_samples)
+    cvm_res = cramervonmises_2samp(original, kde_samples)
+    ad_stat, _, ad_pval = anderson_ksamp([original, kde_samples])
+    try:
+        es_stat, es_pval = epps_singleton_2samp(original, kde_samples)
+    except Exception:
+        es_stat, es_pval = np.nan, np.nan
+    e_dist = energy_distance(original, kde_samples)
+    mean_err = abs(np.mean(kde_samples) - np.mean(original)) / (np.std(original) + 1e-10)
+    std_ratio = np.std(kde_samples) / (np.std(original) + 1e-10)
+    probs = np.array([0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99])
+    q_orig = np.quantile(original, probs)
+    q_kde = np.quantile(kde_samples, probs)
+    max_q_err = np.max(np.abs(q_kde - q_orig) / (np.abs(q_orig) + 1e-10))
+    median_q_err = np.median(np.abs(q_kde - q_orig) / (np.abs(q_orig) + 1e-10))
+    return {
+        'n': n, 'ks_stat': ks_stat, 'ks_pval': ks_pval,
+        'cvm_stat': cvm_res.statistic, 'cvm_pval': cvm_res.pvalue,
+        'ad_stat': ad_stat, 'ad_pval': ad_pval,
+        'es_stat': es_stat, 'es_pval': es_pval,
+        'energy_dist': e_dist, 'mean_err': mean_err, 'std_ratio': std_ratio,
+        'max_q_err': max_q_err, 'median_q_err': median_q_err,
+    }
 
-# ─────────────────────────────────────────────────────────────
-#  Entry point
-# ─────────────────────────────────────────────────────────────
+def multiple_tests_and_plot(df, all_originals, all_kde_samples, output_folder="."):
+    # ── Multiple testing correction ──
+    rejected_bh, pvals_bh, _, _ = multipletests(df['ks_pval'], alpha=0.05, method='fdr_bh')
+    rejected_bonf, _, _, _ = multipletests(df['ks_pval'], alpha=0.05, method='bonferroni')
+    df['ks_pval_bh'] = pvals_bh
+    df['rejected_bh'] = rejected_bh
+    print(f"Raw:  {(df['ks_pval'] < 0.05).sum()}/{len(df)} rejected at alpha=0.05")
+    print(f"BH:   {rejected_bh.sum()}/{len(df)} rejected after FDR correction")
+    print(f"Bonf: {rejected_bonf.sum()}/{len(df)} rejected after Bonferroni correction")
+
+    # ── Dashboard ──
+    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+
+    axes[0, 0].hist(df['ks_stat'], bins=50, density=True, alpha=0.7, edgecolor='k')
+    axes[0, 0].axvline(df['ks_stat'].median(), color='red', ls='--',
+                        label=f"Median = {df['ks_stat'].median():.4f}")
+    axes[0, 0].set_xlabel('2-Sample KS Statistic'); axes[0, 0].set_title('(a) KS Statistics')
+    axes[0, 0].legend()
+
+    axes[0, 1].hist(df['ks_pval'], bins=50, density=True, alpha=0.7, edgecolor='k')
+    axes[0, 1].set_xlabel('KS p-value'); axes[0, 1].set_title('(b) KS p-values')
+    axes[0, 1].legend()
+
+    axes[0, 2].hist(df['energy_dist'], bins=50, density=True, alpha=0.7, edgecolor='k')
+    axes[0, 2].axvline(df['energy_dist'].median(), color='red', ls='--',
+                        label=f"Median = {df['energy_dist'].median():.4f}")
+    axes[0, 2].set_xlabel('Energy Distance'); axes[0, 2].set_title('(c) Energy Distance')
+    axes[0, 2].legend()
+
+    axes[1, 0].hist(df['std_ratio'], bins=50, alpha=0.7, edgecolor='k')
+    axes[1, 0].axvline(1.0, color='red', ls='--', lw=2, label='Ideal = 1.0')
+    axes[1, 0].set_xlabel('sigma_KDE / sigma_data'); axes[1, 0].set_title('(d) Variance Preservation')
+    axes[1, 0].legend()
+
+    axes[1, 1].hist(df['mean_err'], bins=50, alpha=0.7, edgecolor='k')
+    axes[1, 1].axvline(0, color='red', ls='--')
+    axes[1, 1].set_xlabel('|mu_KDE - mu_data| / sigma_data'); axes[1, 1].set_title('(e) Mean Discrepancy')
+
+    probs = np.array([0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99])
+    all_q_orig, all_q_kde = [], []
+    for orig, kde_s in zip(all_originals, all_kde_samples):
+        if len(orig) < 10:
+            continue
+        mu, sigma = np.mean(orig), np.std(orig) + 1e-10
+        all_q_orig.append((np.quantile(orig, probs) - mu) / sigma)
+        all_q_kde.append((np.quantile(kde_s, probs) - mu) / sigma)
+    all_q_orig = np.concatenate(all_q_orig)
+    all_q_kde = np.concatenate(all_q_kde)
+    axes[1, 2].scatter(all_q_orig, all_q_kde, s=1, alpha=0.3)
+    lims = [min(all_q_orig.min(), all_q_kde.min()), max(all_q_orig.max(), all_q_kde.max())]
+    axes[1, 2].plot(lims, lims, 'r--', lw=2)
+    axes[1, 2].set_xlabel('Standardised Empirical Quantiles')
+    axes[1, 2].set_ylabel('Standardised KDE Quantiles')
+    axes[1, 2].set_title('(f) Pooled Q-Q (all distributions)')
+    plt.tight_layout()
+    plt.savefig(f'{output_folder}/kde_validation_2sample.pdf', dpi=300, bbox_inches='tight')
+    plt.close()
+
+    # ── Summary table ──
+    summary = pd.DataFrame({
+        'Metric': [
+            'KS statistic (median)', 'KS p > 0.05 (%)', 'KS p > 0.05 after BH (%)',
+            'CvM p > 0.05 (%)', 'AD p > 0.05 (%)', 'Energy distance (median)',
+            '|d_mu|/sigma (median)', 'sigma_KDE/sigma_data (median)',
+            'Max quantile rel. error (median)',
+        ],
+        'Value': [
+            f"{df['ks_stat'].median():.4f}",
+            f"{(df['ks_pval'] > 0.05).mean()*100:.1f}",
+            f"{(~df['rejected_bh']).mean()*100:.1f}",
+            f"{(df['cvm_pval'] > 0.05).mean()*100:.1f}",
+            f"{(df['ad_pval'] > 0.05).mean()*100:.1f}",
+            f"{df['energy_dist'].median():.4f}",
+            f"{df['mean_err'].median():.4f}",
+            f"{df['std_ratio'].median():.4f}",
+            f"{df['max_q_err'].median():.4f}",
+        ]
+    })
+
+    return summary
 
 if __name__ == "__main__":
     BASE_DIR = os.path.abspath(
@@ -201,10 +182,8 @@ if __name__ == "__main__":
     df_name = "data_matrix_grandchallenge_all.csv"
     df_path = os.path.join(BASE_DIR, df_name)
 
-    parser = argparse.ArgumentParser(
-        description="KDE CDF preservation — aggregate analysis for segmentation"
-    )
-    parser.add_argument("--output_folder", type=str, default=BASE_DIR)
+    parser = argparse.ArgumentParser(description="KDE Representativeness Analysis")
+    parser.add_argument("--output_folder", type=str, default=".", help="Folder to save output plots and summary")
     args = parser.parse_args()
 
     df = pd.read_csv(df_path)
@@ -216,30 +195,28 @@ if __name__ == "__main__":
     all_cdf_orig = []
     all_cdf_kde  = []
 
-    for task in tasks:
-        for algo in algos:
-            print(f"  {task} / {algo} …", end="")
-            for metric in metrics:
-                result = compute_instance(df_path, metric, task, str(algo))
-                if result is not None:
-                    cdf_o, cdf_k = result
-                    all_cdf_orig.append(cdf_o)
-                    all_cdf_kde.append(cdf_k)
-                    print(" ✓")
-            else:
-                print()
+    means = []
+    vars = []
+    skews = []
+    kurts = []
 
-    # ── Aggregate and plot ──
-    if len(all_cdf_orig) == 0:
-        print("\nNo valid instances found.")
-    else:
-        cdf_orig_mat = np.vstack(all_cdf_orig)  # (N_instances, N_GRID_POINTS)
-        cdf_kde_mat  = np.vstack(all_cdf_kde)
+    results = []
+    all_originals = []
+    all_kde_samples = []
+    for i, (task, algo, metric) in enumerate(tqdm(product(tasks, algos, metrics), total=len(tasks)*len(algos)*len(metrics))):
+        kde_samples = compute_instance(df, metric, task, str(algo))
+        original_values = df[(df["subtask"] == task) & (df["alg_name"] == algo) & (df["score"] == metric)]["value"].to_numpy()
+        if original_values.size == 0 or kde_samples is None:
+            continue
+        res = evaluate_kde_2sample(original_values, kde_samples)
+        res['dist_id'] = i
+        results.append(res)
+        all_originals.append(original_values)
+        all_kde_samples.append(kde_samples)
 
-        print(f"\n  Collected {cdf_orig_mat.shape[0]} valid instances.")
+    df = pd.DataFrame(results)
 
-        plot_aggregate_cdf_curves(
-            cdf_orig_mat, cdf_kde_mat,
-            save_path=os.path.join(args.output_folder,
-                                   "clean_figs/supplementary/cdf_preservation_segmentation.pdf")
-        )
+    summary = multiple_tests_and_plot(df, all_originals, all_kde_samples, output_folder=os.path.join(args.output_folder, "clean_figs/supplementary"))
+
+    print("\nSummary of KDE representativeness across all distributions:")
+    print(summary.to_string(index=False))
