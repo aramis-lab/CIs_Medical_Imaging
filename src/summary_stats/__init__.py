@@ -29,7 +29,7 @@ def trimmed_mean(x, threshold, axis=None):
     return np.mean(atmp[tuple(sl)], axis=axis, keepdims=True)
 
 def std(x, threshold, axis=None):
-    return np.sqrt(np.var(x, axis=axis, keepdims=True))
+    return np.std(x, axis=axis, keepdims=True, ddof=1)
 
 def IQR_length(x, threshold, axis=None):
     q3 = np.percentile(x, 75, axis=axis, keepdims=True)
