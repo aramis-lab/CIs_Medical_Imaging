@@ -217,6 +217,3 @@ if __name__ == "__main__":
     df = pd.DataFrame(results)
 
     summary = multiple_tests_and_plot(df, all_originals, all_kde_samples, output_folder=os.path.join(args.output_folder, "clean_figs/supplementary"))
-
-    print("\nSummary of KDE representativeness across all distributions:")
-    print(summary.to_string(index=False))
