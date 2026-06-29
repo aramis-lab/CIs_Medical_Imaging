@@ -21,17 +21,23 @@ def extract_df_segm_cov(folder_path:str, file_prefix:str, metrics:list[str], sta
                     
                     for n in n_subset:  # Show only selected n values
                         data_n = data_algo[data_algo['n'] == n]
-                        method_dict = {
-                            'basic': 'coverage_basic',
-                            'bca': 'coverage_bca',
-                            'percentile': 'coverage_percentile',
-                        }
-
+                        if stat=='std':
+                            method_dict = {
+                                'basic': 'coverage_basic',
+                                'bca': 'coverage_bca',
+                                'percentile': 'coverage_percentile',
+                            }
+                        else: 
+                            method_dict = {
+                                'basic': 'contains_true_stat_basic',
+                                'bca': 'contains_true_stat_bca',
+                                'percentile': 'contains_true_stat_percentile',
+                            }
                         # Add parametric methods only for stat == 'mean'
                         if stat == 'mean':
                             method_dict.update({
-                                'param_z': 'coverage_param_z',
-                                'param_t': 'coverage_param_t'
+                                'param_z': 'contains_true_stat_param_z',
+                                'param_t': 'contains_true_stat_param_t'
                             })
                         for method, col in method_dict.items():
                             for val in data_n[col]:

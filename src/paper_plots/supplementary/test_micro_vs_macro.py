@@ -100,34 +100,32 @@ def fit_ccp(classif_path,agreg_type):
 
 
 def perform_pairwise_tests_micro_macro(df_fit_results, df_fit_results_macro):
-    
     metrics_micro= df_fit_results['metric'].unique()
     metrics_macro= df_fit_results_macro['metric'].unique()
     couples=zip(metrics_micro, metrics_macro)
-    couple_names=[couple[0] + "_vs_" + couple[1] for couple in zip(metrics_micro, metrics_macro)]
-    methods = df_fit_results['method'].unique()
-    p_values = {method : {couple : None for couple in couple_names} for method in methods} 
     
-    i=0
+    n_values=df_fit_results['n'].unique()
+    couple_names=[couple[0] + "_vs_" + couple[1] for couple in zip(metrics_micro, metrics_macro)]
+    p_values = {str(n) : {couple : None for couple in couple_names} for n in n_values} 
+    
    
-    for method in methods:
-        
+    for n in n_values:
+        print(n)
         for couple in zip(metrics_micro, metrics_macro):
-            
+            print(couple)
             couple_name=couple[0] + "_vs_" + couple[1]
             
-            data_micro = df_fit_results[(df_fit_results["method"]==method) & (df_fit_results['metric'] == couple[0])]
-            data_macro= df_fit_results_macro[(df_fit_results_macro["method"]==method) & (df_fit_results_macro['metric'] == couple[1])]
-          
+            data_micro = df_fit_results[(df_fit_results["method"]=='percentile') & (df_fit_results['metric'] == couple[0])& (df_fit_results['n'] == n)]
+            data_macro= df_fit_results_macro[(df_fit_results_macro["method"]=='percentile') & (df_fit_results_macro['metric'] == couple[1])& (df_fit_results_macro['n'] == n)]
             grp1 = (
                 data_micro
-                .groupby(['task', 'algo'])['beta2']
+                .groupby(['task', 'algo'])['value']
                 .mean()
                 .reset_index(name='beta1')
             )
             grp2 = (
                 data_macro
-                .groupby(['task', 'algo'])['beta2']
+                .groupby(['task', 'algo'])['value']
                 .mean()
                 .reset_index(name='beta2')
             )
@@ -135,36 +133,35 @@ def perform_pairwise_tests_micro_macro(df_fit_results, df_fit_results_macro):
             merged = pd.merge(grp1, grp2, on=['task', 'algo'], how='inner')
 
             merged = merged.dropna(subset=['beta1', 'beta2'])
-
             if len(merged) < 2:
                 pval = None
             else:
                 def statistic(x, y):
                     return np.mean(x) - np.mean(y)
-                i+=1
+          
                 res = permutation_test(
                     (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
                     statistic,permutation_type='samples',
                     vectorized=False,
-                    n_resamples=50000,
-                    alternative='less'
+                    n_resamples=100000,
+                    alternative='greater'
                 )
                 pval = res.pvalue
-            p_values[method][couple_name] = pval
+            p_values[str(n)][couple_name] = pval
 
-    return p_values,i
+    return p_values
 
 
 def get_pvalues_micro_macro(pvalues):
     pvals = []
     keys = []
 
-    for method, metric_dict in pvalues.items():
+    for n, metric_dict in pvalues.items():
         for couple, pval in metric_dict.items():
             
             if pval is not None and not np.isnan(pval):
                 pvals.append(pval)
-                keys.append((method, couple))
+                keys.append((n, couple))
 
     pvals = np.asarray(pvals)
     return(pvals, keys)
@@ -172,28 +169,28 @@ def get_pvalues_micro_macro(pvalues):
 def reconstruct_micro_macro(qvals, keys,pvalues,alphas):
     q_values = {
        
-            method: {
+            n: {
                 couple: None
                 for couple in couple_dict
             }
-            for method, couple_dict in pvalues.items()
+            for n, couple_dict in pvalues.items()
         }
  
 
     significant = {
        
-            method: {
+            n: {
                 couple: None
                 for couple in couple_dict
             }
-            for method, couple_dict in pvalues.items()
+            for n, couple_dict in pvalues.items()
         }
  
 
     
-    for (method, couple), qval in zip(keys, qvals):
-        q_values[method][couple] = qval
-        significant[method][couple] = np.sum(qval < alphas)
+    for (n, couple), qval in zip(keys, qvals):
+        q_values[n][couple] = qval
+        significant[n][couple] = np.sum(qval < alphas)
 
     return q_values,significant
 
@@ -250,80 +247,87 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
 
 
 
-def plot_significance_matrix_micro_macro(significance, p_values):
+def plot_significance_matrix_micro_macro(significance, p_values,n):
 
     plt.rcdefaults()
-    
-    methods=['bca', 'basic', 'percentile']
-    metrics_all = list(next(iter(significance.values())).keys())
-    fig, ax = plt.subplots(1, 1, figsize=(15, 12))
+    metrics_all = list(iter(significance.keys()))
+    fig, ax = plt.subplots(1, 1, figsize=(12, 6*len(metrics_all)))
 
     
 
-
-    global_matrix = np.zeros((len(metrics_all), len(methods)))
-    
-    for i, metric in enumerate(metrics_all):
-       
-        for j, method in enumerate(methods):
-            val = significance.get(method, {}).get(metric, None)
-            global_matrix[i, j] = min(3, val) if val is not None else 0
-        
-
+    global_matrix = []
     pval_matrix = []
 
     for metric in metrics_all:
-        pval_row = []
 
-        for method in methods:
+            val = significance.get(metric)
+            p_val = p_values.get(metric)
 
-            p_val = p_values.get(method, {}).get(metric, None)
-            if p_val is None:
-                pval_row.append("0")
+            if val is None:
+                global_matrix.append(-1)      # N/A
+            elif val == 0:
+                global_matrix.append(0)       # Not significant
             else:
-                pval_row.append(
-                    f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
-                )
+                global_matrix.append(1)
 
-        pval_matrix.append(pval_row)
-    
+            if p_val is None:
+                pval_matrix.append("")
+            elif p_val < 0.05:
+                pval_matrix.append("<0.05")
+            else:
+                pval_matrix.append(f"{p_val:.3f}")
+            # global_matrix[i, j] = min(3, val) if val is not None else 0
+        
+    # pval_matrix = []
+
+    # for metric in metrics_all:
+
+    #     p_val = p_values.get(metric)
+    #     if p_val is None:
+    #         pval_matrix.append("")
+    #     elif p_val < 0.05:
+    #         pval_matrix.append("<0.05")
+    #     else:
+    #         pval_matrix.append(f"{p_val:.3f}")
+            # if p_val is None:
+            #     pval_row.append("0")
+            # else:
+            #     pval_row.append(
+            #         f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
+            #     )
+
+   
     values = np.unique(global_matrix)
-    
     # full mapping dictionary
     color_map_dict = {
         -1: '#000000',
         0: '#d9d9d9',
-        1: '#fee08b',
-        2: '#fdae61',
-        3: '#d73027',
+        1: '#fdae61',
+       
     }
     # extract only the colors for values that appear
     colors = [color_map_dict[v] for v in values]
 
     # build colormap
     cmap = ListedColormap(colors)
-    mabels = [method_labels.get(m, m) for m in methods]
     metlabels=[metric_labels.get(m, m) for m in metrics_all]
     # Plot heatma
+    
     sns.heatmap(
-        global_matrix,
-        annot=pval_matrix,
-        xticklabels=mabels,
-        yticklabels=metlabels,
+        [global_matrix],
+        annot=[pval_matrix],
+        xticklabels=metlabels,
         cmap=cmap,
         cbar=False,
         ax=ax,
         fmt='',
         annot_kws={"fontsize": 12}
     )
-    ax.tick_params(axis='x', rotation=45, labelsize=12)
 
-    ax.tick_params(axis='y', rotation=45, labelsize=12)
+    ax.tick_params(axis='x', rotation=45, labelsize=12)
     ax.set_title('Test of micro vs macro', fontsize=16)
     legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
         mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
         mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
     ]
     plt.legend(
@@ -336,13 +340,12 @@ def plot_significance_matrix_micro_macro(significance, p_values):
         title_fontsize=16
     )
     plt.tight_layout()
-    plt.savefig(f'../clean_figs/supplementary/test_micro_macro.pdf')
-    plt.show()
+    plt.savefig(f'../clean_figs/supplementary/test_results/cov_micro_macro/{n}.pdf')
 def main():
 
-    path_micro='../../../../results_metrics_classif'
+    path_micro='../results_metrics_classif'
 
-    path_macro='../../../../results_metrics_classif_macro'
+    path_macro='../results_metrics_classif_macro'
     print('fitting ccp')
     df_fit_results=fit_ccp(path_micro,'micro')
     valid_fits=df_fit_results[df_fit_results['R2']<=0.1]

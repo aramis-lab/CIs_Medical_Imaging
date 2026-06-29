@@ -8,7 +8,7 @@ import matplotlib.patches as mpatches
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import wilcoxon
 from ..plot_utils import metric_labels, stat_labels, method_labels
-
+import scipy
 import seaborn as sns
 # metric_labels = {
 #     'dsc': 'DSC',
@@ -92,7 +92,7 @@ def fit_ccp(segm_path):
                                     'metric': metric,
                                     'stat': stat,
                                     'method': method,
-                                    'beta2': beta2[0],
+                                    'coverage': beta2[0],
                                     'R2': rel_error
                                 }
                                 results.append(new_row)
@@ -106,9 +106,9 @@ def perform_pairwise_tests_basic(df_results):
     methods = ['bca', 'percentile', 'param_z', 'param_t']
     stats = df_results['stat'].unique()
     n_values=df_results['n'].unique()
-    p_values = {n: {stat : {metric : {m : None for m in methods} for metric in metrics} for stat in stats} for n in n_values}
+    p_values = {str(n): {stat : {metric : {m : None for m in methods} for metric in metrics} for stat in stats} for n in n_values}
     for n in n_values:
-
+        print(n)
         for stat in stats:
         
             for metric in metrics:
@@ -118,18 +118,18 @@ def perform_pairwise_tests_basic(df_results):
                     
                     if (j in ['param_z', 'param_t']) & (stat!='mean'):
                         continue 
-                    data_basic = df_results[(df_results["method"]=='basic') & (df_results["stat"]==stat) & (df_results['metric'] == metric)]
-                    data_methods= df_results[(df_results["method"]==j) & (df_results["stat"]==stat) & (df_results['metric'] == metric)]
-                
+                    data_basic = df_results[(df_results["method"]=='basic') & (df_results["stat"]==stat) & (df_results['metric'] == metric)& (df_results['n']==n)]
+                    data_methods= df_results[(df_results["method"]==j) & (df_results["stat"]==stat) & (df_results['metric'] == metric)& (df_results['n']==n)]
                     grp1 = (
                         data_basic
-                        .groupby(['task', 'algo'])['beta2']
+                        .groupby(['task', 'algo'])['value']
                         .mean()
                         .reset_index(name='beta1')
                     )
+             
                     grp2 = (
                         data_methods
-                        .groupby(['task', 'algo'])['beta2']
+                        .groupby(['task', 'algo'])['value']
                         .mean()
                         .reset_index(name='beta2')
                     )
@@ -137,22 +137,22 @@ def perform_pairwise_tests_basic(df_results):
                     merged = pd.merge(grp1, grp2, on=['task', 'algo'], how='inner')
 
                     merged = merged.dropna(subset=['beta1', 'beta2'])
-
+              
                     if len(merged) < 2:
                         pval = None
                     else:
                         def statistic(x, y):
                             return np.mean(x) - np.mean(y)
-
+                        
                         res = permutation_test(
                             (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
                             statistic,permutation_type='samples',
                             vectorized=False,
-                            n_resamples=50000,
-                            alternative='greater'
+                            n_resamples=100000,
+                            alternative='less'
                         )
                         pval = res.pvalue
-                    p_values[n][stat][metric][j] = pval
+                    p_values[str(n)][stat][metric][j] = pval
                 
 
     return p_values
@@ -263,7 +263,7 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
 
 
 
-def plot_significance_matrix_basic(significance, p_values):
+def plot_significance_matrix_basic(significance, p_values,n):
 
     plt.rcdefaults()
     
@@ -271,7 +271,7 @@ def plot_significance_matrix_basic(significance, p_values):
     main_methods = [ 'bca', 'percentile']
     stats = list(significance.keys())
     metrics_all = metric_order
-    fig, axes = plt.subplots(1,len(stats), figsize=(10 * len(stats),12), width_ratios=[2,1,1,1,1])
+    fig, axes = plt.subplots(1,len(stats), figsize=(10 * len(stats),12))
     
     for row, stat in enumerate(stats):
         if stat=='mean':
@@ -287,8 +287,15 @@ def plot_significance_matrix_basic(significance, p_values):
         for i, metric in enumerate(metrics_all):
        
             for j, method in enumerate(methods):
-                val = stat_significance.get(metric, {}).get(method, None)
-                global_matrix[i, j] = min(3, val) if val is not None else 0
+                # val = stat_significance.get(metric, {}).get(method, None)
+                val = stat_significance.get(metric, {}).get(method)
+                if val is None:
+                    global_matrix[i, j] = -1      # N/A
+                elif val == 0:
+                    global_matrix[i, j] = 0       # Not significant
+                else:
+                    global_matrix[i, j] = 1
+                # global_matrix[i, j] = min(1, val) if val is not None else -1
             
 
         pval_matrix = []
@@ -298,13 +305,19 @@ def plot_significance_matrix_basic(significance, p_values):
 
             for method in methods:
 
-                p_val = p_values.get(stat, {}).get(metric, {}).get(method, None)
+                p_val = p_values.get(stat, {}).get(metric, {}).get(method)
                 if p_val is None:
-                    pval_row.append("0")
+                    pval_row.append("")
+                elif p_val < 0.05:
+                    pval_row.append("<0.05")
                 else:
-                    pval_row.append(
-                        f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
-                    )
+                    pval_row.append(f"{p_val:.3f}")
+                # if p_val is None:
+                #     pval_row.append("0")
+                # else:
+                #     pval_row.append(
+                #         f"{p_val:.6f}" if p_val >= 0.05 else "<0.05"
+                #     )
 
             pval_matrix.append(pval_row)
         
@@ -312,12 +325,14 @@ def plot_significance_matrix_basic(significance, p_values):
 
         # full mapping dictionary
         color_map_dict = {
-            -1: '#000000',
-            0: '#d9d9d9',
-            1: '#fee08b',
-            2: '#fdae61',
-            3: '#d73027',
-        }
+       
+        -1: "#161515",
+        0: "#d9d9d9",
+        1: "#fdae61",
+       
+    }   
+        
+        
         # extract only the colors for values that appear
         colors = [color_map_dict[v] for v in values]
 
@@ -344,10 +359,8 @@ def plot_significance_matrix_basic(significance, p_values):
         ax.set_title(f"Stat : {stat_labels[stat]}", fontsize=16)
 
     legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
+        mpatches.Patch(facecolor="#fdae61", edgecolor='k', label='5%'),
+        mpatches.Patch(facecolor='#161515', edgecolor='k', label='Not significant')
     ]
     plt.legend(
         handles=legend_elements,
@@ -359,8 +372,7 @@ def plot_significance_matrix_basic(significance, p_values):
         title_fontsize=16
     )
     plt.tight_layout()
-    plt.savefig('../clean_figs/supplementary/test_basic_segm.pdf')
-    plt.show()
+    plt.savefig(f'../clean_figs/supplementary/test_results/cov_basic_segm/{n}.pdf')
     
 def main():
     segm_path='../../../../results_metrics_segm'

@@ -105,27 +105,24 @@ def perform_pairwise_tests_spread_central(df_fit_results):
     methods = ['bca', 'basic', 'percentile']
     stats = [['mean', 'std'],['median', 'iqr_length']]
     stat_couples=['mean vs std','median vs iqr_length']
-   
-    p_values = {metric : {method : {stat : None for stat in stat_couples} for method in methods} for metric in metrics}
-
-    for metric in metrics:
-   
-        for method in methods:
-           
+    n_values=df_fit_results['n'].unique()
+    p_values = {str(n): {metric :  {stat : None for stat in stat_couples} for metric in metrics} for n in n_values}
+    for n in n_values:
+        for metric in metrics:
             for name, stat in zip(stat_couples,stats):
 
-                data_central = df_fit_results[(df_fit_results["method"]==method) & (df_fit_results["stat"]==stat[0]) & (df_fit_results['metric'] == metric)]
-                data_disp= df_fit_results[(df_fit_results["method"]==method) & (df_fit_results["stat"]==stat[1]) & (df_fit_results['metric'] == metric)]
+                data_central = df_fit_results[(df_fit_results["method"]=='percentile') & (df_fit_results["stat"]==stat[0]) & (df_fit_results['metric'] == metric)& (df_fit_results['n'] == n)]
+                data_disp= df_fit_results[(df_fit_results["method"]=='percentile') & (df_fit_results["stat"]==stat[1]) & (df_fit_results['metric'] == metric) & (df_fit_results['n'] == n)]
              
                 grp1 = (
                     data_central
-                    .groupby(['task', 'algo'])['beta2']
+                    .groupby(['task', 'algo'])['value']
                     .mean()
                     .reset_index(name='beta1')
                 )
                 grp2 = (
                     data_disp
-                    .groupby(['task', 'algo'])['beta2']
+                    .groupby(['task', 'algo'])['value']
                     .mean()
                     .reset_index(name='beta2')
                 )
@@ -144,12 +141,11 @@ def perform_pairwise_tests_spread_central(df_fit_results):
                         (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
                         statistic,permutation_type='samples',
                         vectorized=False,
-                        n_resamples=50000,
-                        alternative='less'
+                        n_resamples=100000,
+                        alternative='greater'
                     )
                     pval = res.pvalue
-                p_values[metric][method][name] = pval
-               
+                p_values[str(n)][metric][name] = pval
 
     return p_values
 
@@ -157,42 +153,42 @@ def get_pvalues_spread_central(p_values):
     pvals = []
     keys = []
 
-    for metric, metric_dict in p_values.items():
-        for method, method_dict in metric_dict.items():
-            for stat, pval in method_dict.items():
+    for n, metric_dict in p_values.items():
+        for metric, stat_dict in metric_dict.items():
+            for stat, pval in stat_dict.items():
                 if pval is not None:
                     pvals.append(pval)
-                    keys.append((metric, method, stat))
+                    keys.append((n, metric, stat))
 
     pvals = np.asarray(pvals)
     return(pvals, keys)
 
 def reconstruct_spread_central(qvals, keys,p_values,alphas):
     q_values = {
-        metric: {
-            method: {
+        n: {
+            metric: {
                 stat: None
                 for stat in stat_dict
             }
-            for method, stat_dict in method_dict.items()
+            for metric, stat_dict in metric_dict.items()
         }
-        for metric, method_dict in p_values.items()
+        for n, metric_dict in p_values.items()
     }
 
     significant = {
-        metric: {
-            method: {
-                stat: None
+        n: {
+            metric: {
+                stat: {}
                 for stat in stat_dict
             }
-            for method, stat_dict in method_dict.items()
+            for metric, stat_dict in metric_dict.items()
         }
-        for metric, method_dict in p_values.items()
+        for n, metric_dict in p_values.items()
     }
 
-    for (metric, method, stat), qval in zip(keys, qvals):
-        q_values[metric][method][stat] = qval
-        significant[metric][method][stat] = np.sum(qval < alphas)
+    for (n, metric, stat), qval in zip(keys, qvals):
+        q_values[n][metric][stat] = qval
+        significant[n][metric][stat] = np.sum(qval < alphas)
 
     return q_values,significant
 
@@ -248,89 +244,75 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
     return q_values,significant
 
 
-def plot_significance_matrix_spread_central(significance, p_values):
+def plot_significance_matrix_spread_central(significance, p_values,n):
 
     plt.rcdefaults()
     
     metric_order = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
-    methods = list(next(iter(significance.values())).keys())
-    stats = list(next(iter(next(iter(significance.values())).values())).keys())
-    metrics_all = metric_order
-    fig, axes = plt.subplots(1,len(stats), figsize=(10 * len(stats),12))
+    metrics =significance.keys()
+    stats = list(next(iter(significance.values())).keys())
+    fig, ax = plt.subplots(1,1, figsize=(12,15))
     
-    
-    
-    for row, stat in enumerate(stats):
-        ax = axes[row] 
+    global_matrix = np.zeros((len(metric_order), len(stats)))
 
-        
-        global_matrix = np.zeros((len(metrics_all), len(methods)))
-        
-        for j, method in enumerate(methods):
-       
+    pval_matrix = []
+    for i, metric in enumerate(metrics):
+    
+        pval_row=[]
+        for j,stat in enumerate(stats):
             
-            for i, metric in enumerate(metrics_all):
+            val = significance.get(metric, {}).get(stat)
+            p_val = p_values.get(metric, {}).get(stat)
 
-                val = significance.get(metric, {}).get(method,{}).get(stat, None)
-                global_matrix[i, j] = min(3, val) if val is not None else 0
-            
-
-        pval_matrix = []
-
-        for metric in metrics_all:
-            pval_row = []
-
-            for method in methods:
-
-                p_val = p_values.get(metric, {}).get(method, {}).get(stat, None)
-                if p_val is None:
-                    pval_row.append("0")
-                else:
-                    pval_row.append(
-                        f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
-                    )
-
-            pval_matrix.append(pval_row)
+            if val is None:
+                global_matrix[i,j]=(-1)      # N/A
+            elif val == 0:
+                global_matrix[i,j]=(0)       # Not significant
+            else:
+                global_matrix[i,j]=(1)
+            if p_val is None:
+                pval_row.append("")
+            elif p_val < 0.05:
+                pval_row.append("<0.05")
+            else:
+                pval_row.append(f"{p_val:.3f}")
         
-        values = np.unique(global_matrix)
+        pval_matrix.append(pval_row)
+        
+    values = np.unique(global_matrix)
 
-        # full mapping dictionary
-        color_map_dict = {
-            -1: '#000000',
-            0: '#d9d9d9',
-            1: '#fee08b',
-            2: '#fdae61',
-            3: '#d73027',
-        }
-        # extract only the colors for values that appear
-        colors = [color_map_dict[v] for v in values]
+    # full mapping dictionary
+    color_map_dict = {
+    -1: '#000000',
+    0: '#d9d9d9',
+    1: '#fdae61',
+    }
+    # extract only the colors for values that appear
+    colors = [color_map_dict[v] for v in values]
 
-        # build colormap
-        cmap = ListedColormap(colors)
-        mabels = [method_labels.get(m, m) for m in methods]
-        metlabels=[metric_labels.get(m, m) for m in metrics_all]
-        # Plot heatma
-        sns.heatmap(
-            global_matrix,
-            annot=pval_matrix,
-            xticklabels=mabels,
-            yticklabels=metlabels,
-            cmap=cmap,
-            cbar=False,
-            ax=ax,
-            fmt='',
-            annot_kws={"fontsize": 16}
-        )
-        ax.tick_params(axis='x', rotation=45, labelsize=14)
+    # build colormap
+    cmap = ListedColormap(colors)
+    metlabels=[metric_labels.get(m, m) for m in metric_order]
+    # Plot heatma
+    sns.heatmap(
+        global_matrix,
+        annot=pval_matrix,
+        xticklabels=stats,
+        yticklabels=metlabels,
+        cmap=cmap,
+        cbar=False,
+        ax=ax,
+        fmt='',
+        annot_kws={"fontsize": 16}
+    )
+    ax.tick_params(axis='x', rotation=45, labelsize=14)
 
-        ax.tick_params(axis='y', rotation=45, labelsize=14)
+    ax.tick_params(axis='y', rotation=45, labelsize=14)
 
-        ax.set_title(stat, fontsize=16)
+    ax.set_title('Spread vs central measures', fontsize=16)
 
     legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
         mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
         mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
     ]
     plt.legend(
@@ -343,8 +325,8 @@ def plot_significance_matrix_spread_central(significance, p_values):
         title_fontsize=16
     )
     plt.tight_layout()
-    plt.savefig('../clean_figs/supplementary/test_spread_vs_central.pdf')
-    plt.show()
+    plt.savefig(f'../clean_figs/supplementary/test_results/cov_spread_central/{n}.pdf')
+ 
 
 def main():
     segm_path='../../../../results_metrics_segm'

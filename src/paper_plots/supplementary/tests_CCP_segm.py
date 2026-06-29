@@ -46,9 +46,8 @@ def perform_pairwise_tests_segm(df_fit_results):
     
     metrics = df_fit_results['metric'].unique()
     methods = df_fit_results['method'].unique()
-    stats = df_fit_results['stat'].unique()
-    n_values = df_fit_results['n'].unique()
-    p_values = {n : {met : {s : {m : {m2: None for m2 in metrics} for m in metrics} for s in stats} for met in methods} for n in n_values}
+    stats = ['mean', 'std']
+    p_values = {met : {s : {m : {m2: None for m2 in metrics} for m in metrics} for s in stats} for met in methods}
 
     for method in methods:
         for stat in stats:
@@ -92,7 +91,7 @@ def perform_pairwise_tests_segm(df_fit_results):
                             (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
                             statistic,permutation_type='samples',
                             vectorized=False,
-                            n_resamples=50000,
+                            n_resamples=100000,
                             alternative='two-sided'
                         )
                         pval = res.pvalue
@@ -130,10 +129,20 @@ def reconstruct_segm(qvals, locations,p_vals,alphas):
         }
         for method, method_dict in p_vals.items()
     }
-
+    qvalues = {
+            method: {
+                stat: {
+                    metric1: {}
+                    for metric1 in stat_dict
+                }
+                for stat, stat_dict in method_dict.items()
+            }
+            for method, method_dict in p_vals.items()
+        }
     # Fill significance levels using q-values
     for (method, stat, metric1, metric2), q in zip(locations, qvals):
         significance[method][stat][metric1][metric2] = np.sum(q < alphas)
+        qvalues[method][stat][metric1][metric2] = q
 
     # Fill missing values
     for method, stat_dict in p_vals.items():
@@ -143,7 +152,7 @@ def reconstruct_segm(qvals, locations,p_vals,alphas):
                     if p_val is None:
                         significance[method][stat][metric1][metric2] = 0
 
-    return significance
+    return qvalues,significance
 
 def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
     
@@ -201,11 +210,15 @@ def plot_significance_matrix_segm(significance,p_values):
             # Extract significance for the specific method and stat
             method_stat_significance = significance.get(method, {}).get(stat, {})
             global_matrix = np.zeros((len(metrics_segm), len(metrics_segm)))
-
             for i, metric1 in enumerate(metrics_segm):
                 for j, metric2 in enumerate(metrics_segm):
                     val = method_stat_significance.get(metric2, {}).get(metric1, None)
-                    global_matrix[i, j] = min(3, val) if val is not None else -1
+                    if val is None:
+                        global_matrix[i,j]=(-1)      # N/A
+                    elif val == 0:
+                        global_matrix[i,j]=(0)       # Not significant
+                    else:
+                        global_matrix[i,j]=(1)
 
             # Create p_val matrix for heatap 
             pval_matrix = []
@@ -213,29 +226,26 @@ def plot_significance_matrix_segm(significance,p_values):
                 pval_row = []
                 for j, metric2 in enumerate(metrics_segm):
                     p_val = p_values.get(method, {}).get(stat, {}).get(metric2, {}).get(metric1, None)
-                    if p_val is not None:
-                        pval_row.append(f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001")
+                    if p_val is None:
+                        pval_row.append("")
+                    elif p_val < 0.05:
+                        pval_row.append("<0.05")
                     else:
-                        pval_row.append("0")
+                        pval_row.append(f"{p_val:.3f}")
                 pval_matrix.append(pval_row)
             
             values = np.unique(global_matrix)
 
             # full mapping dictionary
             color_map_dict = {
-                -1: '#000000',
+                 -1: '#000000',
                 0: '#d9d9d9',
-                1: '#fee08b',
-                2: '#fdae61',
-                3: '#d73027',
+                1: '#fdae61',
             }
-            # extract only the colors for values that appear
             colors = [color_map_dict[v] for v in values]
 
-            # build colormap
             cmap = ListedColormap(colors)
             
-            # Plot heatmap
             labels_x = [metric_labels.get(m, m) for m in metrics_segm]
             labels_y = [metric_labels.get(m, m) for m in metrics_segm]
             sns.heatmap(
@@ -256,9 +266,7 @@ def plot_significance_matrix_segm(significance,p_values):
             ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
 
     legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
         mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
         mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
     ]
     plt.legend(
@@ -275,8 +283,7 @@ def plot_significance_matrix_segm(significance,p_values):
     
     # if not os.path.exists(os.path.dirname(output_path)):
     #     os.makedirs(os.path.dirname(output_path))
-    plt.savefig('../clean_figs/supplementary/test_segm.pdf')
-    plt.show()
+    plt.savefig('../clean_figs/supplementary/test_results/coverage_segm_metrics/test_segm.pdf')
 
 
 def plot_significance_matrix_segm__(root_folder:str, output_path:str, upload_overleaf: bool = False):

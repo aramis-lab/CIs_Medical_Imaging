@@ -107,61 +107,62 @@ def perform_pairwise_tests_basic_classif(df_fit_results):
     
     
     metrics = df_fit_results['metric'].unique()
-    methods = df_fit_results['method'].unique()
-    p_values = {metric : {m : None for m in methods} for metric in metrics} 
+    methods = ['bca', 'percentile',"wald", "exact","agresti_coull", "wilson"]
+    n_values = df_fit_results['n'].unique()
+    p_values = {str(n):{metric : {m : None for m in methods} for metric in metrics} for n in n_values}
 
-   
-    for metric in metrics:
-        # print(metric)
-        for j in ['bca', 'percentile',"wald", "exact","agresti_coull", "wilson"]:
-          
+    for n in n_values: 
+        for metric in metrics:
+            # print(metric)
+            for j in ['bca', 'percentile',"wald", "exact","agresti_coull", "wilson"]:
             
-            if (j in ["wilson","agresti_coull" ,"wald", "exact"]) & (metric!='accuracy'):
-                continue
-            data_basic = df_fit_results[(df_fit_results["method"]=='basic') & (df_fit_results['metric'] == metric)]
-            
-            data_methods= df_fit_results[(df_fit_results["method"]==j) & (df_fit_results['metric'] == metric)]
-            # print(data_basic['beta2'].mean(),data_methods['beta2'].mean())
-            grp1 = (
-                data_basic
-                .groupby(['task', 'algo'])['beta2']
-                .mean()
-                .reset_index(name='beta1')
-            )
-            
-            grp2 = (
-                data_methods
-                .groupby(['task', 'algo'])['beta2']
-                .mean()
-                .reset_index(name='beta2')
-            )
-            
-            merged = pd.merge(grp1, grp2, on=['task', 'algo'], how='inner')
-            
-            merged = merged.dropna(subset=['beta1', 'beta2'])
-
-            if len(merged) < 2:
-                pval = None
-            else:
-                def statistic(x, y):
-                    return np.mean(x) - np.mean(y)
-
-                res = permutation_test(
-                    (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
-                    statistic,permutation_type='samples',
-                    vectorized=False,
-                    n_resamples=50000,
-                    alternative='greater'
+                
+                if (j in ["wilson","agresti_coull" ,"wald", "exact"]) & (metric!='accuracy'):
+                    continue
+                data_basic = df_fit_results[(df_fit_results["method"]=='basic') & (df_fit_results['metric'] == metric)& (df_fit_results['n']==n)]
+                
+                data_methods= df_fit_results[(df_fit_results["method"]==j) & (df_fit_results['metric'] == metric)& (df_fit_results['n']==n)]
+                # print(data_basic['beta2'].mean(),data_methods['beta2'].mean())
+                grp1 = (
+                    data_basic
+                    .groupby(['task', 'algo'])['value']
+                    .mean()
+                    .reset_index(name='beta1')
                 )
-                # res = permutation_test(
-                #     merged['beta1'].to_numpy(), merged['beta2'].to_numpy(),
-                #     paired=True,
-                #     func=statistic,
-                #     seed=0, num_rounds=50000
-                # )
+                
+                grp2 = (
+                    data_methods
+                    .groupby(['task', 'algo'])['value']
+                    .mean()
+                    .reset_index(name='beta2')
+                )
+                
+                merged = pd.merge(grp1, grp2, on=['task', 'algo'], how='inner')
+                
+                merged = merged.dropna(subset=['beta1', 'beta2'])
 
-                pval = res.pvalue
-            p_values[metric][j] = pval
+                if len(merged) < 2:
+                    pval = None
+                else:
+                    def statistic(x, y):
+                        return np.mean(x) - np.mean(y)
+
+                    res = permutation_test(
+                        (merged['beta1'].to_numpy(), merged['beta2'].to_numpy()),
+                        statistic,permutation_type='samples',
+                        vectorized=False,
+                        n_resamples=100000,
+                        alternative='less'
+                    )
+                    # res = permutation_test(
+                    #     merged['beta1'].to_numpy(), merged['beta2'].to_numpy(),
+                    #     paired=True,
+                    #     func=statistic,
+                    #     seed=0, num_rounds=50000
+                    # )
+
+                    pval = res.pvalue
+                p_values[str(n)][metric][j] = pval
 
     return p_values
 
@@ -169,41 +170,43 @@ def get_pvalues_basic_classif(pvalues):
 
     pvals = []
     keys = []
+    for n, metric_dict in pvalues.items():
+        for metric, method_dict in metric_dict.items():
+            for method, pval in method_dict.items():
 
-    for metric, method_dict in pvalues.items():
-        for method, pval in method_dict.items():
-
-            if pval is not None and not np.isnan(pval):
-                pvals.append(pval)
-                keys.append( (metric, method))
+                if pval is not None and not np.isnan(pval):
+                    pvals.append(pval)
+                    keys.append( (n,metric, method))
 
     pvals = np.asarray(pvals)
     return(pvals, keys)
 
 def reconstruct_basic_classif(qvals, keys,pvalues,alphas):
     q_values = {
-       
+        n: {
             metric: {
                 method: None
                 for method in method_dict
             }
-            for metric, method_dict in pvalues.items()
-        }
+            for metric, method_dict in metric_dict.items()
+        } for n, metric_dict in pvalues.items()
+    }
  
 
     significant = {
-      
+        n: {
             metric: {
                 method: False
                 for method in method_dict
             }
-            for metric, method_dict in pvalues.items()
-       
+            for metric, method_dict in metric_dict.items()
+        }
+        for n, metric_dict in pvalues.items()
     }
     
-    for (metric, method), qval in zip(keys, qvals):
-        q_values[metric][method] = qval
-        significant[metric][method] = np.sum(qval < alphas)
+    for (n, metric, method), qval in zip(keys, qvals):
+        q_values[n][metric][method] = qval
+        significant[n][metric][method] = np.sum(qval < alphas)
 
     return q_values,significant
 
@@ -258,11 +261,10 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
 
 
 
-def plot_significance_matrix_basic_classif(significance, p_values, type):
-    
+def plot_significance_matrix_basic_classif(significance, p_values, task,n):
     plt.rcdefaults()
     main_methods = ['bca', 'percentile']
-    if type=='macro':
+    if task=='macro':
         metric_order = ["balanced_accuracy","ap", "auc", "f1_score"]
         methods=main_methods
     else:
@@ -282,7 +284,13 @@ def plot_significance_matrix_basic_classif(significance, p_values, type):
         for j, method in enumerate(methods):
 
             val = significance.get(metric, {}).get(method, None)
-            global_matrix[i, j] = min(3, val) if val is not None else 0
+            if val is None:
+                global_matrix[i, j] = -1      # N/A
+            elif val == 0:
+                global_matrix[i, j] = 0       # Not significant
+            else:
+                global_matrix[i, j] = 1
+            # global_matrix[i, j] = val if val is not None else -1
         
 
     pval_matrix = []
@@ -292,24 +300,30 @@ def plot_significance_matrix_basic_classif(significance, p_values, type):
 
         for method in methods:
 
-            p_val = p_values.get(metric, {}).get(method, None)
+            p_val = p_values.get(metric, {}).get(method)
             if p_val is None:
-                pval_row.append("0")
+                    pval_row.append("")
+            elif p_val < 0.05:
+                pval_row.append("<0.05")
             else:
-                pval_row.append(
-                    f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
-                )
+                pval_row.append(f"{p_val:.3f}")
+            # if p_val is None:
+            #     pval_row.append("0")
+            # else:
+            #     pval_row.append(
+            #         f"{p_val:.6f}" if p_val >= 0.05 else "<0.05"
+            #     )
 
         pval_matrix.append(pval_row)
     
     values = np.unique(global_matrix)
     # full mapping dictionary
     color_map_dict = {
-        -1: '#000000',
-        0: '#d9d9d9',
-        1: '#fee08b',
-        2: '#fdae61',
-        3: '#d73027',
+       
+        -1: "#161515",
+        0: "#d9d9d9",
+        1: "#fdae61",
+       
     }
     # extract only the colors for values that appear
     colors = [color_map_dict[v] for v in values]
@@ -335,9 +349,7 @@ def plot_significance_matrix_basic_classif(significance, p_values, type):
     ax.tick_params(axis='y', rotation=45, labelsize=12)
     ax.set_title('Test of basic slower CCP', fontsize=16)
     legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
         mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
         mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
     ]
     plt.legend(
@@ -350,8 +362,7 @@ def plot_significance_matrix_basic_classif(significance, p_values, type):
         title_fontsize=16
     )
     plt.tight_layout()
-    plt.savefig(f"../clean_figs/supplementary/test_basic_classif_{type}.pdf")
-    plt.show()
+    plt.savefig(f"../clean_figs/supplementary/test_results/cov_basic_classif_{task}/{n}.pdf")
 
 def main(agreg_type):
     if agreg_type=='micro':

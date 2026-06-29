@@ -60,7 +60,10 @@ def fit_ccp_segm(segm_path):
                                 continue
                             else:
                                 n_values = df_algo['n'].to_numpy()
-                                coverages = df_algo[f'contains_true_stat_{method}'].to_numpy()
+                                if stat=='std':
+                                    coverages = df_algo[f'coverage_{method}'].to_numpy()
+                                else:
+                                    coverages = df_algo[f'contains_true_stat_{method}'].to_numpy()
                                 Y = 0.95 - coverages
                                 X = np.vstack([1/n_values]).T
                                 beta2, res = np.linalg.lstsq(X, Y, rcond=None)[:2]
@@ -160,6 +163,7 @@ def fit_wdp_classif(classif_path,agreg_type):
 # segm_path = '../results_metrics_segm'
 
 # df_fit_results=fit_ccp_segm(segm_path)
+# df_fit_results.to_csv("../results_metrics_segm/results_ccp_segm.csv")
 
 # df_fit_results_micro=fit_ccp_classif(micro_path, 'micro')
 # df_fit_results_macro=fit_ccp_classif(macro_path, 'macro')
@@ -190,7 +194,10 @@ def get_values(segm_path, val):
                                 for n in df_algo['n'].unique():
                                     df_n=df_algo[df_algo['n']==n]
                                     if val=='coverage':
-                                        value = df_n[f'contains_true_stat_{method}'].to_numpy()
+                                        if stat=='std':
+                                            value = df_n[f'coverage_{method}'].to_numpy()
+                                        else:
+                                            value = df_n[f'contains_true_stat_{method}'].to_numpy()
                                     else:
                                         value = df_n[f'width_{method}'].to_numpy()
                                     new_row = {
@@ -200,12 +207,12 @@ def get_values(segm_path, val):
                                         'metric': metric,
                                         'stat': stat,
                                         'method': method,
-                                        'value': value,
+                                        'value': value[0],
         
                                     }
                                     results.append(new_row)
-        df_fit_results = pd.DataFrame(results)
-        return(df_fit_results)
+    df_fit_results = pd.DataFrame(results)
+    return(df_fit_results)
     
 def get_values_classif(classif_path, agreg_type, val):
     results = []
@@ -228,11 +235,11 @@ def get_values_classif(classif_path, agreg_type, val):
                         if (method in ["wilson","agresti_coull" ,"wald", "exact"]) and (metric !='accuracy'):
                             continue
                         for n in df_algo['n'].unique():
-                            df_=df_algo[df_algo['n']==n]
+                            df_n=df_algo[df_algo['n']==n]
                             if val=='coverage':
-                                value = df_algo[f'contains_true_stat_{method}'].to_numpy()
+                                value = df_n[f'contains_true_stat_{method}'].to_numpy()
                             else:
-                                value = df_algo[f'width_{method}'].to_numpy()
+                                value = df_n[f'width_{method}'].to_numpy()
 
                             new_row = {
                                 'n':n,
@@ -240,7 +247,7 @@ def get_values_classif(classif_path, agreg_type, val):
                                 'algo': algo,
                                 'metric': metric,
                                 'method': method,
-                                'value': value
+                                'value': value[0]
                             }
                             results.append(new_row)
     df_fit_results = pd.DataFrame(results)
@@ -251,11 +258,19 @@ macro_path = '../results_metrics_classif_macro'
 segm_path = '../results_metrics_segm'
 
 df_results_cov=get_values(segm_path, 'coverage')
-df_results_width=get_values(segm_path, 'width')
+df_results_cov.to_csv("../results_metrics_segm/all_results_cov.csv")
 
+df_results_width=get_values(segm_path, 'width')
+df_results_width.to_csv("../results_metrics_segm/all_results_width.csv")
 df_results_classif_cov=get_values_classif(micro_path, 'micro', 'coverage')
+df_results_classif_cov.to_csv("../results_metrics_classif/all_results_cov.csv")
+
 df_results_classif_width=get_values_classif(micro_path, 'micro', 'width')
+df_results_classif_width.to_csv("../results_metrics_classif/all_results_width.csv")
 
 df_results_classif_macro_cov=get_values_classif(macro_path, 'macro', 'coverage')
+df_results_classif_macro_cov.to_csv("../results_metrics_classif_macro/all_results_cov.csv")
+
 df_results_classif_macro_width=get_values_classif(macro_path, 'macro', 'width')
 
+df_results_classif_macro_width.to_csv("../results_metrics_classif_macro/all_results_width.csv")
