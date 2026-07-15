@@ -9,8 +9,7 @@ from ...kernels import get_kernel
 from ...intervals_and_metrics import get_bounds, is_continuous
 from itertools import product
 from tqdm import tqdm
-from scipy.stats import ks_2samp, cramervonmises_2samp, anderson_ksamp, epps_singleton_2samp, energy_distance
-from statsmodels.stats.multitest import multipletests
+from scipy.stats import energy_distance
 
 # ─────────────────────────────────────────────────────────────
 #  Single-instance KDE + CDF computation
@@ -70,13 +69,6 @@ def compute_instance(df_, metric, task, algo):
 
 def evaluate_kde_2sample(original, kde_samples):
     n = len(original)
-    ks_stat, ks_pval = ks_2samp(original, kde_samples)
-    cvm_res = cramervonmises_2samp(original, kde_samples)
-    ad_stat, _, ad_pval = anderson_ksamp([original, kde_samples])
-    try:
-        es_stat, es_pval = epps_singleton_2samp(original, kde_samples)
-    except Exception:
-        es_stat, es_pval = np.nan, np.nan
     e_dist = energy_distance(original, kde_samples)
     mean_err = abs(np.mean(kde_samples) - np.mean(original)) / (np.std(original) + 1e-10)
     std_ratio = np.std(kde_samples) / (np.std(original) + 1e-10)
@@ -86,51 +78,30 @@ def evaluate_kde_2sample(original, kde_samples):
     max_q_err = np.max(np.abs(q_kde - q_orig) / (np.abs(q_orig) + 1e-10))
     median_q_err = np.median(np.abs(q_kde - q_orig) / (np.abs(q_orig) + 1e-10))
     return {
-        'n': n, 'ks_stat': ks_stat, 'ks_pval': ks_pval,
-        'cvm_stat': cvm_res.statistic, 'cvm_pval': cvm_res.pvalue,
-        'ad_stat': ad_stat, 'ad_pval': ad_pval,
-        'es_stat': es_stat, 'es_pval': es_pval,
+        'n': n,
         'energy_dist': e_dist, 'mean_err': mean_err, 'std_ratio': std_ratio,
         'max_q_err': max_q_err, 'median_q_err': median_q_err,
     }
 
-def multiple_tests_and_plot(df, all_originals, all_kde_samples, output_folder="."):
-    # ── Multiple testing correction ──
-    rejected_bh, pvals_bh, _, _ = multipletests(df['ks_pval'], alpha=0.05, method='fdr_bh')
-    rejected_bonf, _, _, _ = multipletests(df['ks_pval'], alpha=0.05, method='bonferroni')
-    df['ks_pval_bh'] = pvals_bh
-    df['rejected_bh'] = rejected_bh
-    print(f"Raw:  {(df['ks_pval'] < 0.05).sum()}/{len(df)} rejected at alpha=0.05")
-    print(f"BH:   {rejected_bh.sum()}/{len(df)} rejected after FDR correction")
-    print(f"Bonf: {rejected_bonf.sum()}/{len(df)} rejected after Bonferroni correction")
+def plot(df, all_originals, all_kde_samples, output_folder="."):
 
     # ── Dashboard ──
-    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+    fig, axes = plt.subplots(2, 2, figsize=(16, 10))
 
-    axes[0, 0].hist(df['ks_stat'], bins=50, density=True, alpha=0.7, edgecolor='k')
-    axes[0, 0].axvline(df['ks_stat'].median(), color='red', ls='--',
-                        label=f"Median = {df['ks_stat'].median():.4f}")
-    axes[0, 0].set_xlabel('2-Sample KS Statistic'); axes[0, 0].set_title('(a) KS Statistics')
+    axes[0, 0].hist(df['energy_dist'], bins=50, density=True, alpha=0.7, edgecolor='k')
+    axes[0, 0].axvline(df['energy_dist'].median(), color='red', ls='--',
+                        label=f"Median = {df['energy_dist'].median():.4f}")
+    axes[0, 0].set_xlabel('Energy Distance'); axes[0, 0].set_title('(a) Energy Distance')
     axes[0, 0].legend()
 
-    axes[0, 1].hist(df['ks_pval'], bins=50, density=True, alpha=0.7, edgecolor='k')
-    axes[0, 1].set_xlabel('KS p-value'); axes[0, 1].set_title('(b) KS p-values')
+    axes[0, 1].hist(df['std_ratio'], bins=50, alpha=0.7, edgecolor='k')
+    axes[0, 1].axvline(1.0, color='red', ls='--', lw=2, label='Ideal = 1.0')
+    axes[0, 1].set_xlabel('sigma_KDE / sigma_data'); axes[0, 1].set_title('(b) Variance Preservation')
     axes[0, 1].legend()
 
-    axes[0, 2].hist(df['energy_dist'], bins=50, density=True, alpha=0.7, edgecolor='k')
-    axes[0, 2].axvline(df['energy_dist'].median(), color='red', ls='--',
-                        label=f"Median = {df['energy_dist'].median():.4f}")
-    axes[0, 2].set_xlabel('Energy Distance'); axes[0, 2].set_title('(c) Energy Distance')
-    axes[0, 2].legend()
-
-    axes[1, 0].hist(df['std_ratio'], bins=50, alpha=0.7, edgecolor='k')
-    axes[1, 0].axvline(1.0, color='red', ls='--', lw=2, label='Ideal = 1.0')
-    axes[1, 0].set_xlabel('sigma_KDE / sigma_data'); axes[1, 0].set_title('(d) Variance Preservation')
-    axes[1, 0].legend()
-
-    axes[1, 1].hist(df['mean_err'], bins=50, alpha=0.7, edgecolor='k')
-    axes[1, 1].axvline(0, color='red', ls='--')
-    axes[1, 1].set_xlabel('|mu_KDE - mu_data| / sigma_data'); axes[1, 1].set_title('(e) Mean Discrepancy')
+    axes[1, 0].hist(df['mean_err'], bins=50, alpha=0.7, edgecolor='k')
+    axes[1, 0].axvline(0, color='red', ls='--')
+    axes[1, 0].set_xlabel('|mu_KDE - mu_data| / sigma_data'); axes[1, 0].set_title('(c) Mean Discrepancy')
 
     probs = np.array([0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99])
     all_q_orig, all_q_kde = [], []
@@ -142,12 +113,12 @@ def multiple_tests_and_plot(df, all_originals, all_kde_samples, output_folder=".
         all_q_kde.append((np.quantile(kde_s, probs) - mu) / sigma)
     all_q_orig = np.concatenate(all_q_orig)
     all_q_kde = np.concatenate(all_q_kde)
-    axes[1, 2].scatter(all_q_orig, all_q_kde, s=1, alpha=0.3)
+    axes[1, 1].scatter(all_q_orig, all_q_kde, s=1, alpha=0.3)
     lims = [min(all_q_orig.min(), all_q_kde.min()), max(all_q_orig.max(), all_q_kde.max())]
-    axes[1, 2].plot(lims, lims, 'r--', lw=2)
-    axes[1, 2].set_xlabel('Standardised Empirical Quantiles')
-    axes[1, 2].set_ylabel('Standardised KDE Quantiles')
-    axes[1, 2].set_title('(f) Pooled Q-Q (all distributions)')
+    axes[1, 1].plot(lims, lims, 'r--', lw=2)
+    axes[1, 1].set_xlabel('Standardised Empirical Quantiles')
+    axes[1, 1].set_ylabel('Standardised KDE Quantiles')
+    axes[1, 1].set_title('(d) Pooled Q-Q (all distributions)')
     plt.tight_layout()
     plt.savefig(f'{output_folder}/kde_validation_2sample.pdf', dpi=300, bbox_inches='tight')
     plt.close()
@@ -155,17 +126,11 @@ def multiple_tests_and_plot(df, all_originals, all_kde_samples, output_folder=".
     # ── Summary table ──
     summary = pd.DataFrame({
         'Metric': [
-            'KS statistic (median)', 'KS p > 0.05 (%)', 'KS p > 0.05 after BH (%)',
-            'CvM p > 0.05 (%)', 'AD p > 0.05 (%)', 'Energy distance (median)',
+            'Energy distance (median)',
             '|d_mu|/sigma (median)', 'sigma_KDE/sigma_data (median)',
             'Max quantile rel. error (median)',
         ],
         'Value': [
-            f"{df['ks_stat'].median():.4f}",
-            f"{(df['ks_pval'] > 0.05).mean()*100:.1f}",
-            f"{(~df['rejected_bh']).mean()*100:.1f}",
-            f"{(df['cvm_pval'] > 0.05).mean()*100:.1f}",
-            f"{(df['ad_pval'] > 0.05).mean()*100:.1f}",
             f"{df['energy_dist'].median():.4f}",
             f"{df['mean_err'].median():.4f}",
             f"{df['std_ratio'].median():.4f}",
@@ -216,4 +181,4 @@ if __name__ == "__main__":
 
     df = pd.DataFrame(results)
 
-    summary = multiple_tests_and_plot(df, all_originals, all_kde_samples, output_folder=os.path.join(args.output_folder, "clean_figs/supplementary"))
+    summary = plot(df, all_originals, all_kde_samples, output_folder=os.path.join(args.output_folder, "clean_figs/supplementary"))
