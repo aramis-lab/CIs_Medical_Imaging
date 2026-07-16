@@ -24,9 +24,10 @@ run_plan:
     - hd
     - hd_perc
   experiments:
-    - epanechnikov_adaptive_trimmed
-    - epanechnikov_adaptive
-    - epanechnikov_scott
-    - gaussian_adaptive
-    - gaussian_scott
+    # - epanechnikov_adaptive_trimmed
+    # - epanechnikov_adaptive
+    # - epanechnikov_scott
+    - epanechnikov_scott_trimmed
+    # - gaussian_adaptive
+    # - gaussian_scott
   sweep_file: sweep/segm_all_pairs.yaml
