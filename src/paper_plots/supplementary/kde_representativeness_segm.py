@@ -113,9 +113,8 @@ def plot(df, all_originals, all_kde_samples, output_folder="."):
         all_q_kde.append((np.quantile(kde_s, probs) - mu) / sigma)
     all_q_orig = np.concatenate(all_q_orig)
     all_q_kde = np.concatenate(all_q_kde)
+    axes[1, 1].plot([np.nanmin(all_q_orig), np.nanmax(all_q_orig)], [np.nanmin(all_q_orig), np.nanmax(all_q_orig)], color='red', ls='--', lw=2)
     axes[1, 1].scatter(all_q_orig, all_q_kde, s=1, alpha=0.3)
-    lims = [min(all_q_orig.min(), all_q_kde.min()), max(all_q_orig.max(), all_q_kde.max())]
-    axes[1, 1].plot(lims, lims, 'r--', lw=2)
     axes[1, 1].set_xlabel('Standardised Empirical Quantiles')
     axes[1, 1].set_ylabel('Standardised KDE Quantiles')
     axes[1, 1].set_title('(d) Pooled Q-Q (all distributions)')
