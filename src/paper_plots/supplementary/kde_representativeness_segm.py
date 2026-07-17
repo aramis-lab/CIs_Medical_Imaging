@@ -86,7 +86,7 @@ def evaluate_kde_2sample(original, kde_samples):
 def plot(df, all_originals, all_kde_samples, output_folder="."):
 
     # ── Dashboard ──
-    fig, axes = plt.subplots(1, 2, figsize=(16, 10))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
     axes[0].hist(df['energy_dist'], bins=50, density=True, alpha=0.7, edgecolor='k')
     axes[0].axvline(df['energy_dist'].median(), color='red', ls='--',
