@@ -86,22 +86,13 @@ def evaluate_kde_2sample(original, kde_samples):
 def plot(df, all_originals, all_kde_samples, output_folder="."):
 
     # ── Dashboard ──
-    fig, axes = plt.subplots(2, 2, figsize=(16, 10))
+    fig, axes = plt.subplots(1, 2, figsize=(16, 10))
 
-    axes[0, 0].hist(df['energy_dist'], bins=50, density=True, alpha=0.7, edgecolor='k')
-    axes[0, 0].axvline(df['energy_dist'].median(), color='red', ls='--',
+    axes[0].hist(df['energy_dist'], bins=50, density=True, alpha=0.7, edgecolor='k')
+    axes[0].axvline(df['energy_dist'].median(), color='red', ls='--',
                         label=f"Median = {df['energy_dist'].median():.4f}")
-    axes[0, 0].set_xlabel('Energy Distance'); axes[0, 0].set_title('(a) Energy Distance')
-    axes[0, 0].legend()
-
-    axes[0, 1].hist(df['std_ratio'], bins=50, alpha=0.7, edgecolor='k')
-    axes[0, 1].axvline(1.0, color='red', ls='--', lw=2, label='Ideal = 1.0')
-    axes[0, 1].set_xlabel('sigma_KDE / sigma_data'); axes[0, 1].set_title('(b) Variance Preservation')
-    axes[0, 1].legend()
-
-    axes[1, 0].hist(df['mean_err'], bins=50, alpha=0.7, edgecolor='k')
-    axes[1, 0].axvline(0, color='red', ls='--')
-    axes[1, 0].set_xlabel('|mu_KDE - mu_data| / sigma_data'); axes[1, 0].set_title('(c) Mean Discrepancy')
+    axes[0].set_xlabel('Energy Distance'); axes[0].set_title('(a) Energy Distance')
+    axes[0].legend()
 
     probs = np.array([0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99])
     all_q_orig, all_q_kde = [], []
@@ -113,11 +104,11 @@ def plot(df, all_originals, all_kde_samples, output_folder="."):
         all_q_kde.append((np.quantile(kde_s, probs) - mu) / sigma)
     all_q_orig = np.concatenate(all_q_orig)
     all_q_kde = np.concatenate(all_q_kde)
-    axes[1, 1].plot([np.nanmin(all_q_orig), np.nanmax(all_q_orig)], [np.nanmin(all_q_orig), np.nanmax(all_q_orig)], color='red', ls='--', lw=2)
-    axes[1, 1].scatter(all_q_orig, all_q_kde, s=1, alpha=0.3)
-    axes[1, 1].set_xlabel('Standardised Empirical Quantiles')
-    axes[1, 1].set_ylabel('Standardised KDE Quantiles')
-    axes[1, 1].set_title('(d) Pooled Q-Q (all distributions)')
+    axes[1].plot([np.nanmin(all_q_orig), np.nanmax(all_q_orig)], [np.nanmin(all_q_orig), np.nanmax(all_q_orig)], color='red', ls='--', lw=2)
+    axes[1].scatter(all_q_orig, all_q_kde, s=1, alpha=0.3)
+    axes[1].set_xlabel('Standardised Empirical Quantiles')
+    axes[1].set_ylabel('Standardised KDE Quantiles')
+    axes[1].set_title('(b) Pooled Q-Q (all distributions)')
     plt.tight_layout()
     plt.savefig(f'{output_folder}/kde_validation_2sample.pdf', dpi=300, bbox_inches='tight')
     plt.close()
