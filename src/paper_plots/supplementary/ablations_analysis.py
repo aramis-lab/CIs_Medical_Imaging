@@ -60,10 +60,14 @@ def process_ablation_results_diff(ablations, ref, metrics, plot_histograms=True)
     for ablation, diff_dfs in abs_diffs.items():
         for diff_df in diff_dfs:
             numerical_cols = diff_df[non_key_cols]
-            meandiffs = numerical_cols.mean()
             for method in methods:
-                cov_diffs[ablation][method].append(meandiffs[f'coverage_{method}'])
-                width_diffs[ablation][method].append(meandiffs[f'width_{method}'])
+                cov_diffs[ablation][method].append(numerical_cols[f'coverage_{method}'].to_numpy())
+                width_diffs[ablation][method].append(numerical_cols[f'width_{method}'].to_numpy())
+
+    for ablation in ablations:
+        for method in methods:
+            cov_diffs[ablation][method] = np.concatenate(cov_diffs[ablation][method])
+            width_diffs[ablation][method] = np.concatenate(width_diffs[ablation][method])
 
     if plot_histograms:
         fig, axes = plt.subplots(len(ablations), 2, figsize=(16, 24))
@@ -94,14 +98,18 @@ def process_ablation_results_diff(ablations, ref, metrics, plot_histograms=True)
     body = ""
     for ablation in ablations:
         for method in methods:
-            mean_cov_diff = np.mean(cov_diffs[ablation][method])
-            std_cov_diff = np.std(cov_diffs[ablation][method])
-            mean_width_diff = np.mean(width_diffs[ablation][method])
-            std_width_diff = np.std(width_diffs[ablation][method])
+            mean_cov_diff = np.nanmean(cov_diffs[ablation][method])
+            std_cov_diff = np.nanstd(cov_diffs[ablation][method])
+            min_cov_diff = np.nanpercentile(cov_diffs[ablation][method], 25)
+            max_cov_diff = np.nanpercentile(cov_diffs[ablation][method], 75)
+            mean_width_diff = np.nanmean(width_diffs[ablation][method])
+            std_width_diff = np.nanstd(width_diffs[ablation][method])
+            min_width_diff = np.nanpercentile(width_diffs[ablation][method], 25)
+            max_width_diff = np.nanpercentile(width_diffs[ablation][method], 75)
             body += (
                 f"| {ablation} | {method} | "
-                f"{mean_cov_diff:.4f} ± {std_cov_diff:.4f} | "
-                f"{mean_width_diff:.4f} ± {std_width_diff:.4f} |\n"
+                f"{mean_cov_diff:.4f} ± {std_cov_diff:.4f} ({min_cov_diff:.4f}, {max_cov_diff:.4f}) | "
+                f"{mean_width_diff:.4f} ± {std_width_diff:.4f} ({min_width_diff:.4f}, {max_width_diff:.4f}) |\n"
             )
 
     markdown_table = header + body
@@ -139,11 +147,6 @@ def process_ablation_results_relative_diff(ablations, ref, metrics, plot_histogr
                     if "width" in col:
                         diff_df[col] = diff_df[col] / df_ref[col].replace(0, np.nan)  # Avoid division by zero
                     diff_df[col] = diff_df[col].abs()
-                if "balanced_accuracy" in file and ablation=="gaussian_adaptive":
-                    indices = diff_df.sort_values(by='width_bca', ascending=False).index[:20]
-                    print(f"Top 20 differences for {ablation} in {file}:")
-                    print(diff_df.loc[indices, ["subtask", "alg_name", "n", "width_bca"]])
-                    print(df_ref.loc[indices, ["subtask", "alg_name", "n", "width_bca"]])
                 abs_diffs[ablation].append(diff_df)
 
     cov_diffs = {ablation: {method: [] for method in methods} for ablation in ablations}
@@ -152,10 +155,14 @@ def process_ablation_results_relative_diff(ablations, ref, metrics, plot_histogr
     for ablation, diff_dfs in abs_diffs.items():
         for diff_df in diff_dfs:
             numerical_cols = diff_df[non_key_cols]
-            meandiffs = numerical_cols.mean()
             for method in methods:
-                cov_diffs[ablation][method].append(meandiffs[f'coverage_{method}'])
-                width_diffs[ablation][method].append(meandiffs[f'width_{method}'])
+                cov_diffs[ablation][method].append(numerical_cols[f'coverage_{method}'].to_numpy())
+                width_diffs[ablation][method].append(numerical_cols[f'width_{method}'].to_numpy())
+
+    for ablation in ablations:
+        for method in methods:
+            cov_diffs[ablation][method] = np.concatenate(cov_diffs[ablation][method])
+            width_diffs[ablation][method] = np.concatenate(width_diffs[ablation][method])
 
     if plot_histograms:
         fig, axes = plt.subplots(len(ablations), 2, figsize=(16, 24))
@@ -186,14 +193,18 @@ def process_ablation_results_relative_diff(ablations, ref, metrics, plot_histogr
     body = ""
     for ablation in ablations:
         for method in methods:
-            mean_cov_diff = np.mean(cov_diffs[ablation][method])
-            std_cov_diff = np.std(cov_diffs[ablation][method])
-            mean_width_diff = np.mean(width_diffs[ablation][method])
-            std_width_diff = np.std(width_diffs[ablation][method])
+            mean_cov_diff = np.nanmean(cov_diffs[ablation][method])
+            std_cov_diff = np.nanstd(cov_diffs[ablation][method])
+            min_cov_diff = np.nanpercentile(cov_diffs[ablation][method], 25)
+            max_cov_diff = np.nanpercentile(cov_diffs[ablation][method], 75)
+            mean_width_diff = np.nanmean(width_diffs[ablation][method])
+            std_width_diff = np.nanstd(width_diffs[ablation][method])
+            min_width_diff = np.nanpercentile(width_diffs[ablation][method], 25)
+            max_width_diff = np.nanpercentile(width_diffs[ablation][method], 75)
             body += (
                 f"| {ablation} | {method} | "
-                f"{mean_cov_diff:.4f} ± {std_cov_diff:.4f} | "
-                f"{mean_width_diff:.4f} ± {std_width_diff:.4f} |\n"
+                f"{mean_cov_diff:.4f} ± {std_cov_diff:.4f} ({min_cov_diff:.4f}, {max_cov_diff:.4f}) | "
+                f"{mean_width_diff:.4f} ± {std_width_diff:.4f} ({min_width_diff:.4f}, {max_width_diff:.4f}) |\n"
             )
 
     markdown_table = header + body
@@ -203,19 +214,19 @@ if __name__ == "__main__":
 
     print("Ablation results for bounded metrics (width not normalized):\n")
     process_ablation_results_diff(segm_ablations, ref, bounded_metrics, plot_histograms=False)
-    print("Ablation results for unbounded metrics (width not normalized):\n")
-    process_ablation_results_diff(segm_ablations, ref, unbounded_metrics, plot_histograms=False)
-    print("Ablation results for all segmentation metrics (width not normalized):\n")
-    process_ablation_results_diff(segm_ablations, ref, all_metrics, plot_histograms=False)
-    print("Ablation results for bounded metrics (width normalized):\n")
-    process_ablation_results_relative_diff(segm_ablations, ref, bounded_metrics, plot_histograms=False)
+    # print("Ablation results for unbounded metrics (width not normalized):\n")
+    # process_ablation_results_diff(segm_ablations, ref, unbounded_metrics, plot_histograms=False)
+    # print("Ablation results for all segmentation metrics (width not normalized):\n")
+    # process_ablation_results_diff(segm_ablations, ref, all_metrics, plot_histograms=False)
+    # print("Ablation results for bounded metrics (width normalized):\n")
+    # process_ablation_results_relative_diff(segm_ablations, ref, bounded_metrics, plot_histograms=False)
     print("Ablation results for unbounded metrics (width normalized):\n")
     process_ablation_results_relative_diff(segm_ablations, ref, unbounded_metrics, plot_histograms=False)
-    print("Ablation results for all segmentation metrics (width normalized):\n")
-    process_ablation_results_relative_diff(segm_ablations, ref, all_metrics, plot_histograms=False)
+    # print("Ablation results for all segmentation metrics (width normalized):\n")
+    # process_ablation_results_relative_diff(segm_ablations, ref, all_metrics, plot_histograms=False)
 
 
     print("Ablation results for classif metrics (width not normalized):\n")
     process_ablation_results_diff(classif_ablations, ref, classif_metrics, plot_histograms=False)
-    print("Ablation results for classif metrics (width normalized):\n")
-    process_ablation_results_relative_diff(classif_ablations, ref, classif_metrics, plot_histograms=False)
+    # print("Ablation results for classif metrics (width normalized):\n")
+    # process_ablation_results_relative_diff(classif_ablations, ref, classif_metrics, plot_histograms=False)
