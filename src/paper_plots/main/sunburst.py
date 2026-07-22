@@ -19,7 +19,7 @@ plt.rcParams['font.size'] = 11
 RING_WIDTH       = 0.55
 INNER_RADIUS     = 0.90
 NUM_LAYERS       = 4
-LAYER_FONT       = {1: 22, 2: 17, 3: 14, 4: 14}   # layer‑4 bumped (radial ⇒ more room)
+LAYER_FONT       = {1: 22, 2: 20, 3: 17, 4: 12}   # layer‑4 bumped (radial ⇒ more room)
 MIN_FONT         = 4.0
 MIN_METHOD_FRAC  = 0.12
 
@@ -40,6 +40,9 @@ _GS = np.array(to_rgb("#2e7d32"))
 _GL = np.array(to_rgb("#a5d6a7"))
 _OR = np.array(to_rgb("#e65100"))
 _RD = np.array(to_rgb("#c62828"))
+
+# Uniform color for the method ring (layer 1), matching the center label
+_METHOD_RING_COLOR = "#595959"
 
 DISPLAY = {
     'basic': 'Basic', 'bca': 'BCa', 'percentile': 'Percentile',
@@ -344,7 +347,8 @@ def _add_coverage_colorbar(fig, ax, fontsize=24):
 # =============================================================================
 # DRAW SUNBURST
 # =============================================================================
-def draw_sunburst(df, fig, ax, center_label=None, center_fontsize=26):
+def draw_sunburst(df, fig, ax, center_label=None, center_fontsize=26,
+                  add_colorbar=True):
     """
     Draw a single sunburst on the given axes.
 
@@ -352,6 +356,14 @@ def draw_sunburst(df, fig, ax, center_label=None, center_fontsize=26):
     Layer 4 (metrics) and merged nodes (e.g. MCC) use **radial** text
     (along the radius) so labels can be larger and more readable.
     All nodes of the same type share a uniform font size.
+
+    The method ring (layer 1) is colored using the fixed
+    ``method_colors`` mapping from ``..plot_utils`` instead of the
+    coverage colormap. Layers 2–4 keep the coverage-based coloring.
+
+    Set ``add_colorbar=False`` to skip drawing the coverage colorbar
+    next to this axes (useful when several sunbursts share one
+    colorbar drawn only once, e.g. next to a single panel).
     """
     root = build_tree(df)
     root.compute_avg()
@@ -438,8 +450,13 @@ def draw_sunburst(df, fig, ax, center_label=None, center_fontsize=26):
             return
 
         inner, outer = _radii(node)
-        v  = node.avg_cov if node.avg_cov is not None else 0.5
-        fc = coverage_to_color(v)
+
+        if node.layer == 1:
+            # Method ring: fixed color from ..plot_utils.method_colors
+            fc = to_rgb(_METHOD_RING_COLOR)
+        else:
+            v  = node.avg_cov if node.avg_cov is not None else 0.5
+            fc = coverage_to_color(v)
         tc = _text_color(fc)
 
         ax.add_patch(mpatches.Wedge(
@@ -477,6 +494,7 @@ def draw_sunburst(df, fig, ax, center_label=None, center_fontsize=26):
 
     if center_label is not None:
         ax.text(0, 0, center_label, ha='center', va='center',
-                fontsize=center_fontsize, fontweight='bold', color='#222222')
+                fontsize=center_fontsize, fontweight='bold')
 
-    _add_coverage_colorbar(fig, ax)
+    if add_colorbar:
+        _add_coverage_colorbar(fig, ax)
