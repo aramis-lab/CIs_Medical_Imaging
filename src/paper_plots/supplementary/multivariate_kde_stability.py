@@ -6,7 +6,7 @@ import argparse
 
 from ...kde import sample_weighted_kde_multivariate
 from ...kernels import get_kernel
-from ...intervals_and_metrics import softmax, label_binarize_vectorized
+from ...intervals_and_metrics import softmax
 from itertools import product
 from tqdm import tqdm
 from scipy import stats
@@ -79,12 +79,12 @@ def evaluate_rank_preservation_per_class(
     AUROC/AP under the hood, instead of collapsing all non-1 labels
     into a single negative bucket.
 
-    In addition to per-class AUROC/AP, this computes the *entire*
-    ROC and PR curves for both original and KDE scores, interpolates
-    them onto a common grid, and integrates the pointwise absolute
-    difference between the two curves. This is a stronger notion of
-    "shape preservation" than comparing a handful of quantiles: it
-    is literally the area between the orig and KDE curves.
+    Computes per-class AUROC/AP (and their |orig - kde| error, used
+    later to report an MAE annotation on the histograms) as well as
+    the *entire* ROC and PR curves for both original and KDE scores,
+    interpolated onto a common grid and integrated as the pointwise
+    absolute difference between the two curves — this is what's
+    actually histogrammed downstream.
 
     Parameters
     ----------
@@ -127,7 +127,6 @@ def evaluate_rank_preservation_per_class(
         # ── ROC curve: integral of |ΔTPR| over FPR ∈ [0,1] ──
         fpr_o, tpr_o, _ = roc_curve(y_orig, s_orig)
         fpr_k, tpr_k, _ = roc_curve(y_kde, s_kde)
-        # fpr_* is already monotonically non-decreasing, safe for np.interp
         tpr_o_grid = np.interp(grid_fpr, fpr_o, tpr_o)
         tpr_k_grid = np.interp(grid_fpr, fpr_k, tpr_k)
         roc_integral_diff = np.trapezoid(np.abs(tpr_o_grid - tpr_k_grid), grid_fpr)
@@ -135,8 +134,6 @@ def evaluate_rank_preservation_per_class(
         # ── PR curve: integral of |ΔPrecision| over recall ∈ [0,1] ──
         prec_o, rec_o, _ = precision_recall_curve(y_orig, s_orig)
         prec_k, rec_k, _ = precision_recall_curve(y_kde, s_kde)
-        # precision_recall_curve returns recall in decreasing order;
-        # np.interp needs the x-coordinates sorted ascending
         order_o = np.argsort(rec_o)
         order_k = np.argsort(rec_k)
         prec_o_grid = np.interp(grid_recall, rec_o[order_o], prec_o[order_o])
@@ -145,6 +142,7 @@ def evaluate_rank_preservation_per_class(
 
         rows.append({
             "class": c,
+            "n_classes": n_classes,
             "auroc_orig": auroc_orig,
             "auroc_kde": auroc_kde,
             "auroc_abs_err": abs(auroc_orig - auroc_kde),
@@ -153,8 +151,6 @@ def evaluate_rank_preservation_per_class(
             "ap_abs_err": abs(ap_orig - ap_kde),
             "roc_integral_diff": roc_integral_diff,
             "pr_integral_diff": pr_integral_diff,
-            "n_pos_orig": int(n_pos_orig),
-            "n_neg_orig": int(n_neg_orig),
         })
 
     return rows
@@ -166,106 +162,119 @@ def evaluate_rank_preservation_per_class(
 
 def aggregate_and_plot(results_df, output_folder="."):
     """
-    2×2 diagnostic dashboard (per-class evaluation).
+    2×n_dims diagnostic dashboard, stratified by task dimensionality
+    (n_classes) rather than class index — n_dims is inferred from the
+    data (max n_classes seen).
 
-        (a) AUROC_orig vs AUROC_kde scatter
-        (c) ROC curve area difference: ∫|TPR_orig(f) − TPR_kde(f)| df
-        (d) AP_orig vs AP_kde scatter
-        (f) PR curve area difference: ∫|P_orig(r) − P_kde(r)| dr
+    Row 0 (ROC): histogram of roc_integral_diff
+                 = ∫|TPR_orig(f) - TPR_kde(f)| df
+    Row 1 (PR):  histogram of pr_integral_diff
+                 = ∫|P_orig(r) - P_kde(r)| dr
+
+    Each subplot is annotated with the MAE that the (metric_orig,
+    metric_kde) scatter plot / first-bisector comparison would show
+    for that dimension, i.e. mean(|AUROC_orig - AUROC_kde|) for the
+    ROC row and mean(|AP_orig - AP_kde|) for the PR row — even though
+    that scatter plot itself is no longer drawn.
     """
     os.makedirs(output_folder, exist_ok=True)
-    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
-    # ═══════════════════  (a) AUROC scatter  ═══════════════════
-    ax = axes[0, 0]
-    ax.scatter(results_df["auroc_orig"], results_df["auroc_kde"],
-               s=8, alpha=0.3, rasterized=True)
-    ax.plot([0, 1], [0, 1], "r--", lw=1.5)
-    r_auroc, _ = stats.pearsonr(results_df["auroc_orig"],
-                                results_df["auroc_kde"])
-    ax.set_xlabel("AUROC (original)")
-    ax.set_ylabel("AUROC (KDE)")
-    ax.set_title(f"(a) AUROC: orig vs KDE, per-class  (r = {r_auroc:.4f})")
-    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-    ax.set_aspect("equal")
+    if len(results_df) == 0 or "n_classes" not in results_df.columns:
+        raise ValueError("results_df is empty or missing 'n_classes' column")
 
-    # ═══════════════  (c) ROC curve area difference  ═══════════
-    ax = axes[0, 1]
-    roc_diff = results_df["roc_integral_diff"]
-    ax.hist(roc_diff, bins=60, density=True, alpha=0.7, edgecolor="k")
-    ax.axvline(roc_diff.median(), color="red", ls="--",
-               label=f"Median = {roc_diff.median():.4f}")
-    ax.axvline(np.percentile(roc_diff, 95), color="orange", ls=":",
-               label=f"95th pctl = {np.percentile(roc_diff, 95):.4f}")
-    ax.set_xlabel(r"$\int_0^1 |TPR_{orig}(f) - TPR_{KDE}(f)|\,df$")
-    ax.set_title("(b) ROC curve area difference, per-class")
-    ax.legend()
+    n_dims = int(results_df["n_classes"].max())
+    fig, axes = plt.subplots(
+        2, n_dims-1, figsize=(3.2 * (n_dims-1), 7), sharex=True, sharey="row",
+        squeeze=False,
+    )
 
-    # ═══════════════════  (d) AP scatter  ═══════════════════════
-    ax = axes[1, 0]
-    ax.scatter(results_df["ap_orig"], results_df["ap_kde"],
-               s=8, alpha=0.3, rasterized=True)
-    ax.plot([0, 1], [0, 1], "r--", lw=1.5)
-    r_ap, _ = stats.pearsonr(results_df["ap_orig"],
-                             results_df["ap_kde"])
-    ax.set_xlabel("AP (original)")
-    ax.set_ylabel("AP (KDE)")
-    ax.set_title(f"(c) AP: orig vs KDE, per-class  (r = {r_ap:.4f})")
-    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
-    ax.set_aspect("equal")
+    summary_rows = []
 
-    # ═══════════════  (f) PR curve area difference  ═════════════
-    ax = axes[1, 1]
-    pr_diff = results_df["pr_integral_diff"]
-    ax.hist(pr_diff, bins=60, density=True, alpha=0.7, edgecolor="k")
-    ax.axvline(pr_diff.median(), color="red", ls="--",
-               label=f"Median = {pr_diff.median():.4f}")
-    ax.axvline(np.percentile(pr_diff, 95), color="orange", ls=":",
-               label=f"95th pctl = {np.percentile(pr_diff, 95):.4f}")
-    ax.set_xlabel(r"$\int_0^1 |P_{orig}(r) - P_{KDE}(r)|\,dr$")
-    ax.set_title("(d) PR curve area difference, per-class")
-    ax.legend()
+    max_roc_diff = results_df["roc_integral_diff"].max()
+    max_pr_diff = results_df["pr_integral_diff"].max()
 
-    plt.suptitle("KDE Rank-Preservation Diagnostics (per-class AUROC / AP)",
-                 fontsize=14, fontweight="bold")
-    plt.tight_layout(rect=[0, 0, 1, 0.96])
-    plt.savefig(os.path.join(output_folder, "rank_preservation.pdf"),
-                dpi=300, bbox_inches="tight")
+    max_diff = max(max_roc_diff, max_pr_diff)
+
+    bins = np.linspace(0, max_diff, 30)
+
+    for col in range(n_dims-1):
+        dim = col + 2  # dim = 2, 3, ..., n_dims
+        dim_df = results_df[results_df["n_classes"] == dim]
+
+        # ── Row 0: ROC curve integral-of-|Δ| histogram ──────────
+        ax = axes[0, col]
+        if len(dim_df) > 0:
+            roc_diff = dim_df["roc_integral_diff"]
+            auroc_mae = dim_df["auroc_abs_err"].mean()
+
+            ax.hist(roc_diff, bins=bins, density=True, alpha=0.7, edgecolor="k")
+            ax.axvline(
+                roc_diff.median(), color="red", ls="--",
+                label=f"Med = {roc_diff.median():.4f}"
+            )
+            ax.text(
+                0.97, 0.95, f"MAE(AUROC)\n= {auroc_mae:.4f}",
+                transform=ax.transAxes, ha="right", va="top", fontsize=7,
+                bbox=dict(boxstyle="round", fc="white", ec="gray", alpha=0.8),
+            )
+            ax.legend(fontsize=7, loc="upper left")
+
+            summary_rows.append({
+                "n_classes": dim, "curve": "ROC",
+                "n": len(dim_df),
+                "median_integral_diff": roc_diff.median(),
+                "p95_integral_diff": np.percentile(roc_diff, 95),
+                "mae_auroc": auroc_mae,
+            })
+        else:
+            ax.text(0.5, 0.5, "no data", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=8, color="gray")
+        ax.set_title(f"{dim} classes")
+        ax.set_xlabel(r"ROC: $\int_0^1 |TPR_{orig} - TPR_{KDE}|\,df$")
+
+        # ── Row 1: PR curve integral-of-|Δ| histogram ───────────
+        ax = axes[1, col]
+        if len(dim_df) > 0:
+            pr_diff = dim_df["pr_integral_diff"]
+            ap_mae = dim_df["ap_abs_err"].mean()
+
+            ax.hist(pr_diff, bins=bins, density=True, alpha=0.7, edgecolor="k")
+            ax.axvline(
+                pr_diff.median(), color="red", ls="--",
+                label=f"Med = {pr_diff.median():.4f}"
+            )
+            ax.text(
+                0.97, 0.95, f"MAE(AP)\n= {ap_mae:.4f}",
+                transform=ax.transAxes, ha="right", va="top", fontsize=7,
+                bbox=dict(boxstyle="round", fc="white", ec="gray", alpha=0.8),
+            )
+            ax.legend(fontsize=7, loc="upper left")
+
+            summary_rows.append({
+                "n_classes": dim, "curve": "PR",
+                "n": len(dim_df),
+                "median_integral_diff": pr_diff.median(),
+                "p95_integral_diff": np.percentile(pr_diff, 95),
+                "mae_ap": ap_mae,
+            })
+        else:
+            ax.text(0.5, 0.5, "no data", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=8, color="gray")
+        ax.set_xlabel(r"PR: $\int_0^1 |P_{orig} - P_{KDE}|\,dr$")
+
+    plt.suptitle(
+        "ROC and PR l1 norm between original samples and KDE-based curves, stratified by task dimensionality\n"
+        "(inset: MAE of the AUROC/AP orig-vs-KDE point comparison)",
+        fontsize=13, fontweight="bold"
+    )
+    plt.tight_layout(rect=[0, 0, 1, 0.90])
+    plt.savefig(
+        os.path.join(output_folder, "rank_preservation.pdf"),
+        dpi=300, bbox_inches="tight"
+    )
     plt.close()
 
-    # ── Summary table ────────────────────────────────────────
-    summary = pd.DataFrame({
-        "Metric": [
-            "Number of (algo, task, class) evaluations",
-            "Median |ΔAUROC|",
-            "95th-pctl |ΔAUROC|",
-            "Max |ΔAUROC|",
-            "Pearson r (AUROC_orig, AUROC_kde)",
-            "Median ROC curve area difference",
-            "95th-pctl ROC curve area difference",
-            "Median |ΔAP|",
-            "95th-pctl |ΔAP|",
-            "Max |ΔAP|",
-            "Pearson r (AP_orig, AP_kde)",
-            "Median PR curve area difference",
-            "95th-pctl PR curve area difference",
-        ],
-        "Value": [
-            f"{len(results_df)}",
-            f"{results_df['auroc_abs_err'].median():.4f}",
-            f"{np.percentile(results_df['auroc_abs_err'], 95):.4f}",
-            f"{results_df['auroc_abs_err'].max():.4f}",
-            f"{r_auroc:.4f}",
-            f"{roc_diff.median():.4f}",
-            f"{np.percentile(roc_diff, 95):.4f}",
-            f"{results_df['ap_abs_err'].median():.4f}",
-            f"{np.percentile(results_df['ap_abs_err'], 95):.4f}",
-            f"{results_df['ap_abs_err'].max():.4f}",
-            f"{r_ap:.4f}",
-            f"{pr_diff.median():.4f}",
-            f"{np.percentile(pr_diff, 95):.4f}",
-        ],
-    })
+    summary = pd.DataFrame(summary_rows)
     return summary
 
 
