@@ -230,8 +230,7 @@ def aggregate_and_plot(results_df, output_folder="."):
             ax.text(0.5, 0.5, "no data", ha="center", va="center",
                     transform=ax.transAxes, fontsize=8, color="gray")
         ax.set_title(f"{dim} classes")
-        if col == 0:
-            ax.set_ylabel(r"ROC: $\int_0^1 |TPR_{orig} - TPR_{KDE}|\,df$")
+        ax.set_xlabel(r"ROC: $\int_0^1 |TPR_{orig} - TPR_{KDE}|\,df$")
 
         # ── Row 1: PR curve integral-of-|Δ| histogram ───────────
         ax = axes[1, col]
@@ -261,13 +260,10 @@ def aggregate_and_plot(results_df, output_folder="."):
         else:
             ax.text(0.5, 0.5, "no data", ha="center", va="center",
                     transform=ax.transAxes, fontsize=8, color="gray")
-        ax.set_xlabel("Curve integral of |Δ|")
-        if col == 0:
-            ax.set_ylabel(r"PR: $\int_0^1 |P_{orig} - P_{KDE}|\,dr$")
+        ax.set_xlabel(r"PR: $\int_0^1 |P_{orig} - P_{KDE}|\,dr$")
 
     plt.suptitle(
-        "KDE Rank-Preservation Diagnostics\n"
-        "ROC/PR curve integral-of-|Δ|, stratified by task dimensionality\n"
+        "ROC and PR l1 norm between original samples and KDE-based curves, stratified by task dimensionality\n"
         "(inset: MAE of the AUROC/AP orig-vs-KDE point comparison)",
         fontsize=13, fontweight="bold"
     )
