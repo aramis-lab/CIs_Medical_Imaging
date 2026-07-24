@@ -7,59 +7,10 @@ from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import wilcoxon
-from ..plot_utils import metric_labels, stat_labels, method_labels
 import scipy
+from .test_basic_classif import format_p
 import seaborn as sns
-# metric_labels = {
-#     'dsc': 'DSC',
-#     'iou': 'IoU',
-#     'nsd': 'NSD',
-#     'boundary_iou': 'Boundary IoU',
-#     'cldice': 'clDice',
-#     'assd': 'ASSD',
-#     'masd' : 'MASD',
-#     'hd': 'HD',
-#     'hd_perc': 'HD95',
-#     'balanced_accuracy': 'Balanced Accuracy',
-#     'ap': 'AP',
-#     'auc': 'AUC',
-#     'f1_score': 'F1 Score',
-#     'accuracy': 'Accuracy',
-#     "mcc": "MCC"
-# }
-
-# stat_labels = {
-#     'mean': 'Mean',
-#     'median': 'Median',
-#     'std': 'Standard Deviation',
-#     'trimmed_mean': 'Trimmed Mean',
-#     'iqr_length': 'IQR Length'
-# }
-
-# method_labels = {
-#     "basic": "Basic",
-#     "percentile": "Percentile",
-#     "bca": "BCa",
-#     "delong": "DeLong",
-#     "logit_transform": "Logit Transform",
-#     "wilson": "Wilson",
-#     "agresti_coull" : "Agresti-Coull",
-#     "exact" : "Exact \n(Clopper-Pearson)",
-#     "wald" : 'Wald',
-#     "param_t" : "Parametric t",
-#     "param_z" : "Parametric z"
-# }
-
-# method_colors = {
-#     "basic": "#D4461F",
-#     "percentile": "#8E5EE8", 
-#     "bca" : "#FF9742",
-#     "wilson" : "#DFCF3E", 
-#     "agresti_coull" : "#5D9336", 
-#     "exact" : "#DB4ADB", 
-#     "wald" : "#367F9C",
-#     "param_t" : "#999999", 
-#     "param_z" : "#A7C7E7"}
+from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels, upload_to_overleaf
 
 def fit_ccp(segm_path):
     results = []
@@ -192,7 +143,7 @@ def reconstruct_basic(qvals, keys,pvalues,alphas):
         n: {
             stat: {
                 metric: {
-                    method: False
+                    method: None
                     for method in method_dict
                 }
                 for metric, method_dict in metric_dict.items()
@@ -204,7 +155,8 @@ def reconstruct_basic(qvals, keys,pvalues,alphas):
     
     for (n,stat, metric, method), qval in zip(keys, qvals):
         q_values[n][stat][metric][method] = qval
-        significant[n][stat][metric][method] = np.sum(qval < alphas)
+
+        significant[n][stat][metric][method] = qval if qval is None else np.sum(qval < alphas)
 
     return q_values,significant
     
@@ -247,7 +199,7 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
     significant = {
         stat: {
             metric: {
-                method: False
+                method: None
                 for method in method_dict
             }
             for metric, method_dict in metric_dict.items()
@@ -263,116 +215,142 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
 
 
 
-def plot_significance_matrix_basic(significance, p_values,n):
+def plot_significance_matrix_basic(significance, p_values, to_overleaf=False):
 
     plt.rcdefaults()
     
     metric_order = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
     main_methods = [ 'bca', 'percentile']
-    stats = list(significance.keys())
+    n_values = list(significance.keys())
     metrics_all = metric_order
-    fig, axes = plt.subplots(1,len(stats), figsize=(10 * len(stats),12))
+    stats= list(next(iter(significance.values())).keys())    
     
-    for row, stat in enumerate(stats):
-        if stat=='mean':
-            methods=main_methods+['param_z', 'param_t']
-        else:
-            methods=main_methods
-        ax = axes[row] 
-
-        # Extract significance for the specific method and stat
-        stat_significance = significance.get(stat, {})
-        global_matrix = np.zeros((len(metrics_all), len(methods)))
-        
-        for i, metric in enumerate(metrics_all):
+    fig, axes = plt.subplots(len(n_values), len(stats),figsize=(18 ,12* len(n_values) ), sharey=True,width_ratios=(2,1,1,1,1) )
+    for i,(n,sign_n) in enumerate(significance.items()):
        
-            for j, method in enumerate(methods):
-                # val = stat_significance.get(metric, {}).get(method, None)
-                val = stat_significance.get(metric, {}).get(method)
-                if val is None:
-                    global_matrix[i, j] = -1      # N/A
-                elif val == 0:
-                    global_matrix[i, j] = 0       # Not significant
-                else:
-                    global_matrix[i, j] = 1
-                # global_matrix[i, j] = min(1, val) if val is not None else -1
+        p_values_n=p_values[n]
+        for row, stat in enumerate(stats):
+            if stat=='mean':
+                methods=main_methods+['param_z', 'param_t']
+            else:
+                methods=main_methods
+            ax = axes[i,row] 
+
+            # Extract significance for the specific method and stat
+            stat_significance = sign_n.get(stat, {})
+            global_matrix = np.zeros((len(metrics_all), len(methods)))
             
-
-        pval_matrix = []
-
-        for metric in metrics_all:
-            pval_row = []
-
-            for method in methods:
-
-                p_val = p_values.get(stat, {}).get(metric, {}).get(method)
-                if p_val is None:
-                    pval_row.append("")
-                elif p_val < 0.05:
-                    pval_row.append("<0.05")
-                else:
-                    pval_row.append(f"{p_val:.3f}")
-                # if p_val is None:
-                #     pval_row.append("0")
-                # else:
-                #     pval_row.append(
-                #         f"{p_val:.6f}" if p_val >= 0.05 else "<0.05"
-                #     )
-
-            pval_matrix.append(pval_row)
+            for k, metric in enumerate(metrics_all):
         
-        values = np.unique(global_matrix)
+                for j, method in enumerate(methods):
+                    val = stat_significance.get(metric, {}).get(method, None)
+                    if val is None:
+                        global_matrix[k, j] = -1      # N/A
+                    elif val == 0:
+                        global_matrix[k, j] = 0       # Not significant
+                    else:
+                        global_matrix[k, j] = 1
+                    # global_matrix[i, j] = min(1, val) if val is not None else -1
+                
 
-        # full mapping dictionary
-        color_map_dict = {
-       
-        -1: "#161515",
-        0: "#d9d9d9",
-        1: "#fdae61",
-       
-    }   
-        
-        
-        # extract only the colors for values that appear
-        colors = [color_map_dict[v] for v in values]
+            pval_matrix = []
 
-        # build colormap
-        cmap = ListedColormap(colors)
-        mabels = [method_labels.get(m, m) for m in methods]
-        metlabels=[metric_labels.get(m, m) for m in metrics_all]
-        # Plot heatma
-        sns.heatmap(
-            global_matrix,
-            annot=pval_matrix,
-            xticklabels=mabels,
-            yticklabels=metlabels,
-            cmap=cmap,
-            cbar=False,
-            ax=ax,
-            fmt='',
-            annot_kws={"fontsize": 16}
+            for metric in metrics_all:
+                pval_row = []
+
+                for method in methods:
+
+                    p_val = p_values_n.get(stat, {}).get(metric, {}).get(method)
+                    if p_val is None:
+                        pval_row.append("")
+                    
+                    else:
+                        pval_row.append(format_p(p_val))
+                    # if p_val is None:
+                    #     pval_row.append("0")
+                    # else:
+                    #     pval_row.append(
+                    #         f"{p_val:.6f}" if p_val >= 0.05 else "<0.05"
+                    #     )
+
+                pval_matrix.append(pval_row)
+            
+            values = np.unique(global_matrix)
+
+            # full mapping dictionary
+            color_map_dict = {
+        
+            -1: "#F5F5F5",      # missing
+            0: "#F8CC80FF",      # non-significant
+            1: "#D55E00",
+        
+        }   
+            
+            # extract only the colors for values that appear
+            colors = [color_map_dict[v] for v in values]
+
+            # build colormap
+            cmap = ListedColormap(colors)
+            mabels = [method_labels.get(m, m) for m in methods]
+            metlabels=[metric_labels.get(m, m) for m in metrics_all]
+            # Plot heatma
+            sns.heatmap(
+                global_matrix,
+                annot=pval_matrix,
+                xticklabels=mabels,
+                yticklabels=metlabels,
+                cmap=cmap,
+                cbar=False,
+                ax=ax,
+                fmt='',
+                linewidths=1,
+                square=True,
+                linecolor="white",
+                annot_kws={"fontsize": 14}
+            )
+            ax.tick_params(axis='x', rotation=45, labelsize=14)
+
+            ax.tick_params(axis='y', rotation=45, labelsize=14)
+            if stat=='mean':
+                ax.set_title(f"{stat_labels[stat]}, n={n}", fontsize=14)
+            else:
+                ax.set_title(f"{stat_labels[stat]}", fontsize=14)
+
+        legend_elements = [
+                    mpatches.Patch(facecolor="#D55E00",
+                                edgecolor='k',
+                                label="Significant \n (FDR-adjusted p < 0.05)"),
+                    mpatches.Patch(facecolor="#F8CC80FF",
+                                edgecolor='k',
+                                label="Not significant"),
+                    mpatches.Patch(facecolor="#F5F5F5",
+                                edgecolor='k',
+                                label="Not available"),
+                ]
+        ax.legend(
+            handles=legend_elements,
+            bbox_to_anchor=(1.01, 0.5),
+            ncol=1,
+            fontsize=16,
+            frameon=True,
+            title="Significance levels \nwith FDR correction",
+            title_fontsize=16
         )
-        ax.tick_params(axis='x', rotation=45, labelsize=14)
-
-        ax.tick_params(axis='y', rotation=45, labelsize=14)
-
-        ax.set_title(f"Stat : {stat_labels[stat]}", fontsize=16)
-
-    legend_elements = [
-        mpatches.Patch(facecolor="#fdae61", edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#161515', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
-        handles=legend_elements,
-        bbox_to_anchor=(1.01, 0.5),
-        ncol=1,
-        fontsize=16,
-        frameon=True,
-        title="Significance levels \nwith FDR correction",
-        title_fontsize=16
+    fig.subplots_adjust(
+    # left=0.08,   
+    right=0.75,  
+    top=1,
+    bottom=0,
+  
+    hspace=0
     )
-    plt.tight_layout()
-    plt.savefig(f'../clean_figs/supplementary/test_results/cov_basic_segm/{n}.pdf')
+    output_path=f'../clean_figs/supplementary/test_results/cov_basic_segm/all_n.pdf'
+    fig.savefig(output_path)
+    if to_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/cov_basic_segm.pdf", commit_msg=f"Update figure test basic segm")
+    else:
+        plt.show()
+    
     
 def main():
     segm_path='../../../../results_metrics_segm'

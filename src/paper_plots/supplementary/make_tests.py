@@ -7,7 +7,7 @@ from scipy.stats import permutation_test
 from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 from statsmodels.stats.multitest import multipletests
-from .make_fit import segm_path, micro_path,macro_path
+# from .make_fit import segm_path, micro_path,macro_path
 
 from .test_basic_classif import perform_pairwise_tests_basic_classif
 from .test_basic import perform_pairwise_tests_basic
@@ -21,95 +21,119 @@ from .test_WDP_segm_classif import perform_pairwise_tests_wdp_segm_classif
 from .tests_CCP_segm_vs_classif import perform_pairwise_tests_segm_classif
 from .tests_CCP_segm import perform_pairwise_tests_segm
 
-df_results_cov= pd.read_csv(os.path.join(segm_path, 'all_results_cov.csv'))
-df_results_width= pd.read_csv(os.path.join(segm_path, 'all_results_width.csv'))
-df_results_classif_cov= pd.read_csv(os.path.join(micro_path, 'all_results_cov.csv'))
-df_results_classif_macro_cov =  pd.read_csv(os.path.join(macro_path, 'all_results_cov.csv'))
-df_results_classif_macro_width=  pd.read_csv(os.path.join(macro_path, 'all_results_width.csv'))
-df_results_classif_width =  pd.read_csv(os.path.join(micro_path, 'all_results_width.csv'))
+
+ablation_dir="../results_ablations"
+for kde in os.listdir(ablation_dir):
+    
+    if kde.startswith("."):
+        continue
+    
+    if kde !='epanechnikov_scott_trimmed':
+        continue
+    
+    print(kde)
+    
+    micro_path=os.path.join(ablation_dir,f'{kde}/results_metrics_classif')
+    macro_path = os.path.join(ablation_dir,f'{kde}/results_metrics_classif_macro')
+    segm_path = os.path.join(ablation_dir,f'{kde}/results_metrics_segm')
+
+    if os.path.exists(segm_path):
+        print('skipped')
+        df_results_cov= pd.read_csv(os.path.join(segm_path, 'all_results_cov.csv'))
+        df_results_width= pd.read_csv(os.path.join(segm_path, 'all_results_width.csv'))
+        
+        # print('testing bca')
+        # pvalues_bca=perform_pairwise_tests_bca(df_results_cov)
 
 
+        # with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_bca_by_n.json"), "w") as f:
+        #     json.dump(pvalues_bca, f, indent=4)
 
-# print('testing micro macro')
-# print(df_results_classif_macro_cov['metric'].unique())
-# pvalues_micro_macro= perform_pairwise_tests_micro_macro(df_results_classif_cov, df_results_classif_macro_cov)
-# print(pvalues_micro_macro)
-# with open("../pvalues/pvalues_micro_macro_by_n.json", "w") as f:
-#     json.dump(pvalues_micro_macro, f, indent=4)
+        # print('testing basic')
 
-# print('testing basic')
-# pvalues_basic_classif_micro=perform_pairwise_tests_basic_classif(df_results_classif_cov)
-# print(pvalues_basic_classif_micro)
-# pvalues_basic_classif_macro=perform_pairwise_tests_basic_classif(df_results_classif_macro_cov)
-# print(pvalues_basic_classif_macro)
-# pvalues_basic=perform_pairwise_tests_basic(df_results_cov)
-# print(pvalues_basic)
-# with open("../pvalues/pvalues_basic_by_n.json", "w") as f:
-#     json.dump(pvalues_basic, f, indent=4)
+        # pvalues_basic=perform_pairwise_tests_basic(df_results_cov)
+        # with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_basic_by_n.json"), "w") as f:
+        #     json.dump(pvalues_basic, f, indent=4)
 
-# with open("../pvalues/pvalues_basic_classif_macro_by_n.json", "w") as f:
-#     json.dump(pvalues_basic_classif_macro, f, indent=4)
+        # print('testing param boot')
+        # pvalues_param_boot_segm_width= perform_pairwise_tests_param_boot(df_results_width, 'segm')
+        # pvalues_param_boot_segm_cov= perform_pairwise_tests_param_boot(df_results_cov, 'segm')
+        # with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_param_boot_segm_by_n.json"), "w") as f:
+        #     json.dump(pvalues_param_boot_segm_cov, f, indent=4)
+        # with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_param_boot_segm_width_by_n.json"), "w") as f:
+        #     json.dump(pvalues_param_boot_segm_width, f, indent=4)
 
-# with open("../pvalues/pvalues_basic_classif_micro_by_n.json", "w") as f:
-#     json.dump(pvalues_basic_classif_micro, f, indent=4)
+        # print('testing spread central')
+        # pvalues_spread_central= perform_pairwise_tests_spread_central(df_results_cov)
+        # with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_spread_central_by_n.json"), "w") as f:
+        #     json.dump(pvalues_spread_central, f, indent=4)
 
-# print('testing bca')
-# pvalues_bca=perform_pairwise_tests_bca(df_results_cov)
+        # print('testing segm')
+        # df_fit_results=pd.read_csv(os.path.join(segm_path, 'results_ccp_segm.csv'))
+        # pvalues_segm= perform_pairwise_tests_segm(df_fit_results)
+        # with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_segm.json"), "w") as f:
+        #     json.dump(pvalues_segm, f, indent=4)
 
-# print(pvalues_bca)
-# with open("../pvalues/pvalues_bca_by_n.json", "w") as f:
-#     json.dump(pvalues_bca, f, indent=4)
+    if os.path.exists(micro_path):
 
-# pvalues_bca_classif=perform_pairwise_tests_bca_classif(df_results_classif_cov)
-# print(pvalues_bca_classif)
+        df_results_classif_cov= pd.read_csv(os.path.join(micro_path, 'all_results_cov.csv'))
+    
+        df_results_classif_width =  pd.read_csv(os.path.join(micro_path, 'all_results_width.csv'))
+        
+        print('testing param boot')
+        pvalues_param_boot_classif= perform_pairwise_tests_param_boot(df_results_classif_cov,'classif')
+        with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_param_boot_classif_by_n.json"), "w") as f:
+            json.dump(pvalues_param_boot_classif, f, indent=4)
 
-# with open("../pvalues/pvalues_bca_classif_by_n.json", "w") as f:
-#     json.dump(pvalues_bca_classif, f, indent=4)
+        print('testing bca')
+        pvalues_bca_classif=perform_pairwise_tests_bca_classif(df_results_classif_cov)
+     
+        with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_bca_classif_by_n.json"), "w") as f:
+            json.dump(pvalues_bca_classif, f, indent=4)
 
-print('testing param boot')
-pvalues_param_boot_segm_width= perform_pairwise_tests_param_boot(df_results_width, 'segm')
-print(pvalues_param_boot_segm_width)
-pvalues_param_boot_segm_cov= perform_pairwise_tests_param_boot(df_results_cov, 'segm')
-pvalues_param_boot_classif= perform_pairwise_tests_param_boot(df_results_classif_cov,'classif')
-with open("../pvalues/pvalues_param_boot_segm_by_n.json", "w") as f:
-    json.dump(pvalues_param_boot_segm_cov, f, indent=4)
 
-with open("../pvalues/pvalues_param_boot_classif_by_n.json", "w") as f:
-    json.dump(pvalues_param_boot_classif, f, indent=4)
+        print('testing basic')
+        pvalues_basic_classif_micro=perform_pairwise_tests_basic_classif(df_results_classif_cov)
+        with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_basic_classif_micro_by_n.json"), "w") as f:
+            json.dump(pvalues_basic_classif_micro, f, indent=4)
 
-with open("../pvalues/pvalues_param_boot_segm_width_by_n.json", "w") as f:
-    json.dump(pvalues_param_boot_segm_width, f, indent=4)
 
-# print('testing spread central')
-# pvalues_spread_central= perform_pairwise_tests_spread_central(df_results_cov)
-# print(pvalues_spread_central)
-# with open("../pvalues/pvalues_spread_central_by_n.json", "w") as f:
-#     json.dump(pvalues_spread_central, f, indent=4)
+    if os.path.exists(macro_path):
+        df_results_classif_macro_cov =  pd.read_csv(os.path.join(macro_path, 'all_results_cov.csv'))
+        df_results_classif_macro_width=  pd.read_csv(os.path.join(macro_path, 'all_results_width.csv'))
 
-# print('testing wdp segm classif')
-# pvalues_wdp_segm_classif= perform_pairwise_tests_wdp_segm_classif(df_results_width, df_results_classif_width)
-# print(pvalues_wdp_segm_classif)
-# with open("../pvalues/pvalues_segm_classif_width_by_n.json", "w") as f:
-#     json.dump(pvalues_wdp_segm_classif, f, indent=4)
-# pvalues_wdp_segm_classif= perform_pairwise_tests_wdp_segm_classif(df_results_width, df_results_classif_macro_width)
-# print(pvalues_wdp_segm_classif)
-# with open("../pvalues/pvalues_segm_classif_macro_width_by_n.json", "w") as f:
-#     json.dump(pvalues_wdp_segm_classif, f, indent=4)
-# print('testing segm classif')
-# pvalues_segm_classif_macro = perform_pairwise_tests_segm_classif(df_results_cov, df_results_classif_macro_cov)
-# print(pvalues_segm_classif_macro)
+        print('testing basic')
+        pvalues_basic_classif_macro=perform_pairwise_tests_basic_classif(df_results_classif_macro_cov)
+        with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_basic_classif_macro_by_n.json"), "w") as f:
+            json.dump(pvalues_basic_classif_macro, f, indent=4)
+    
+    
+    if os.path.exists(macro_path) & os.path.exists(micro_path):
+        print('testing micro macro')
+        pvalues_micro_macro= perform_pairwise_tests_micro_macro(df_results_classif_cov, df_results_classif_macro_cov)
+        with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_micro_macro_by_n.json"), "w") as f:
+            json.dump(pvalues_micro_macro, f, indent=4)
 
-# with open("../pvalues/pvalues_segm_classif_by_n.json", "w") as f:
-#     json.dump(pvalues_segm_classif_macro, f, indent=4)
 
- 
+    if os.path.exists(segm_path) & os.path.exists(micro_path):
+        print('testing wdp segm classif')
+        pvalues_wdp_segm_classif= perform_pairwise_tests_wdp_segm_classif(df_results_width, df_results_classif_width)
+        with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_segm_classif_width_by_n.json"), "w") as f:
+            json.dump(pvalues_wdp_segm_classif, f, indent=4)
 
-# print('testing segm')
-# df_fit_results=pd.read_csv(os.path.join(segm_path, 'results_ccp_segm.csv'))
-# pvalues_segm= perform_pairwise_tests_segm(df_fit_results)
-# print(pvalues_segm)
-# with open("../pvalues/pvalues_segm.json", "w") as f:
-#     json.dump(pvalues_segm, f, indent=4)
+    if os.path.exists(segm_path) & os.path.exists(macro_path):
+        print('testing wdp segm classif')
+        pvalues_wdp_segm_classif= perform_pairwise_tests_wdp_segm_classif(df_results_width, df_results_classif_macro_width)
+        with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_segm_classif_macro_width_by_n.json"), "w") as f:
+            json.dump(pvalues_wdp_segm_classif, f, indent=4)
+
+        print('testing segm classif')
+        pvalues_segm_classif_macro = perform_pairwise_tests_segm_classif(df_results_cov, df_results_classif_macro_cov)
+
+        with open(os.path.join(ablation_dir,f"{kde}/pvalues/pvalues_segm_classif_by_n.json"), "w") as f:
+            json.dump(pvalues_segm_classif_macro, f, indent=4)
+
+    
 
 tests=['basic_classif', 'basic','micro_macro', 'param_boot','spread_central','wdp_segm_classif','segm_classif','segm']
 
@@ -136,7 +160,7 @@ tests=['basic_classif', 'basic','micro_macro', 'param_boot','spread_central','wd
             
 #             # pvals.append([pvalue1,pvalue2])
 #             # keys.append([key1,key2])
-#         elif test =='param_boot':
+#         if test =='param_boot':
 #             pvalue1,key1=globals()[f'get_pvalues_{test}'](globals()[f'pvalues_{test}_segm'])
 #             pvalue2,key2=globals()[f'get_pvalues_{test}'](globals()[f'pvalues_{test}_classif'])
 #             pvals.append({'test':test + 'segm', 

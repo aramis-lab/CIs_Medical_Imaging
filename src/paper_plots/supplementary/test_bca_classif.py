@@ -12,6 +12,7 @@ from ..plot_utils import metric_labels, stat_labels, method_labels
 import scipy
 import seaborn as sns
 
+from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels, upload_to_overleaf
 
 
 def perform_pairwise_tests_bca_classif(df_results):

@@ -9,59 +9,9 @@ from statsmodels.stats.multitest import multipletests
 from scipy.stats import wilcoxon
 # from ..plot_utils import metric_labels, stat_labels, method_labels
 # from mlxtend.evaluate import permutation_test
+from ..plot_utils import method_labels, method_colors, metric_labels, stat_labels, upload_to_overleaf
 
 import seaborn as sns
-
-metric_labels = {
-    'dsc': 'DSC',
-    'iou': 'IoU',
-    'nsd': 'NSD',
-    'boundary_iou': 'Boundary IoU',
-    'cldice': 'clDice',
-    'assd': 'ASSD',
-    'masd' : 'MASD',
-    'hd': 'HD',
-    'hd_perc': 'HD95',
-    'balanced_accuracy': 'Balanced Accuracy',
-    'ap': 'AP',
-    'auc': 'AUC',
-    'f1_score': 'F1 Score',
-    'accuracy': 'Accuracy',
-    "mcc": "MCC"
-}
-
-stat_labels = {
-    'mean': 'Mean',
-    'median': 'Median',
-    'std': 'Standard Deviation',
-    'trimmed_mean': 'Trimmed Mean',
-    'iqr_length': 'IQR Length'
-}
-
-method_labels = {
-    "basic": "Basic",
-    "percentile": "Percentile",
-    "bca": "BCa",
-    "delong": "DeLong",
-    "logit_transform": "Logit Transform",
-    "wilson": "Wilson",
-    "agresti_coull" : "Agresti-Coull",
-    "exact" : "Exact \n(Clopper-Pearson)",
-    "wald" : 'Wald',
-    "param_t" : "Parametric t",
-    "param_z" : "Parametric z"
-}
-
-method_colors = {
-    "basic": "#D4461F",
-    "percentile": "#8E5EE8", 
-    "bca" : "#FF9742",
-    "wilson" : "#DFCF3E", 
-    "agresti_coull" : "#5D9336", 
-    "exact" : "#DB4ADB", 
-    "wald" : "#367F9C",
-    "param_t" : "#999999", 
-    "param_z" : "#A7C7E7"}
 
 def fit_ccp(classif_path,agreg_type):
     results = []
@@ -196,7 +146,7 @@ def reconstruct_basic_classif(qvals, keys,pvalues,alphas):
     significant = {
         n: {
             metric: {
-                method: False
+                method: None
                 for method in method_dict
             }
             for metric, method_dict in metric_dict.items()
@@ -206,7 +156,10 @@ def reconstruct_basic_classif(qvals, keys,pvalues,alphas):
     
     for (n, metric, method), qval in zip(keys, qvals):
         q_values[n][metric][method] = qval
-        significant[n][metric][method] = np.sum(qval < alphas)
+        if qval is None:
+            significant[n][metric][method]=qval
+        else:
+            significant[n][metric][method] = np.sum(qval < alphas)
 
     return q_values,significant
 
@@ -246,7 +199,7 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
     significant = {
       
             metric: {
-                method: False
+                method: None
                 for method in method_dict
             }
             for metric, method_dict in p_values.items()
@@ -254,14 +207,33 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
     }
     
     for (metric, method), qval in zip(keys, qvals):
+        print(qval)
+        if qval is None:
+     
+            significant[metric][method]=qval
+        else:
+            significant[metric][method] = np.sum(qval < alphas)
+
         q_values[metric][method] = qval
-        significant[metric][method] = np.sum(qval < alphas)
+
 
     return q_values,significant
 
 
-
-def plot_significance_matrix_basic_classif(significance, p_values, task,n):
+def format_p(p):
+    if p is None:
+        return ""
+    elif p < 1e-4:
+        return f"{p:.1e}"      # 2.3e-06
+    elif p < 1e-3:
+        return f"{p:.4f}"      # 0.0007
+    elif p < 0.01:
+        return f"{p:.3f}"      # 0.008
+    else:
+        return f"{p:.2f}"  
+    
+        # 0.03, 0.27
+def plot_significance_matrix_basic_classif(significance, p_values, task, to_overleaf=False):
     plt.rcdefaults()
     main_methods = ['bca', 'percentile']
     if task=='macro':
@@ -273,96 +245,146 @@ def plot_significance_matrix_basic_classif(significance, p_values, task,n):
     
     # methods=list(next(iter(significance.values())).keys())
     metrics_all = metric_order
-    fig, ax = plt.subplots(1, 1, figsize=(15, 12))
+    n_values=significance.keys()
+    if task=='macro':
+        fig, axes = plt.subplots(1,len(n_values), figsize=(18, 12), sharey=True  )
+    else:
+        fig, axes = plt.subplots(1,len(n_values), figsize=(18, 12), sharey=True  )
 
-    
 
-    global_matrix = np.zeros((len(metrics_all), len(methods)))
-    
-    for i, metric in enumerate(metrics_all):
-       
-        for j, method in enumerate(methods):
-
-            val = significance.get(metric, {}).get(method, None)
-            if val is None:
-                global_matrix[i, j] = -1      # N/A
-            elif val == 0:
-                global_matrix[i, j] = 0       # Not significant
-            else:
-                global_matrix[i, j] = 1
-            # global_matrix[i, j] = val if val is not None else -1
+    for i,(n, sign_n) in enumerate(significance.items()):
+        ax=axes[i]
+        p_values_n=p_values[n]
+        global_matrix = np.zeros((len(metrics_all), len(methods)))
         
+        for i, metric in enumerate(metrics_all):
+        
+            for j, method in enumerate(methods):
 
-    pval_matrix = []
-
-    for metric in metrics_all:
-        pval_row = []
-
-        for method in methods:
-
-            p_val = p_values.get(metric, {}).get(method)
-            if p_val is None:
-                    pval_row.append("")
-            elif p_val < 0.05:
-                pval_row.append("<0.05")
-            else:
-                pval_row.append(f"{p_val:.3f}")
-            # if p_val is None:
-            #     pval_row.append("0")
-            # else:
-            #     pval_row.append(
-            #         f"{p_val:.6f}" if p_val >= 0.05 else "<0.05"
-            #     )
-
-        pval_matrix.append(pval_row)
+                val = sign_n.get(metric, {}).get(method, None)
     
-    values = np.unique(global_matrix)
-    # full mapping dictionary
-    color_map_dict = {
-       
-        -1: "#161515",
-        0: "#d9d9d9",
-        1: "#fdae61",
-       
-    }
-    # extract only the colors for values that appear
-    colors = [color_map_dict[v] for v in values]
+                if val is None :
+                    global_matrix[i, j] = -1      # N/A
+                elif val == 0:
+                    
+                    global_matrix[i, j] = 0       # Not significant
+                else:
+                    global_matrix[i, j] = 1
+                # global_matrix[i, j] = val if val is not None else -1
+            
 
-    # build colormap
-    cmap = ListedColormap(colors)
-    mabels = [method_labels.get(m, m) for m in methods]
-    metlabels=[metric_labels.get(m, m) for m in metrics_all]
-    # Plot heatma
-    sns.heatmap(
-        global_matrix,
-        annot=pval_matrix,
-        xticklabels=mabels,
-        yticklabels=metlabels,
-        cmap=cmap,
-        cbar=False,
-        ax=ax,
-        fmt='',
-        annot_kws={"fontsize": 12}
-    )
-    ax.tick_params(axis='x', rotation=45, labelsize=12)
+        pval_matrix = []
 
-    ax.tick_params(axis='y', rotation=45, labelsize=12)
-    ax.set_title('Test of basic slower CCP', fontsize=16)
-    legend_elements = [
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
+        for metric in metrics_all:
+            pval_row = []
+
+            for method in methods:
+
+                p_val = p_values_n.get(metric, {}).get(method)
+                if p_val is None:
+                    pval_row.append("")
+                else:
+                    pval_row.append(format_p(p_val))
+                # if p_val is None:
+                #     pval_row.append("0")
+                # else:
+                #     pval_row.append(
+                #         f"{p_val:.6f}" if p_val >= 0.05 else "<0.05"
+                #     )
+
+            pval_matrix.append(pval_row)
+        
+        values = np.unique(global_matrix)
+        # full mapping dictionary
+        color_map_dict = {
+        
+           -1: "#F5F5F5",      # missing
+            0: "#F8CC80FF",      # non-significant
+            1: "#D55E00",      # significant
+        
+        }
+        # extract only the colors for values that appear
+        colors = [color_map_dict[v] for v in values]
+
+        # build colormap
+        cmap = ListedColormap(colors)
+        mabels = [method_labels.get(m, m) for m in methods]
+        metlabels=[metric_labels.get(m, m) for m in metrics_all]
+        # Plot heatma
+        sns.heatmap(
+            global_matrix,
+            annot=pval_matrix,
+            xticklabels=mabels,
+            yticklabels=metlabels,
+            cmap=cmap,
+            cbar=False,
+            ax=ax,
+            fmt='',
+            linewidths=1,
+            square=True,
+            linecolor="white",
+            annot_kws={"fontsize": 8 if task=='macro' else 4}
+        )
+        if task=='macro':
+            ax.tick_params(axis='x', rotation=45, labelsize=12)
+
+            ax.tick_params(axis='y', rotation=45, labelsize=12)
+        else:
+            ax.tick_params(axis='x', rotation=90, labelsize=7)
+
+            ax.tick_params(axis='y', rotation=45, labelsize=7)
+        ax.set_title(f'n={int(float(n))}', fontsize=12)
+        legend_elements = [
+                mpatches.Patch(facecolor="#D55E00",
+                            edgecolor='k',
+                            label="Significant (FDR-adjusted p < 0.05)"),
+                mpatches.Patch(facecolor="#F8CC80FF",
+                            edgecolor='k',
+                            label="Not significant"),
+                mpatches.Patch(facecolor="#F5F5F5",
+                            edgecolor='k',
+                            label="Not available"),
+            ]
+    ax.legend(
         handles=legend_elements,
-        bbox_to_anchor=(1.01, 0.5),
+        bbox_to_anchor=(1.01, 0.8),
         ncol=1,
-        fontsize=16,
+        fontsize=10,
         frameon=True,
         title="Significance levels \nwith FDR correction",
-        title_fontsize=16
+        title_fontsize=10
     )
-    plt.tight_layout()
-    plt.savefig(f"../clean_figs/supplementary/test_results/cov_basic_classif_{task}/{n}.pdf")
+    if task=='macro':
+        fig.subplots_adjust(
+        # left=0.08,   # more space for y tick labels
+        # right=0.75,  # space for legend
+        # top=1,
+        # bottom=0,
+        wspace=0.02,
+        # hspace=0.01
+        )
+    else:
+
+        fig.subplots_adjust(
+        # left=0.08,   # more space for y tick labels
+        # right=0.75,  # space for legend
+        # top=1,
+        # bottom=0,
+        wspace=0.03,
+        # hspace=0.01
+        )
+    plt.rcParams["figure.dpi"] = 200
+    
+
+    
+    output_path=f"../clean_figs/supplementary/test_results/cov_basic_classif_{task}/all_n.pdf"
+    fig.savefig(output_path,dpi=300, bbox_inches="tight")
+    if to_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/cov_basic_classif_{task}.pdf", commit_msg="Update figure test basic classif")
+    else:
+        plt.show()
+
+
 
 def main(agreg_type):
     if agreg_type=='micro':

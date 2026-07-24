@@ -7,59 +7,10 @@ from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import wilcoxon
-# from ..plot_utils import metric_labels, stat_labels, method_labels
+from .test_basic_classif import format_p
+from ..plot_utils import metric_labels, stat_labels, method_labels, upload_to_overleaf
 
 import seaborn as sns
-metric_labels = {
-    'dsc': 'DSC',
-    'iou': 'IoU',
-    'nsd': 'NSD',
-    'boundary_iou': 'Boundary IoU',
-    'cldice': 'clDice',
-    'assd': 'ASSD',
-    'masd' : 'MASD',
-    'hd': 'HD',
-    'hd_perc': 'HD95',
-    'balanced_accuracy': 'Balanced Accuracy',
-    'ap': 'AP',
-    'auc': 'AUC',
-    'f1_score': 'F1 Score',
-    'accuracy': 'Accuracy',
-    "mcc": "MCC"
-}
-
-stat_labels = {
-    'mean': 'Mean',
-    'median': 'Median',
-    'std': 'Standard Deviation',
-    'trimmed_mean': 'Trimmed Mean',
-    'iqr_length': 'IQR Length'
-}
-
-method_labels = {
-    "basic": "Basic",
-    "percentile": "Percentile",
-    "bca": "BCa",
-    "delong": "DeLong",
-    "logit_transform": "Logit Transform",
-    "wilson": "Wilson",
-    "agresti_coull" : "Agresti-Coull",
-    "exact" : "Exact \n(Clopper-Pearson)",
-    "wald" : 'Wald',
-    "param_t" : "Parametric t",
-    "param_z" : "Parametric z"
-}
-
-method_colors = {
-    "basic": "#D4461F",
-    "percentile": "#8E5EE8", 
-    "bca" : "#FF9742",
-    "wilson" : "#DFCF3E", 
-    "agresti_coull" : "#5D9336", 
-    "exact" : "#DB4ADB", 
-    "wald" : "#367F9C",
-    "param_t" : "#999999", 
-    "param_z" : "#A7C7E7"}
 
 def fit_ccp(classif_path,agreg_type):
     results = []
@@ -247,92 +198,86 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
 
 
 
-def plot_significance_matrix_micro_macro(significance, p_values,n):
+def plot_significance_matrix_micro_macro(significance, p_values, to_overleaf=False):
 
     plt.rcdefaults()
-    metrics_all = list(iter(significance.keys()))
-    fig, ax = plt.subplots(1, 1, figsize=(12, 6*len(metrics_all)))
+    n_values=significance.keys()
 
+    metrics_all = list(next(iter(significance.values())).keys()) 
+
+    fig, axes = plt.subplots( len(n_values),1, figsize=(18, 10), sharex=True)
     
 
-    global_matrix = []
-    pval_matrix = []
-
-    for metric in metrics_all:
-
-            val = significance.get(metric)
-            p_val = p_values.get(metric)
+    
+    for i,(n,sign_n) in enumerate(significance.items()):
+        ax=axes[i]
+        global_matrix = []
+        pval_matrix = []
+        p_values_n=p_values[n]
+        for metric in metrics_all:
+            val = sign_n.get(metric)
+            p_val = p_values_n.get(metric)
 
             if val is None:
-                global_matrix.append(-1)      # N/A
+                global_matrix.append(-1)      
             elif val == 0:
-                global_matrix.append(0)       # Not significant
+                global_matrix.append(0)       
             else:
                 global_matrix.append(1)
 
             if p_val is None:
                 pval_matrix.append("")
-            elif p_val < 0.05:
-                pval_matrix.append("<0.05")
             else:
-                pval_matrix.append(f"{p_val:.3f}")
-            # global_matrix[i, j] = min(3, val) if val is not None else 0
-        
-    # pval_matrix = []
-
-    # for metric in metrics_all:
-
-    #     p_val = p_values.get(metric)
-    #     if p_val is None:
-    #         pval_matrix.append("")
-    #     elif p_val < 0.05:
-    #         pval_matrix.append("<0.05")
-    #     else:
-    #         pval_matrix.append(f"{p_val:.3f}")
-            # if p_val is None:
-            #     pval_row.append("0")
-            # else:
-            #     pval_row.append(
-            #         f"{p_val:.6f}" if p_val >= 0.0001 else "<0.0001"
-            #     )
-
-   
-    values = np.unique(global_matrix)
-    # full mapping dictionary
-    color_map_dict = {
-        -1: '#000000',
-        0: '#d9d9d9',
-        1: '#fdae61',
-       
-    }
-    # extract only the colors for values that appear
-    colors = [color_map_dict[v] for v in values]
-
-    # build colormap
-    cmap = ListedColormap(colors)
-    metlabels=[metric_labels.get(m, m) for m in metrics_all]
-    # Plot heatma
+                pval_matrix.append(format_p(p_val))
+            
     
-    sns.heatmap(
-        [global_matrix],
-        annot=[pval_matrix],
-        xticklabels=metlabels,
-        cmap=cmap,
-        cbar=False,
-        ax=ax,
-        fmt='',
-        annot_kws={"fontsize": 12}
-    )
+        values = np.unique(global_matrix)
+        # full mapping dictionary
+        color_map_dict = {
+            -1: "#F5F5F5",      
+            0: "#F8CC80FF",     
+            1: "#D55E00"
+        
+        }
+        # extract only the colors for values that appear
+        colors = [color_map_dict[v] for v in values]
 
-    ax.tick_params(axis='x', rotation=45, labelsize=12)
-    ax.set_title('Test of micro vs macro', fontsize=16)
+        # build colormap
+        cmap = ListedColormap(colors)
+        metlabels=[metric_labels.get(m, m) for m in metrics_all]
+        # Plot heatma
+        
+        sns.heatmap(
+            [global_matrix],
+            annot=[pval_matrix],
+            xticklabels=metlabels,
+            yticklabels=[f"n={int(float(n))}"],
+            cmap=cmap,
+            cbar=False,
+            square=True,
+            ax=ax,
+            linecolor="white",
+            linewidths=1,
+            fmt='',
+            annot_kws={"fontsize": 12}
+        )
+
+        ax.tick_params(axis='x', rotation=90, labelsize=12)
+        ax.tick_params(axis='y', rotation=0, labelsize=12)
     legend_elements = [
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
+                mpatches.Patch(facecolor="#D55E00",
+                            edgecolor='k',
+                            label="Significant \n(FDR-adjusted p < 0.05)"),
+                mpatches.Patch(facecolor="#F8CC80FF",
+                            edgecolor='k',
+                            label="Not significant"),
+                mpatches.Patch(facecolor="#F5F5F5",
+                            edgecolor='k',
+                            label="Not available"),
+            ]
+    axes[0].legend(
         handles=legend_elements,
-        bbox_to_anchor=(1.01, 0.5),
+        bbox_to_anchor=(1.01, 1),
         ncol=1,
         fontsize=16,
         frameon=True,
@@ -340,7 +285,22 @@ def plot_significance_matrix_micro_macro(significance, p_values,n):
         title_fontsize=16
     )
     plt.tight_layout()
-    plt.savefig(f'../clean_figs/supplementary/test_results/cov_micro_macro/{n}.pdf')
+    plt.rcParams["figure.dpi"] = 200
+    fig.subplots_adjust(
+    
+    right=0.8,  # space for legend
+
+    )
+    output_path=f'../clean_figs/supplementary/test_results/cov_micro_macro/all_n.pdf'
+    fig.savefig(output_path)
+
+    if to_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/cov_micro_macro.pdf", commit_msg="Update figure test micro macrof")
+
+    else:
+        plt.show()
+
+
 def main():
 
     path_micro='../results_metrics_classif'

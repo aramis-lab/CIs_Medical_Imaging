@@ -8,58 +8,8 @@ import matplotlib.patches as mpatches
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import wilcoxon
 import seaborn as sns
-# from .make_fit import df_fit_results_wdp,df_fit_results_classif_wdp, segm_path, micro_path
-
-metric_labels = {
-    'dsc': 'DSC',
-    'iou': 'IoU',
-    'nsd': 'NSD',
-    'boundary_iou': 'Boundary IoU',
-    'cldice': 'clDice',
-    'assd': 'ASSD',
-    'masd' : 'MASD',
-    'hd': 'HD',
-    'hd_perc': 'HD95',
-    'balanced_accuracy': 'Balanced Accuracy',
-    'ap': 'AP',
-    'auc': 'AUC',
-    'f1_score': 'F1 Score',
-    'accuracy': 'Accuracy',
-    "mcc": "MCC"
-}
-
-stat_labels = {
-    'mean': 'Mean',
-    'median': 'Median',
-    'std': 'Standard Deviation',
-    'trimmed_mean': 'Trimmed Mean',
-    'iqr_length': 'IQR Length'
-}
-
-method_labels = {
-    "basic": "Basic",
-    "percentile": "Percentile",
-    "bca": "BCa",
-    "delong": "DeLong",
-    "logit_transform": "Logit Transform",
-    "wilson": "Wilson",
-    "agresti_coull" : "Agresti-Coull",
-    "exact" : "Exact \n(Clopper-Pearson)",
-    "wald" : 'Wald',
-    "param_t" : "Parametric t",
-    "param_z" : "Parametric z"
-}
-
-method_colors = {
-    "basic": "#D4461F",
-    "percentile": "#8E5EE8", 
-    "bca" : "#FF9742",
-    "wilson" : "#DFCF3E", 
-    "agresti_coull" : "#5D9336", 
-    "exact" : "#DB4ADB", 
-    "wald" : "#367F9C",
-    "param_t" : "#999999", 
-    "param_z" : "#A7C7E7"}
+from .test_basic import format_p
+from ..plot_utils import metric_labels, stat_labels, method_labels,upload_to_overleaf
 
 def fit_wdp_segm(segm_path):
     results = []
@@ -241,7 +191,7 @@ def tell_significance(
     significance = {
         method: {
             stat: {
-                metric1: {}
+                metric1: None
                 for metric1 in stat_dict
             }
             for stat, stat_dict in method_dict.items()
@@ -264,94 +214,120 @@ def tell_significance(
     return significance
 
 
-def plot_significance_matrix_wdp_segm_classif(significance,p_values, n,task):
-
+def plot_significance_matrix_wdp_segm_classif(significance,p_values,task, to_overleaf=False):
     plt.rcdefaults()
+    n_values=significance.keys()
+    
 
-    metrics_classif =significance.keys()
-    metrics_segm = list(next(iter(significance.values())).keys())
-
-    fig, ax = plt.subplots(1,1, figsize=(12, 15))
+    fig, axes = plt.subplots(1,len(n_values), figsize=(18, 12), sharey=True)
 
     
-    global_matrix = np.zeros((len(metrics_segm), len(metrics_classif)))
-    pval_matrix= []
-    for i, metric1 in enumerate(metrics_segm):
-        pval_row=[]
-        for j, metric2 in enumerate(metrics_classif):
-            val = significance.get(metric2, {}).get(metric1)
-            
-            p_val = p_values.get(metric2, {}).get(metric1)
-
-            if val is None:
-                global_matrix[i,j]=(-1)      # N/A
-            elif val == 0:
-                global_matrix[i,j]=(0)       # Not significant
-            else:
-                global_matrix[i,j]=(1)
-
-            if p_val is None:
-                pval_row.append("")
-            elif p_val < 0.05:
-                pval_row.append("<0.05")
-            else:
-                pval_row.append(f"{p_val:.3f}")
-        pval_matrix.append(pval_row)
- 
     
-    values = np.unique(global_matrix)
+    for i,(n, sign_n) in enumerate(significance.items()):
+        ax= axes[i]
+        p_values_n=p_values[n]
+        metrics_classif =sign_n.keys()
+        metrics_segm = list(next(iter(sign_n.values())).keys())
+        global_matrix = np.zeros((len(metrics_segm), len(metrics_classif)))
+        pval_matrix= []
+        for j, metric1 in enumerate(metrics_segm):
+            pval_row=[]
+            for k, metric2 in enumerate(metrics_classif):
+                val = sign_n.get(metric2, {}).get(metric1)
+                
+                p_val = p_values_n.get(metric2, {}).get(metric1)
 
-    # full mapping dictionary
-    color_map_dict = {
-       -1: '#000000',
-        0: '#d9d9d9',
-        1: '#fdae61',
-    }
-    # extract only the colors for values that appear
-    colors = [color_map_dict[v] for v in values]
+                if val is None:
+                    global_matrix[j,k]=(-1)      # N/A
+                elif val == 0:
+                    global_matrix[j,k]=(0)       # Not significant
+                else:
+                    global_matrix[j,k]=(1)
 
-    # build colormap
-    cmap = ListedColormap(colors)
+                if p_val is None:
+                    pval_row.append("")
+                
+                else:
+                    pval_row.append(format_p(p_val))
+            pval_matrix.append(pval_row)
     
-    # Plot heatmap
-    labels_x = [metric_labels.get(m, m) for m in metrics_classif]
-    labels_y = [metric_labels.get(m, m) for m in metrics_segm]
-    sns.heatmap(
-        global_matrix,
-        xticklabels=labels_x,
-        yticklabels=labels_y,
-        annot=pval_matrix,
-        cmap=cmap,
-        cbar=False,
-        ax=ax,
-        fmt='',
-        annot_kws={"fontsize": 16}
-    )
-    ax.tick_params(axis='x', rotation=45, labelsize=14)
+        
+        values = np.unique(global_matrix)
 
-    ax.tick_params(axis='y', rotation=45, labelsize=14)
+        # full mapping dictionary
+        color_map_dict = {
+       -1: "#F5F5F5",      
+            0: "#F8CC80FF",     
+            1: "#D55E00"
+        }
+        # extract only the colors for values that appear
+        colors = [color_map_dict[v] for v in values]
 
-    ax.set_title(f"Test segm vs classif width", fontsize=16)
+        # build colormap
+        cmap = ListedColormap(colors)
+        
+        # Plot heatmap
+        labels_x = [metric_labels.get(m, m) for m in metrics_classif]
+        labels_y = [metric_labels.get(m, m) for m in metrics_segm]
+        sns.heatmap(
+            global_matrix,
+            xticklabels=labels_x,
+            yticklabels=labels_y,
+            annot=pval_matrix,
+            cmap=cmap,
+            cbar=False,
+            ax=ax,
+            square=True,
+            linewidths=1,
+            fmt='',
+            annot_kws={"fontsize": 5}
+        )
+        ax.tick_params(axis='x', rotation=90, labelsize=10)
 
-    legend_elements = [
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
+        ax.tick_params(axis='y', rotation=0, labelsize=10)
+
+        ax.set_title(f"n={int(float(n))}", fontsize=12)
+
+        legend_elements = [
+                mpatches.Patch(facecolor="#D55E00",
+                            edgecolor='k',
+                            label="Significant \n(FDR-adjusted p < 0.05)"),
+                mpatches.Patch(facecolor="#F8CC80FF",
+                            edgecolor='k',
+                            label="Not significant"),
+                mpatches.Patch(facecolor="#F5F5F5",
+                            edgecolor='k',
+                            label="Not available"),
+            ]
+    ax.legend(
         handles=legend_elements,
         loc='center left',
         bbox_to_anchor=(1.01, 0.5),
         ncol=1,
-        fontsize=16,
+        fontsize=12,
         frameon=True,
         title="Significance levels \nwith FDR correction",
-        title_fontsize=16
+        title_fontsize=12
     )
-    plt.tight_layout()
     
-    # if not os.path.exists(os.path.dirname(output_path)):
-    #     os.makedirs(os.path.dirname(output_path))
-    plt.savefig(f'../clean_figs/supplementary/test_results/width_segm_classif_{task}/{n}.pdf')
+    
+    # fig.subplots_adjust(
+    # left=0.07,   # more space for y tick labels
+    # right=0.8,  # space for legend
+    # # top=1,
+    # # bottom=0,
+    # wspace=0.05,
+    # hspace=0
+    # )
+    plt.tight_layout()
+    output_path=f'../clean_figs/supplementary/test_results/width_segm_classif_{task}/all_n.pdf'
+    fig.savefig(output_path)
+    if to_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/width_segm_classif_{task}.pdf", commit_msg="Update figure test width segm classif")
+    else:
+
+        plt.show()
+    
 
 
 

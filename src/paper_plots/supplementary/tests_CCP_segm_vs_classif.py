@@ -9,7 +9,7 @@ from scipy.stats import permutation_test
 import argparse
 from ..df_loaders import extract_df_segm_cov, extract_df_classif_cov
 from ..plot_utils import metric_labels, stat_labels, method_labels, upload_to_overleaf
-
+from .test_basic import format_p
 def perform_fits_segm(df_segm, metrics, stats):
     results = []
     for task in df_segm['task'].unique():
@@ -120,7 +120,7 @@ def reconstruct_segm_classif(qvals, locations,p_vals,alphas):
     significance = {
         n: {
             metric1: {
-                    metric2: {} 
+                    metric2: None
                         for metric2 in metric2_dict
                     }
                 for metric1,metric2_dict in metric1_dict.items()
@@ -130,7 +130,7 @@ def reconstruct_segm_classif(qvals, locations,p_vals,alphas):
     qvalues = {
         n: {
             metric1: {
-                    metric2: {} 
+                    metric2:  None
                         for metric2 in metric2_dict
                     }
                 for metric1,metric2_dict in metric1_dict.items()
@@ -178,94 +178,121 @@ def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correcti
                     else:
                         significance[method][stat][metric1][metric2] = 0
     return significance
-def plot_significance_matrix_segm_classif(significance,p_values,n):
+def plot_significance_matrix_segm_classif(significance,p_values, to_overleaf=False):
 
     plt.rcdefaults()
-    metrics_classif = significance.keys()
-    metrics_segm = list(next(iter(significance.values())).keys())
-
-    fig, ax = plt.subplots(1, 1, figsize=(15 , 12))
+    n_values=significance.keys()
     
 
-            # Extract significance for the specific method and stat
-    global_matrix = np.zeros((len(metrics_segm), len(metrics_classif)))
-    pval_matrix = []
-
-    for i, metric1 in enumerate(metrics_segm):
-        pval_row = []
-
-        for j, metric2 in enumerate(metrics_classif):
-            val = significance.get(metric2, {}).get(metric1, None)
-            p_val = p_values.get(metric2, {}).get(metric1,None)
-            if val is None:
-                global_matrix[i,j]=(-1)      # N/A
-            elif val == 0:
-                global_matrix[i,j]=(0)       # Not significant
-            else:
-                global_matrix[i,j]=(1)
-
-            if p_val is None:
-                pval_row.append("")
-            elif p_val < 0.05:
-                pval_row.append("<0.05")
-            else:
-                pval_row.append(f"{p_val:.3f}")
-        pval_matrix.append(pval_row)
-    # Create p_val matrix for heatap 
-   
-    values = np.unique(global_matrix)
-
-    # full mapping dictionary
-    color_map_dict = {
-        -1: '#000000',
-    0: '#d9d9d9',
-    1: '#fdae61',
-    }
-    # extract only the colors for values that appear
-    colors = [color_map_dict[v] for v in values]
-
-    # build colormap
-    cmap = ListedColormap(colors)
+    fig, axes = plt.subplots(1,len(n_values), figsize=(15 , 8), sharey=True)
     
-    # Plot heatmap
-    labels_x = [metric_labels.get(m, m) for m in metrics_classif]
-    labels_y = [metric_labels.get(m, m) for m in metrics_segm]
-    sns.heatmap(
-        global_matrix,
-        xticklabels=labels_x,
-        yticklabels=labels_y,
-        annot=pval_matrix,
-        cmap=cmap,
-        cbar=False,
-        ax=ax,
-        fmt='',
-        annot_kws={"fontsize": 16}
-    )
-    ax.tick_params(axis='x', rotation=45, labelsize=14)
 
-    ax.tick_params(axis='y', rotation=45, labelsize=14)
+    # Extract significance for the specific method and stat
+    
+    for i,(n, sign_n) in enumerate(significance.items()):
+        ax=axes[i]
+        p_values_n=p_values[n]
+        metrics_classif = sign_n.keys()
+        metrics_segm = list(next(iter(sign_n.values())).keys())
+        global_matrix = np.zeros((len(metrics_segm), len(metrics_classif)))
+        pval_matrix = []
+        for j, metric1 in enumerate(metrics_segm):
+            pval_row = []
 
-    ax.set_title(f"Coverage test segm vs classif macro", fontsize=16)
+            for k, metric2 in enumerate(metrics_classif):
+                val = sign_n.get(metric2, {}).get(metric1, None)
+                p_val = p_values_n.get(metric2, {}).get(metric1,None)
+                if val is None:
+                    global_matrix[j,k]=(-1)      # N/A
+                elif val == 0:
+                    global_matrix[j,k]=(0)       # Not significant
+                else:
+                    global_matrix[j,k]=(1)
 
-    legend_elements = [
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
+                if p_val is None:
+                    pval_row.append("")
+                
+                else:
+                    pval_row.append(format_p(p_val))
+            pval_matrix.append(pval_row)
+        # Create p_val matrix for heatap 
+    
+        values = np.unique(global_matrix)
+
+        # full mapping dictionary
+        color_map_dict = {
+           -1: "#F5F5F5",      
+            0: "#F8CC80FF",     
+            1: "#D55E00"
+        }
+        # extract only the colors for values that appear
+        colors = [color_map_dict[v] for v in values]
+
+        # build colormap
+        cmap = ListedColormap(colors)
+        
+        # Plot heatmap
+        labels_x = [metric_labels.get(m, m) for m in metrics_classif]
+        labels_y = [metric_labels.get(m, m) for m in metrics_segm]
+        sns.heatmap(
+            global_matrix,
+            xticklabels=labels_x,
+            yticklabels=labels_y,
+            annot=pval_matrix,
+            cmap=cmap,
+            cbar=False,
+            ax=ax,
+            square=True,
+            linewidths=1,
+            fmt='',
+            annot_kws={"fontsize": 5}
+        )
+        ax.tick_params(axis='x', rotation=90, labelsize=10)
+
+        ax.tick_params(axis='y', rotation=0, labelsize=10)
+
+        ax.set_title(f"n={n}", fontsize=14)
+
+        legend_elements = [
+                mpatches.Patch(facecolor="#D55E00",
+                            edgecolor='k',
+                            label="Significant \n(FDR-adjusted p < 0.05)"),
+                mpatches.Patch(facecolor="#F8CC80FF",
+                            edgecolor='k',
+                            label="Not significant"),
+                mpatches.Patch(facecolor="#F5F5F5",
+                            edgecolor='k',
+                            label="Not available"),
+            ]
+    ax.legend(
     handles=legend_elements,
     loc='center left',
     bbox_to_anchor=(1.01, 0.5),
     ncol=1,
-    fontsize=16,
+    fontsize=10,
     frameon=True,
     title="Significance levels \nwith FDR correction",
-    title_fontsize=16
+    title_fontsize=10
     )
-    plt.tight_layout()
-    
-    # if not os.path.exists(os.path.dirname(output_path)):
-    #     os.makedirs(os.path.dirname(output_path))
-    plt.savefig(f'../clean_figs/supplementary/test_results/cov_segm_classif/{n}.pdf')
+    # plt.tight_layout()
+    fig.subplots_adjust(
+    left=0.07,   # more space for y tick labels
+    right=0.85,  # space for legend
+    # top=1,
+    # bottom=0,
+    wspace=0.07,
+    hspace=0
+    )
+    output_path=f'../clean_figs/supplementary/test_results/cov_segm_classif/all_n.pdf'
+    fig.savefig(output_path)
+
+    if to_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/cov_segm_classif.pdf", commit_msg=f"Update figure test cov segm classif")
+
+    else:
+
+        plt.show()
+
 
 
 def plot_significance_matrix_segm__classif(root_folder:str, output_path:str, upload_overleaf: bool = False):
@@ -370,6 +397,8 @@ def plot_significance_matrix_segm__classif(root_folder:str, output_path:str, upl
             cmap=cmap,
             cbar=False,
             ax=ax,
+            square=True,
+            linewidths=1,
             fmt='',
             annot_kws={"fontsize": 16}
         )

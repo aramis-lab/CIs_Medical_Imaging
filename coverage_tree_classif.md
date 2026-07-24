@@ -1,0 +1,118 @@
+- Classification
+  - MACRO
+    - ap
+      - 10.0, 25.0, 50.0
+        - ❌
+      - 100.0
+        - ⚠️ basic (93/90)
+      - 125.0, 150.0
+        - ⚠️ basic (94/89)
+      - 200.0, 250.0
+        - ✅ basic
+      - 75.0
+        - ⚠️ basic (93/88)
+    - auc
+      - 10.0
+        - ❌
+      - 100.0
+        - ✅ bca, percentile
+      - 1000.0, 125.0, 150.0, 200.0, 250.0, 500.0
+        - ✅ basic, bca, percentile
+      - 25.0
+        - ⚠️ bca (94/46)
+        - ⚠️ percentile (92/16)
+      - 50.0
+        - ⚠️ basic (92/72)
+        - ⚠️ bca (95/80)
+        - ⚠️ percentile (94/72)
+      - 75.0
+        - ⚠️ basic (93/82)
+        - ⚠️ bca (95/90)
+        - ⚠️ percentile (94/87)
+    - balanced_accuracy
+      - 10.0, 25.0
+        - ❌
+      - 100.0
+        - ⚠️ basic (93/81)
+        - ⚠️ bca (94/88)
+        - ⚠️ percentile (94/89)
+      - 1000.0, 250.0, 500.0
+        - ✅ basic, bca, percentile
+      - 125.0
+        - ✅ percentile
+      - 150.0, 200.0
+        - ✅ bca, percentile
+      - 50.0
+        - ⚠️ percentile (92/76)
+      - 75.0
+        - ⚠️ basic (93/74)
+        - ⚠️ bca (94/84)
+        - ⚠️ percentile (93/85)
+    - f1_score
+      - 10.0, 25.0
+        - ❌
+      - 100.0
+        - ⚠️ basic (93/85)
+        - ⚠️ bca (94/90)
+        - ⚠️ percentile (93/87)
+      - 1000.0, 250.0, 500.0
+        - ✅ basic, bca, percentile
+      - 125.0
+        - ✅ bca
+      - 150.0, 200.0
+        - ✅ bca, percentile
+      - 50.0
+        - ⚠️ bca (93/83)
+      - 75.0
+        - ⚠️ bca (94/87)
+        - ⚠️ percentile (93/85)
+  - MICRO
+    - accuracy
+      - 10.0
+        - ✅ wilson
+      - 100.0, 125.0, 150.0, 200.0, 250.0, 75.0
+        - ✅ basic, bca, percentile, wilson
+      - 25.0
+        - ✅ percentile, wilson
+      - 50.0
+        - ✅ bca, percentile, wilson
+    - ap
+      - 10.0
+        - ❌
+      - 100.0, 75.0
+        - ✅ bca, percentile
+      - 125.0, 150.0, 200.0, 250.0
+        - ✅ basic, bca, percentile
+      - 25.0
+        - ⚠️ bca (93/85)
+      - 50.0
+        - ✅ percentile
+    - auc
+      - 10.0
+        - ⚠️ bca (94/87)
+      - 100.0, 125.0, 150.0, 200.0, 250.0, 50.0, 75.0
+        - ✅ basic, bca, percentile
+      - 25.0
+        - ✅ bca, percentile
+    - f1_score
+      - 10.0
+        - ❌
+      - 100.0, 125.0, 150.0, 200.0, 250.0, 75.0
+        - ✅ basic, bca, percentile
+      - 25.0
+        - ⚠️ bca (94/89)
+        - ⚠️ percentile (94/90)
+      - 50.0
+        - ✅ bca, percentile
+    - mcc
+      - 10.0
+        - ❌
+      - 100.0, 125.0, 150.0, 200.0, 250.0
+        - ✅ basic, bca, percentile
+      - 25.0
+        - ⚠️ bca (92/58)
+        - ⚠️ percentile (92/84)
+      - 50.0
+        - ✅ percentile
+      - 75.0
+        - ✅ bca, percentile

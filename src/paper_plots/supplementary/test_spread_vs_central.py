@@ -7,59 +7,11 @@ from matplotlib.colors import ListedColormap
 import matplotlib.patches as mpatches
 from statsmodels.stats.multitest import multipletests
 from scipy.stats import wilcoxon
-# from ..plot_utils import metric_labels, stat_labels, method_labels
+from .test_basic import format_p
+from ..plot_utils import metric_labels, stat_labels, method_labels,upload_to_overleaf
 
 import seaborn as sns
-metric_labels = {
-    'dsc': 'DSC',
-    'iou': 'IoU',
-    'nsd': 'NSD',
-    'boundary_iou': 'Boundary IoU',
-    'cldice': 'clDice',
-    'assd': 'ASSD',
-    'masd' : 'MASD',
-    'hd': 'HD',
-    'hd_perc': 'HD95',
-    'balanced_accuracy': 'Balanced Accuracy',
-    'ap': 'AP',
-    'auc': 'AUC',
-    'f1_score': 'F1 Score',
-    'accuracy': 'Accuracy',
-    "mcc": "MCC"
-}
 
-stat_labels = {
-    'mean': 'Mean',
-    'median': 'Median',
-    'std': 'Standard Deviation',
-    'trimmed_mean': 'Trimmed Mean',
-    'iqr_length': 'IQR Length'
-}
-
-method_labels = {
-    "basic": "Basic",
-    "percentile": "Percentile",
-    "bca": "BCa",
-    "delong": "DeLong",
-    "logit_transform": "Logit Transform",
-    "wilson": "Wilson",
-    "agresti_coull" : "Agresti-Coull",
-    "exact" : "Exact \n(Clopper-Pearson)",
-    "wald" : 'Wald',
-    "param_t" : "Parametric t",
-    "param_z" : "Parametric z"
-}
-
-method_colors = {
-    "basic": "#D4461F",
-    "percentile": "#8E5EE8", 
-    "bca" : "#FF9742",
-    "wilson" : "#DFCF3E", 
-    "agresti_coull" : "#5D9336", 
-    "exact" : "#DB4ADB", 
-    "wald" : "#367F9C",
-    "param_t" : "#999999", 
-    "param_z" : "#A7C7E7"}
 
 def fit_ccp(segm_path):
     results = []
@@ -244,78 +196,94 @@ def tell_significance(p_values, alphas=np.array([0.001, 0.01, 0.05])):
     return q_values,significant
 
 
-def plot_significance_matrix_spread_central(significance, p_values,n):
+def plot_significance_matrix_spread_central(significance, p_values, to_overleaf=False):
 
     plt.rcdefaults()
-    
+    n_values=significance.keys()
+
     metric_order = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
-    metrics =significance.keys()
-    stats = list(next(iter(significance.values())).keys())
-    fig, ax = plt.subplots(1,1, figsize=(12,15))
     
-    global_matrix = np.zeros((len(metric_order), len(stats)))
+    fig, axes = plt.subplots(1,len(n_values), figsize=(18,15), sharey=True)
+    
+    
 
-    pval_matrix = []
-    for i, metric in enumerate(metrics):
     
-        pval_row=[]
-        for j,stat in enumerate(stats):
+    for i,(n, sign_n) in enumerate(significance.items()):
+        ax=axes[i]
+        pvalues_n=p_values[n]
+        
+        metrics =sign_n.keys()
+        stats = list(next(iter(sign_n.values())).keys())
+        global_matrix = np.zeros((len(metric_order), len(stats)))
+        pval_matrix = []
+        for j, metric in enumerate(metrics):
+        
+            pval_row=[]
+            for k,stat in enumerate(stats):
+                
+                val = sign_n.get(metric, {}).get(stat)
+                p_val = pvalues_n.get(metric, {}).get(stat)
+
+                if val is None:
+                    global_matrix[j,k]=(-1)      # N/A
+                elif val == 0:
+                    global_matrix[j,k]=(0)       # Not significant
+                else:
+                    global_matrix[j,k]=(1)
+                if p_val is None:
+                    pval_row.append("")
+                
+                else:
+                    pval_row.append(format_p(p_val))
             
-            val = significance.get(metric, {}).get(stat)
-            p_val = p_values.get(metric, {}).get(stat)
+            pval_matrix.append(pval_row)
+            
+        values = np.unique(global_matrix)
 
-            if val is None:
-                global_matrix[i,j]=(-1)      # N/A
-            elif val == 0:
-                global_matrix[i,j]=(0)       # Not significant
-            else:
-                global_matrix[i,j]=(1)
-            if p_val is None:
-                pval_row.append("")
-            elif p_val < 0.05:
-                pval_row.append("<0.05")
-            else:
-                pval_row.append(f"{p_val:.3f}")
-        
-        pval_matrix.append(pval_row)
-        
-    values = np.unique(global_matrix)
+        # full mapping dictionary
+        color_map_dict = {
+       -1: "#F5F5F5",      
+            0: "#F8CC80FF",     
+            1: "#D55E00"
+        }
+        # extract only the colors for values that appear
+        colors = [color_map_dict[v] for v in values]
 
-    # full mapping dictionary
-    color_map_dict = {
-    -1: '#000000',
-    0: '#d9d9d9',
-    1: '#fdae61',
-    }
-    # extract only the colors for values that appear
-    colors = [color_map_dict[v] for v in values]
+        # build colormap
+        cmap = ListedColormap(colors)
+        metlabels=[metric_labels.get(m, m) for m in metric_order]
+        # Plot heatma
+        sns.heatmap(
+            global_matrix,
+            annot=pval_matrix,
+            xticklabels=stats,
+            yticklabels=metlabels,
+            cmap=cmap,
+            cbar=False,
+            ax=ax,
+            square=True,
+            linewidths=1,
+            fmt='',
+            annot_kws={"fontsize": 10}
+        )
+        ax.tick_params(axis='x', rotation=90, labelsize=14)
 
-    # build colormap
-    cmap = ListedColormap(colors)
-    metlabels=[metric_labels.get(m, m) for m in metric_order]
-    # Plot heatma
-    sns.heatmap(
-        global_matrix,
-        annot=pval_matrix,
-        xticklabels=stats,
-        yticklabels=metlabels,
-        cmap=cmap,
-        cbar=False,
-        ax=ax,
-        fmt='',
-        annot_kws={"fontsize": 16}
-    )
-    ax.tick_params(axis='x', rotation=45, labelsize=14)
+        ax.tick_params(axis='y', rotation=0, labelsize=14,)
 
-    ax.tick_params(axis='y', rotation=45, labelsize=14)
+        ax.set_title(f'n={n}', fontsize=16)
 
-    ax.set_title('Spread vs central measures', fontsize=16)
-
-    legend_elements = [
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
+        legend_elements = [
+                mpatches.Patch(facecolor="#D55E00",
+                            edgecolor='k',
+                            label="Significant \n(FDR-adjusted p < 0.05)"),
+                mpatches.Patch(facecolor="#F8CC80FF",
+                            edgecolor='k',
+                            label="Not significant"),
+                mpatches.Patch(facecolor="#F5F5F5",
+                            edgecolor='k',
+                            label="Not available"),
+            ]
+    ax.legend(
         handles=legend_elements,
         bbox_to_anchor=(1.01, 0.5),
         ncol=1,
@@ -325,7 +293,22 @@ def plot_significance_matrix_spread_central(significance, p_values,n):
         title_fontsize=16
     )
     plt.tight_layout()
-    plt.savefig(f'../clean_figs/supplementary/test_results/cov_spread_central/{n}.pdf')
+    # fig.subplots_adjust(
+    # left=0.1,   # more space for y tick labels
+    # right=0.75,  # space for legend
+    # # top=1,
+    # # bottom=0,
+    # wspace=0,
+    # # hspace=0.01
+    # )
+    output_path=f'../clean_figs/supplementary/test_results/cov_spread_central/all_n.pdf'
+    fig.savefig(output_path)
+    if to_overleaf: 
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/cov_spread_central.pdf", commit_msg="Update figure test spread central")
+   
+    else:
+        plt.show()
+
  
 
 def main():

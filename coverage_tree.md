@@ -1,0 +1,144 @@
+- Segmentation
+  - mean
+    - assd
+      - 50
+        - ⚠️ bca (93/84)
+      - 75
+        - ⚠️ bca (94/88)
+        - ⚠️ param_t (93/84)
+        - ⚠️ percentile (93/86)
+      - 150
+        - ✅ bca, percentile
+      - 10, 25
+        - ❌
+      - 100, 125
+        - ✅ bca
+      - 200, 250
+        - ✅ bca, param_t, percentile
+    - boundary_iou
+      - 10
+        - ✅ param_t
+      - 25, 50, 75, 100, 125, 150, 200, 250
+        - ✅ basic, bca, param_t, percentile
+    - dsc
+      - 10
+        - ⚠️ param_t (93/85)
+      - 25
+        - ✅ param_t
+      - 50, 75, 100, 125, 150, 200, 250
+        - ✅ basic, bca, param_t, percentile
+    - hd
+      - 10
+        - ❌
+      - 25
+        - ⚠️ bca (93/88)
+        - ⚠️ param_t (93/86)
+        - ⚠️ percentile (92/87)
+      - 50
+        - ✅ bca, param_t, percentile
+      - 75, 100, 125, 150, 200, 250
+        - ✅ basic, bca, param_t, percentile
+    - hd_perc
+      - 10
+        - ❌
+      - 25
+        - ⚠️ bca (92/84)
+      - 50
+        - ⚠️ bca (94/90)
+        - ⚠️ param_t (93/88)
+        - ⚠️ percentile (93/89)
+      - 125, 150, 200, 250
+        - ✅ basic, bca, param_t, percentile
+      - 75, 100
+        - ✅ bca, param_t, percentile
+    - iou
+      - 10
+        - ⚠️ param_t (94/88)
+      - 25
+        - ✅ param_t
+      - 50, 75, 100, 125, 150, 200, 250
+        - ✅ basic, bca, param_t, percentile
+    - masd
+      - 50
+        - ⚠️ bca (92/83)
+      - 75
+        - ⚠️ bca (93/87)
+        - ⚠️ param_t (93/83)
+        - ⚠️ percentile (93/84)
+      - 100
+        - ⚠️ bca (94/89)
+        - ⚠️ param_t (93/86)
+        - ⚠️ percentile (93/87)
+      - 125
+        - ✅ bca
+      - 150
+        - ✅ bca, percentile
+      - 10, 25
+        - ❌
+      - 200, 250
+        - ✅ bca, param_t, percentile
+    - nsd
+      - 10
+        - ❌
+      - 25
+        - ⚠️ bca (93/86)
+        - ⚠️ param_t (93/87)
+      - 50
+        - ✅ bca, percentile
+      - 75
+        - ✅ bca, param_t, percentile
+      - 100, 125, 150, 200, 250
+        - ✅ basic, bca, param_t, percentile
+  - median
+    - assd
+      - 10, 25, 50, 75, 100, 125
+        - ✅ bca, percentile
+      - 150, 200, 250
+        - ✅ percentile
+    - boundary_iou
+      - 10
+        - ✅ percentile
+      - 25, 50, 75, 100, 125, 150, 200, 250
+        - ✅ bca, percentile
+    - dsc, iou, nsd
+      - 250
+        - ✅ percentile
+      - 10, 25, 50, 75, 100, 125, 150, 200
+        - ✅ bca, percentile
+    - hd
+      - 25
+        - ✅ bca, percentile
+      - 10, 50, 75, 100, 125, 150, 200, 250
+        - ✅ percentile
+    - hd_perc
+      - 10, 25, 50, 75, 100, 125, 150, 200, 250
+        - ✅ percentile
+    - masd
+      - 10, 25, 50, 75, 100, 125, 150
+        - ✅ bca, percentile
+      - 200, 250
+        - ✅ percentile
+  - trimmed_mean
+    - assd, masd
+      - 10, 25, 50, 100
+        - ✅ bca, percentile
+      - 75, 125, 150, 200, 250
+        - ✅ basic, bca, percentile
+    - boundary_iou, hd, iou
+      - 10, 25, 50, 75, 100, 125
+        - ✅ bca, percentile
+      - 150, 200, 250
+        - ✅ basic, bca, percentile
+    - dsc
+      - 10, 25, 50, 75, 100
+        - ✅ bca, percentile
+      - 125, 150, 200, 250
+        - ✅ basic, bca, percentile
+    - hd_perc
+      - 250
+        - ✅ basic, bca, percentile
+      - 10, 25, 50, 75, 100, 125, 150, 200
+        - ✅ bca, percentile
+    - nsd
+      - 10, 25, 50, 75, 100, 125, 150, 200, 250
+        - ✅ bca, percentile

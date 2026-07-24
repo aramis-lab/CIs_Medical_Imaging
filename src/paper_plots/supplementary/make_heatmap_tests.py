@@ -22,57 +22,55 @@ from .tests_CCP_segm import plot_significance_matrix_segm, get_pvalues_segm
 from .tests_CCP_segm_vs_classif import plot_significance_matrix_segm_classif, get_pvalues_segm_classif
 from .make_correction_fdr import significance
 
-
-for test in significance['test'].unique(): 
-    print(test)
-    significance_test = significance[significance['test']==test]['significance'].iloc[0]
-    p_values= significance[significance['test']==test]['pvalues_corrected'].iloc[0]
-    if test=='segm':
-        
-        globals()[f'plot_significance_matrix_segm'](significance_test,p_values)
-    else:
-        for n, sign_n in significance_test.items():
-
-            pvalues_n=p_values[n]
-            if test in ['basic_classif_micro', 'basic_classif_macro']:
-                
-                if test == 'basic_classif_micro':
-                    agreg='micro'
-                else:
-                    agreg='macro'
-                globals()[f'plot_significance_matrix_basic_classif'](sign_n,pvalues_n, agreg, n)
-                
-            elif test in ['param_boot_segm', "param_boot_classif", 'param_boot_segm_width' ]:
-                
-                if test== 'param_boot_segm':
-                    task='segm'
-                    type='cov'
-                elif test=='param_boot_segm_width':
-                    task='segm'
-                    type='width'
-
-                else:
-                    type='cov'
-                    task='classif'
+def make_plots(significance,to_overleaf):
+    for test in significance['test'].unique(): 
+        print(test)
+        significance_test = significance[significance['test']==test]['significance'].iloc[0]
+        p_values= significance[significance['test']==test]['pvalues_corrected'].iloc[0]
+    
+        if test in ['basic_classif_micro', 'basic_classif_macro']:
             
-                globals()[f'plot_significance_matrix_param_boot'](sign_n,pvalues_n, task,type, n)
-        
-            elif test in ['wdp_segm_classif', 'wdp_segm_classif_macro']:
-                
+            if test == 'basic_classif_micro':
+            
+                agreg='micro'
+            else:
+                agreg='macro'
+            plot_significance_matrix_basic_classif(significance_test,p_values, agreg,to_overleaf )
+    
+        elif test in ['bca', 'bca_classif']:
+                    
+            if test=='bca':
+                task='segm'
+            else: 
+                task='classif'
+            plot_significance_matrix_bca(significance_test,p_values,task,to_overleaf)
 
-                if test=='wdp_segm_classif':
-                    task='micro'
-                else:
-                    task='macro'
-                globals()[f'plot_significance_matrix_wdp_segm_classif'](sign_n,pvalues_n,n, task)
-            elif test in ['bca', 'bca_classif']:
-                
-                if test=='bca':
-                    task='segm'
-                else: 
-                    task='classif'
-                globals()[f'plot_significance_matrix_bca'](sign_n,pvalues_n,n, task)
+        elif test in ['param_boot_segm', "param_boot_classif", 'param_boot_segm_width' ]:
+                 
+            if test== 'param_boot_segm':
+                task='segm'
+                type='cov'
+            elif test=='param_boot_segm_width':
+                task='segm'
+                type='width'
 
             else:
+                type='cov'
+                task='classif'
         
-                globals()[f'plot_significance_matrix_{test}'](sign_n,pvalues_n,n)
+            plot_significance_matrix_param_boot(significance_test,p_values, task,type,to_overleaf)
+        
+        elif test in ['wdp_segm_classif', 'wdp_segm_classif_macro']:
+               
+            if test=='wdp_segm_classif':
+                task='micro'
+            else:
+                task='macro'
+            plot_significance_matrix_wdp_segm_classif(significance_test,p_values, task,to_overleaf)
+
+        else:
+            
+            globals()[f'plot_significance_matrix_{test}'](significance_test,p_values,to_overleaf)
+
+
+make_plots(significance,True)
