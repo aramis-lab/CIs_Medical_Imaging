@@ -1,3 +1,27 @@
+"""Core bootstrap coverage-evaluation pipeline for classification and
+segmentation confidence intervals.
+
+This module contains the two workhorse functions that drive every
+experiment, whether launched from a SLURM array job, a Hydra multirun, or
+the single-experiment script :mod:`run_single`:
+
+* :func:`make_kdes_classification` — fits a multivariate KDE to the logit
+  vectors of a single (task, algorithm) pair, draws synthetic datasets at
+  each requested sample size, computes confidence intervals with every
+  authorized CI method, and records per-sample coverage and width.
+* :func:`make_kdes_segmentation` — does the same for scalar per-case
+  segmentation metrics, using a 1-D KDE (or empirical resampling for
+  discrete metrics).
+
+Both functions persist **raw** per-sample results and an **aggregated**
+coverage summary as CSV files.  Existing results are loaded and merged
+incrementally so that interrupted runs can be resumed without re-computing
+sample sizes that have already been completed.
+
+The Hydra entry point :func:`main` at the bottom of the file inspects the
+configured metric name to dispatch to the appropriate function.
+"""
+
 import pandas as pd
 import numpy as np
 import hydra
@@ -14,13 +38,59 @@ from tqdm import tqdm
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-def make_kdes_classification(df, task, algo, config):
 
+def make_kdes_classification(df, task, algo, config):
+    """Run the bootstrap CI coverage experiment for one classification instance.
+
+    The function fits a multivariate adaptive-bandwidth KDE to the raw
+    logit vectors of a single (task, algorithm) pair, computes a
+    ground-truth metric value from a large synthetic population
+    (100 000 samples), then — for every requested sample size — draws
+    ``n_samples`` synthetic datasets, constructs confidence intervals with
+    each authorized CI method, and checks whether they cover the ground
+    truth.
+
+    Results are written to two CSV files:
+
+    * **Raw** — one row per (sample-size, replicate, method), containing
+      bounds, coverage flag, width, and proportion out of bounds.
+    * **Aggregated** — one row per (sample-size, method), containing mean
+      coverage, mean width, and mean proportion out of bounds.
+
+    If the raw file already exists, finished sample sizes are skipped and
+    new rows are merged in, allowing safe resumption of interrupted runs.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Pre-filtered DataFrame for the desired task, as returned by
+        :func:`utils.extract_df`.  Must contain ``"alg_name"``,
+        ``"logits"``, and ``"target"`` columns.
+    task : str
+        Subtask name (used for filtering and as a key in output files).
+    algo : str
+        Algorithm name (used for filtering and as a key in output files).
+    config : omegaconf.DictConfig
+        Experiment configuration.  Expected fields:
+
+        * ``ci_methods`` — list of CI method names to evaluate.
+        * ``metric`` — classification metric name.
+        * ``average`` — averaging strategy (``"micro"`` or ``"macro"``).
+        * ``kernel`` — kernel name passed to :func:`kernels.get_kernel`.
+        * ``adaptive_bandwidth`` — whether to use adaptive KDE bandwidths.
+        * ``sample_sizes`` — list of sample sizes *n* to sweep over.
+        * ``n_samples`` — number of synthetic replicates per sample size.
+        * ``n_bootstrap`` — number of bootstrap resamples inside each CI
+          method.
+        * ``relative_output_dir`` — results directory relative to
+          *BASE_DIR*.
+        * ``relative_data_path`` — data CSV path relative to *BASE_DIR*.
+    """
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods_classification(config.metric, config.average))
     metric = get_metric(config.metric)
     results = pd.DataFrame()
-    
+
     # Convert string representations of sets to 2D numpy array
     logits_str = df[df["alg_name"].astype(str) == algo]["logits"]
     values = [list(eval(v, {"nan": np.nan})) for v in logits_str]
@@ -29,15 +99,15 @@ def make_kdes_classification(df, task, algo, config):
         return
     lengths = np.array([len(v) for v in values])
     good_length = round(np.mean(lengths))
-    indices = np.where(lengths==good_length)
-    values = np.array([v for v in values if len(v)==good_length])
+    indices = np.where(lengths == good_length)
+    values = np.array([v for v in values if len(v) == good_length])
     labels = df[df["alg_name"].astype(str) == algo]["target"].to_numpy()[indices]
 
     if len(values) < 50:
         print(f"Not enough values for {task} {algo} ({len(values)}), skipping KDE")
         return
 
-    if np.any(np.isnan(values)): # There should be no NaNs in the logits, but just in case
+    if np.any(np.isnan(values)):  # There should be no NaNs in the logits, but just in case
         print("There are NaNs in the data, skipping to next instance")
         return
 
@@ -52,38 +122,38 @@ def make_kdes_classification(df, task, algo, config):
         initial_estimates = np.mean(initial_estimates, axis=1)
         log_g = np.mean(np.log(initial_estimates))
         g = np.exp(log_g)
-        alphas = (initial_estimates / g) ** (-1/2)
-    y_score, y_true = sample_weighted_kde_multivariate(values, labels, config.kernel, 100000, alphas) # Shapes (1000000, n_classes) and (1000000,), not binary
+        alphas = (initial_estimates / g) ** (-1 / 2)
+    y_score, y_true = sample_weighted_kde_multivariate(values, labels, config.kernel, 100000, alphas)  # Shapes (1000000, n_classes) and (1000000,), not binary
     y_score = softmax(y_score)
-    
+
     n_classes = y_score.shape[-1]
     y_pred = np.argmax(y_score, axis=-1)
 
-    correct_pred = (y_pred==y_true)[..., None] # To allow bootstrapping metric arguments
+    correct_pred = (y_pred == y_true)[..., None]  # To allow bootstrapping metric arguments
 
     y_true_bin = label_binarize_vectorized(y_true, n_classes)
     y_pred_bin = label_binarize_vectorized(y_pred, n_classes)
 
-    tp = (y_true_bin==1) & (y_pred_bin==1)
-    fp = (y_true_bin==0) & (y_pred_bin==1)
-    tn = (y_true_bin==0) & (y_pred_bin==0)
-    fn = (y_true_bin==1) & (y_pred_bin==0)
+    tp = (y_true_bin == 1) & (y_pred_bin == 1)
+    fp = (y_true_bin == 0) & (y_pred_bin == 1)
+    tn = (y_true_bin == 0) & (y_pred_bin == 0)
+    fn = (y_true_bin == 1) & (y_pred_bin == 0)
 
     metric_arguments = {"accuracy": ["correct_pred"],
-                        "precision" : ["tp", "fp"],
-                        "recall" : ["tp", "fn"],
-                        "f1_score" : ["tp", "fp", "fn"],
-                        "fbeta_score" : ["tp", "fp", "fn"],
-                        "npv" : ["tn", "fn"],
-                        "ppv" : ["tp", "fp"],
-                        "sensitivity" : ["tp", "fn"],
-                        "specificity" : ["tn", "fp"],
-                        "balanced_accuracy" : ["tp", "fp", "tn", "fn"],
-                        "mcc" : ["tp", "fp", "fn"],
-                        "auroc" : ["y_score", "y_true_bin"],
-                        "auc" : ["y_score", "y_true_bin"],
-                        "ap" : ["y_score", "y_true_bin"]
-    }
+                        "precision": ["tp", "fp"],
+                        "recall": ["tp", "fn"],
+                        "f1_score": ["tp", "fp", "fn"],
+                        "fbeta_score": ["tp", "fp", "fn"],
+                        "npv": ["tn", "fn"],
+                        "ppv": ["tp", "fp"],
+                        "sensitivity": ["tp", "fn"],
+                        "specificity": ["tn", "fp"],
+                        "balanced_accuracy": ["tp", "fp", "tn", "fn"],
+                        "mcc": ["tp", "fp", "fn"],
+                        "auroc": ["y_score", "y_true_bin"],
+                        "auc": ["y_score", "y_true_bin"],
+                        "ap": ["y_score", "y_true_bin"]
+                        }
 
     original_arguments = {a: locals()[a] for a in metric_arguments[config.metric]}
     true_value = metric(average=config.average, **original_arguments)
@@ -211,17 +281,64 @@ def make_kdes_classification(df, task, algo, config):
         results.to_csv(raw_output_path, index=False)
         average_results.to_csv(agg_output_path, index=False)
 
+
 def make_kdes_segmentation(df, task, algo, config):
+    """Run the bootstrap CI coverage experiment for one segmentation instance.
+
+    The function fits a 1-D adaptive-bandwidth KDE to the per-case metric
+    values of a single (task, algorithm) pair (or falls back to empirical
+    resampling for discrete metrics), computes a ground-truth summary
+    statistic from a large synthetic population (1 000 000 samples), then
+    — for every requested sample size — draws ``n_samples`` synthetic
+    datasets, constructs confidence intervals with each authorized CI
+    method, and checks whether they cover the ground truth.
+
+    Results are written to two CSV files with the same structure and
+    incremental-merge logic described in
+    :func:`make_kdes_classification`.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Pre-filtered DataFrame for the desired task, as returned by
+        :func:`utils.extract_df`.  Must contain ``"alg_name"`` and
+        ``"value"`` columns.
+    task : str
+        Subtask name (used for filtering and as a key in output files).
+    algo : str
+        Algorithm name (used for filtering and as a key in output files).
+    config : omegaconf.DictConfig
+        Experiment configuration.  Expected fields:
+
+        * ``ci_methods`` — list of CI method names to evaluate.
+        * ``metric`` — segmentation metric name (e.g. ``"dsc"``,
+          ``"hd"``).
+        * ``summary_stat`` — summary statistic applied to each synthetic
+          dataset (e.g. ``"mean"``, ``"median"``).
+        * ``trimmed_mean_threshold`` — proportion of observations trimmed
+          from each tail when ``summary_stat`` is ``"trimmed_mean"``.
+        * ``trim_bandwidth`` — whether to clamp each observation's KDE
+          bandwidth to its distance to the metric domain boundary.
+        * ``kernel`` — kernel name passed to :func:`kernels.get_kernel`.
+        * ``adaptive_bandwidth`` — whether to use adaptive KDE bandwidths.
+        * ``sample_sizes`` — list of sample sizes *n* to sweep over.
+        * ``n_samples`` — number of synthetic replicates per sample size.
+        * ``relative_output_dir`` — results directory relative to
+          *BASE_DIR*.
+        * ``relative_data_path`` — data CSV path relative to *BASE_DIR*.
+    """
     # Retrieve configuration and set up variables
     ci_methods = set(config.ci_methods).intersection(get_authorized_methods_segmentation(config.summary_stat, config.metric))
+
     def statistic(x, axis=None):
         return get_statistic(config.summary_stat)(x, config.trimmed_mean_threshold, axis=axis)
+
     results = pd.DataFrame(columns=["subtask", "alg_name", "n", "sample_index"] + [f"{stat}_{method}" for method in ci_methods for stat in ["lower_bound", "upper_bound", "contains_true_stat", "width", "proportion_oob"]])
 
     a, b = get_bounds(config.metric)
 
     kernel = get_kernel(config.kernel)
-    
+
     values = df[df["alg_name"] == algo]["value"].to_numpy()
     values = values[~np.isnan(values)]  # Remove NaN values
     if len(values) < 50:
@@ -237,7 +354,7 @@ def make_kdes_segmentation(df, task, algo, config):
             min_val = np.min(values) - 0.1 * values_span
         else:
             min_val = a
-        
+
         if np.isinf(b):
             max_val = np.max(values) + 0.1 * values_span
         else:
@@ -247,7 +364,7 @@ def make_kdes_segmentation(df, task, algo, config):
 
         dist_to_bounds = np.inf * np.ones(len(values))
         if config.trim_bandwidth:
-            dist_to_bounds = np.min([values-a, b-values], axis=0)
+            dist_to_bounds = np.min([values - a, b - values], axis=0)
 
         # Iterative weighted KDE estimation
         y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
@@ -256,7 +373,7 @@ def make_kdes_segmentation(df, task, algo, config):
             initial_estimates = y[indices]
             log_g = np.mean(np.log(initial_estimates))
             g = np.exp(log_g)
-            alphas = (initial_estimates / g) ** (-1/2)
+            alphas = (initial_estimates / g) ** (-1 / 2)
             y = weighted_kde(values, x, dist_to_bounds, kernel, alphas)
 
         samples = sample_weighted_kde(y, x, 1000000, a, b)
@@ -376,8 +493,23 @@ def make_kdes_segmentation(df, task, algo, config):
         results.to_csv(raw_output_path, index=False)
         average_results.to_csv(agg_output_path, index=False)
 
+
 @hydra.main(config_path="cfg", version_base="1.3.2")
 def main(cfg: DictConfig):
+    """Hydra entry point: dispatch a single (task, algorithm) experiment.
+
+    Loads the benchmark CSV, extracts the rows for the configured task and
+    metric, and delegates to :func:`make_kdes_classification` or
+    :func:`make_kdes_segmentation` depending on whether the metric name
+    belongs to the set of known classification metrics.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        Hydra configuration object.  Must contain at least ``metric``,
+        ``task``, ``algo``, ``relative_data_path``, and every field
+        expected by the downstream ``make_kdes_*`` function.
+    """
     print(f"Running KDE for metric {cfg.metric}, subtask {cfg.task} and algorithm {cfg.algo}")
     path = os.path.join(BASE_DIR, cfg.relative_data_path)
     df = extract_df(path, cfg.metric, cfg.task)
@@ -385,6 +517,7 @@ def main(cfg: DictConfig):
         make_kdes_classification(df, cfg.task, str(cfg.algo), cfg)
     else:
         make_kdes_segmentation(df, cfg.task, str(cfg.algo), cfg)
+
 
 if __name__ == "__main__":
     main()

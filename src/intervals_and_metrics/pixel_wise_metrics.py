@@ -1,12 +1,59 @@
+"""Vectorized classification metrics computed from confusion-matrix counts.
+
+Every metric function here is batch-vectorized: inputs carry a leading batch
+axis (and, for bootstrap use, a resample axis) so that thousands of bootstrap
+replicates can have their metric evaluated in a single call instead of a
+Python loop. Metrics that support both micro- and macro-averaging take an
+``average`` argument; per-class counts are computed along ``axis=-2``
+(the class axis) before being reduced.
+"""
+
 import numpy as np
 from scipy.stats import rankdata
 
 def softmax(x, axis=-1):
+    """Numerically-stable softmax.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        Input array.
+    axis : int, default -1
+        Axis along which to normalize.
+
+    Returns
+    -------
+    numpy.ndarray
+        Same shape as ``x``, normalized to sum to 1 along ``axis``.
+    """
     e_x = np.exp(x - np.max(x, axis=axis, keepdims=True))
     return e_x / np.sum(e_x, axis=axis, keepdims=True)
 
 def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binarize
-    """Binarize labels in a vectorized way."""
+    """One-hot encode integer class labels, vectorized over arbitrary leading dimensions.
+
+    Equivalent to :func:`sklearn.preprocessing.label_binarize` but implemented
+    without scikit-learn, and supporting an arbitrary number of leading
+    (batch) dimensions.
+
+    Parameters
+    ----------
+    y : array_like
+        Integer class labels, any shape (must have at least 1 dimension).
+    n_classes : int
+        Total number of classes.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``y.shape + (n_classes,)`` and dtype ``int32``, with a
+        1 at position ``y[...]`` along the last axis and 0 elsewhere.
+
+    Raises
+    ------
+    ValueError
+        If ``y`` is a 0-dimensional array (scalar).
+    """
 
     y = np.asarray(y)
     if y.ndim == 0:
@@ -21,10 +68,42 @@ def label_binarize_vectorized(y, n_classes): # Vectorized version of label_binar
     return y_onehot
 
 def accuracy(correct_pred, average=None):
+    """Fraction of correct predictions.
+
+    Parameters
+    ----------
+    correct_pred : numpy.ndarray
+        Boolean array of shape ``(..., n_samples, 1)`` indicating whether
+        each prediction was correct.
+    average : None, optional
+        Unused; kept for a uniform call signature across metrics.
+
+    Returns
+    -------
+    numpy.ndarray
+        Accuracy for each batch element, shape ``(...)``.
+    """
     
     return np.count_nonzero(correct_pred, axis=(-1,-2)) / correct_pred.shape[-2]
 
 def precision(tp, fp, average="micro"):
+    """Precision (positive predictive value), micro- or macro-averaged.
+
+    Parameters
+    ----------
+    tp, fp : numpy.ndarray
+        Boolean true-positive / false-positive indicator arrays of shape
+        ``(..., n_samples, n_classes)``.
+    average : {"micro", "macro"}, default "micro"
+        ``"micro"`` pools counts across classes before dividing; ``"macro"``
+        computes per-class precision then averages across classes.
+
+    Returns
+    -------
+    numpy.ndarray
+        Precision for each batch element, shape ``(...)``. 0 wherever the
+        denominator (``tp + fp``) is 0.
+    """
 
     if average == "micro":
         tp = np.count_nonzero(tp, axis=(-2, -1))
@@ -40,6 +119,22 @@ def precision(tp, fp, average="micro"):
     return np.mean(class_prec, axis=-1)
 
 def recall(tp, fn, average="micro"):
+    """Recall (sensitivity, true positive rate), micro- or macro-averaged.
+
+    Parameters
+    ----------
+    tp, fn : numpy.ndarray
+        Boolean true-positive / false-negative indicator arrays of shape
+        ``(..., n_samples, n_classes)``.
+    average : {"micro", "macro"}, default "micro"
+        See :func:`precision` for the averaging semantics.
+
+    Returns
+    -------
+    numpy.ndarray
+        Recall for each batch element, shape ``(...)``. 0 wherever the
+        denominator (``tp + fn``) is 0.
+    """
 
     if average == "micro":
         tp = np.count_nonzero(tp, axis=(-2, -1))
@@ -54,6 +149,22 @@ def recall(tp, fn, average="micro"):
     return np.mean(class_recall, axis=-1)
 
 def f1(tp, fp, fn, average="micro"):
+    """F1 score (harmonic mean of precision and recall), micro- or macro-averaged.
+
+    Parameters
+    ----------
+    tp, fp, fn : numpy.ndarray
+        Boolean confusion-matrix indicator arrays of shape
+        ``(..., n_samples, n_classes)``.
+    average : {"micro", "macro"}, default "micro"
+        See :func:`precision` for the averaging semantics.
+
+    Returns
+    -------
+    numpy.ndarray
+        F1 score for each batch element, shape ``(...)``. 0 wherever
+        precision + recall is 0.
+    """
 
     if average == "micro":
         tp = np.count_nonzero(tp, axis=(-2, -1))
@@ -76,6 +187,25 @@ def f1(tp, fp, fn, average="micro"):
     return np.mean(class_f1, axis=-1)
 
 def fbeta(tp, fp, fn, beta=1.0, average="micro"):
+    """F-beta score (weighted harmonic mean of precision and recall).
+
+    Parameters
+    ----------
+    tp, fp, fn : numpy.ndarray
+        Boolean confusion-matrix indicator arrays of shape
+        ``(..., n_samples, n_classes)``.
+    beta : float, default 1.0
+        Relative weight of recall vs. precision; ``beta=1`` reduces to the
+        standard F1 score.
+    average : {"micro", "macro"}, default "micro"
+        See :func:`precision` for the averaging semantics.
+
+    Returns
+    -------
+    numpy.ndarray
+        F-beta score for each batch element, shape ``(...)``. 0 wherever the
+        denominator is 0.
+    """
     beta2 = beta ** 2
 
     if average == "micro":
@@ -99,6 +229,22 @@ def fbeta(tp, fp, fn, beta=1.0, average="micro"):
     return np.mean(class_fbeta, axis=-1)
 
 def npv(tn, fn, average="micro"):
+    """Negative predictive value, micro- or macro-averaged.
+
+    Parameters
+    ----------
+    tn, fn : numpy.ndarray
+        Boolean true-negative / false-negative indicator arrays of shape
+        ``(..., n_samples, n_classes)``.
+    average : {"micro", "macro"}, default "micro"
+        See :func:`precision` for the averaging semantics.
+
+    Returns
+    -------
+    numpy.ndarray
+        NPV for each batch element, shape ``(...)``. 0 wherever the
+        denominator (``tn + fn``) is 0.
+    """
 
     if average == "micro":
         tn = np.count_nonzero(tn, axis=(-2, -1))
@@ -114,9 +260,39 @@ def npv(tn, fn, average="micro"):
     return np.mean(class_npv, axis=-1)
 
 def sensitivity(tp, fn, average="micro"):
+    """Sensitivity (alias of :func:`recall`).
+
+    Parameters
+    ----------
+    tp, fn : numpy.ndarray
+        Boolean true-positive / false-negative indicator arrays.
+    average : {"micro", "macro"}, default "micro"
+        See :func:`precision` for the averaging semantics.
+
+    Returns
+    -------
+    numpy.ndarray
+        Sensitivity for each batch element, shape ``(...)``.
+    """
     return recall(tp, fn, average)
 
 def specificity(tn, fp, average="micro"):
+    """Specificity (true negative rate), micro- or macro-averaged.
+
+    Parameters
+    ----------
+    tn, fp : numpy.ndarray
+        Boolean true-negative / false-positive indicator arrays of shape
+        ``(..., n_samples, n_classes)``.
+    average : {"micro", "macro"}, default "micro"
+        See :func:`precision` for the averaging semantics.
+
+    Returns
+    -------
+    numpy.ndarray
+        Specificity for each batch element, shape ``(...)``. 0 wherever the
+        denominator (``tn + fp``) is 0.
+    """
 
     if average == "micro":
         tn = np.count_nonzero(tn, axis=(-2, -1))
@@ -132,6 +308,22 @@ def specificity(tn, fp, average="micro"):
     return np.mean(class_spec, axis=-1)
 
 def balanced_accuracy(tp, fp, tn, fn, average=None):
+    """Balanced accuracy (mean per-class recall).
+
+    Parameters
+    ----------
+    tp, fp, tn, fn : numpy.ndarray
+        Boolean confusion-matrix indicator arrays of shape
+        ``(..., n_samples, n_classes)``.
+    average : None, optional
+        Unused; kept for a uniform call signature across metrics (balanced
+        accuracy is always computed as a per-class average).
+
+    Returns
+    -------
+    numpy.ndarray
+        Balanced accuracy for each batch element, shape ``(...)``.
+    """
     
     tp = np.count_nonzero(tp, axis=-2)
     fp = np.count_nonzero(fp, axis=-2)
@@ -143,6 +335,22 @@ def balanced_accuracy(tp, fp, tn, fn, average=None):
     return np.mean(class_bal_acc, axis=-1)
 
 def mcc(tp, fp, fn, average=None):
+    """Multiclass Matthews correlation coefficient.
+
+    Parameters
+    ----------
+    tp, fp, fn : numpy.ndarray
+        Boolean confusion-matrix indicator arrays of shape
+        ``(..., n_samples, n_classes)``.
+    average : None, optional
+        Unused; kept for a uniform call signature across metrics.
+
+    Returns
+    -------
+    numpy.ndarray
+        MCC for each batch element, shape ``(...)``, in ``[-1, 1]``. 0
+        wherever the denominator is 0 or negative under the square root.
+    """
     
     N = tp.shape[-2]
     S = np.count_nonzero(tp, axis=(-2, -1))
@@ -171,6 +379,7 @@ def ap(y_score, y_true_bin, average="micro"):
     """
 
     def _ap_binary(scores, targets, axis=-1):
+        """Binary average precision along a given axis, ranking by score."""
         # Sort scores descending along axis
         sorted_indices = np.argsort(-scores, axis=axis)
         sorted_targets = np.take_along_axis(targets, sorted_indices, axis=axis)
@@ -219,6 +428,7 @@ def auroc(y_score, y_true_bin, average="micro"):
     """
 
     def _auroc_binary(scores, targets, axis=-1):
+        """Binary AUROC along a given axis, via the rank-sum (Mann-Whitney U) formula."""
         ranks = rankdata(scores, axis=axis)
         rank_sum = np.sum(ranks*targets, axis=axis)
         P = np.count_nonzero(targets, axis=axis)
@@ -238,6 +448,20 @@ def auroc(y_score, y_true_bin, average="micro"):
         raise ValueError(f"The averaging method {average} is not supported for this implementation of AUROC.")
 
 def get_metric(metric):
+    """Look up the callable implementing a named classification metric.
+
+    Parameters
+    ----------
+    metric : str
+        Metric name, e.g. ``"accuracy"``, ``"f1_score"``, ``"auc"``. Note
+        that ``"ppv"`` maps to :func:`precision` and both ``"auroc"`` and
+        ``"auc"`` map to :func:`auroc`.
+
+    Returns
+    -------
+    callable or None
+        The metric function, or ``None`` if ``metric`` is not recognized.
+    """
     metric_dict = {
         "accuracy": accuracy,
         "npv": npv,

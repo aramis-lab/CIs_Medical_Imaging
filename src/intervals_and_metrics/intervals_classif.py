@@ -1,3 +1,11 @@
+"""Confidence-interval methods for classification metrics.
+
+Covers proportion-style metrics (accuracy, precision, recall, F1, MCC, ...)
+via :func:`CI_accuracy`, and AUC-style metrics (AUC, AUROC, AP) via
+:func:`CI_AUC`, each dispatching further to parametric, bootstrap, or
+asymptotic (DeLong / logit-transform / empirical-likelihood) methods
+depending on the requested ``method``.
+"""
 
 import numpy as np
 from statsmodels.stats.proportion import proportion_confint
@@ -8,6 +16,50 @@ from .pixel_wise_metrics import get_metric, label_binarize_vectorized, auroc
 from numba import njit
 
 def compute_CIs_classification(y_true, y_pred, metric, method, n_bootstrap=9999, average=None, alpha=0.05, stratified=False):
+    """Compute a confidence interval for a classification metric.
+
+    Parameters
+    ----------
+    y_true : array_like
+        True labels. Either shape ``(n_samples,)`` for a single batch, or
+        ``(n_batches, n_samples)``. If the last axis has size 2 (one-hot
+        binary), it is collapsed to a single label column.
+    y_pred : array_like
+        Predicted scores/probabilities, shape ``(..., n_samples, n_classes)``
+        (or matching ``y_true``'s batch shape).
+    metric : str
+        Metric name; proportion-style metrics (``"accuracy"``, ``"npv"``,
+        ``"ppv"``, ``"precision"``, ``"recall"``, ``"sensitivity"``,
+        ``"specificity"``, ``"balanced_accuracy"``, ``"f1_score"``,
+        ``"fbeta_score"``, ``"mcc"``) are routed through :func:`CI_accuracy`;
+        AUC-style metrics (``"ap"``, ``"auc"``, ``"auroc"``) through
+        :func:`CI_AUC`.
+    method : str
+        CI method name, e.g. ``"percentile"``, ``"basic"``, ``"bca"``,
+        ``"wald"``, ``"wilson"``, ``"agresti_coull"``, ``"exact"``,
+        ``"delong"``, ``"logit_transform"``.
+    n_bootstrap : int, default 9999
+        Number of bootstrap resamples, for bootstrap-based methods.
+    average : {"macro", "micro"}, optional
+        Averaging strategy across classes.
+    alpha : float, default 0.05
+        Significance level; the returned interval has nominal coverage
+        ``1 - alpha``.
+    stratified : bool, default False
+        Whether bootstrap resampling should be stratified by class label.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(n_batches, 2)`` with the lower and upper bound for
+        each batch.
+
+    Raises
+    ------
+    ValueError
+        If ``metric`` is not supported, or the input dimensionality is
+        unrecognized.
+    """
     y_true = np.array(y_true)
     y_pred = np.array(y_pred)
 
@@ -37,6 +89,49 @@ def compute_CIs_classification(y_true, y_pred, metric, method, n_bootstrap=9999,
     return np.stack(batch_results, axis=0)
 
 def CI_accuracy(y_true, y_pred, metric, method, alpha, average, stratified, n_bootstrap=9999):
+    """Confidence interval for proportion-style classification metrics.
+
+    For micro-averaged metrics reducible to a single binomial proportion
+    (accuracy, or precision/recall/specificity/NPV under micro-averaging),
+    dispatches to :func:`statsmodels.stats.proportion.proportion_confint`
+    for the parametric methods (``"wald"``/``"param_z"`` -> normal,
+    ``"cloper_pearson"``/``"exact"`` -> beta, plus ``"agresti_coull"`` and
+    ``"wilson"`` directly). All other cases fall back to
+    :func:`stratified_bootstrap_CI`.
+
+    Parameters
+    ----------
+    y_true : numpy.ndarray
+        True labels, shape ``(n_batches, n_samples)``.
+    y_pred : numpy.ndarray
+        Predicted class scores, shape ``(n_batches, n_samples, n_classes)``.
+    metric : str
+        One of the proportion-style metrics listed in
+        :func:`compute_CIs_classification`.
+    method : str
+        CI method name.
+    alpha : float
+        Significance level.
+    average : {"macro", "micro"}
+        Averaging strategy; only ``"micro"`` supports the non-bootstrap
+        parametric methods.
+    stratified : bool
+        Whether bootstrap resampling (if used) is stratified by class.
+    n_bootstrap : int, default 9999
+        Number of bootstrap resamples, for bootstrap methods.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(n_batches, 2)`` with the lower/upper bound per batch.
+
+    Raises
+    ------
+    ValueError
+        If a non-bootstrap method is requested with ``average != "micro"``.
+    NotImplementedError
+        If ``method`` is not one of the implemented methods.
+    """
     y_pred = np.array(y_pred)
     y_true = np.array(y_true)
     if method in ["wald", "param_z"]:
@@ -83,6 +178,41 @@ def CI_accuracy(y_true, y_pred, metric, method, alpha, average, stratified, n_bo
             raise NotImplementedError(f"The following method is not implemented : {method}. Currently, 'percentile', 'basic', 'bca', 'agresti_coull', 'wilson', 'wald', 'normal', 'param_z', 'cloper_pearson' and 'exact' are implemented.")
 
 def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified, n_bootstrap=9999):
+    """Confidence interval for AUC-style metrics (AUC/AUROC/AP).
+
+    Parameters
+    ----------
+    y_true : numpy.ndarray
+        True labels, shape ``(n_batches, n_samples)``.
+    y_pred : numpy.ndarray
+        Predicted scores, shape ``(n_batches, n_samples, n_classes)``.
+    metric : str
+        ``"ap"``, ``"auc"``, or ``"auroc"``.
+    method : str
+        ``"percentile"``/``"basic"``/``"bca"`` (bootstrap, any metric/average);
+        or, for micro-averaged AUC/AUROC only: ``"delong"``,
+        ``"logit_transform"``, ``"empirical_likelihood"``.
+    alpha : float
+        Significance level.
+    average : {"macro", "micro"}
+        Averaging strategy; the asymptotic methods require ``"micro"``.
+    stratified : bool
+        Whether bootstrap resampling (if used) is stratified by class.
+    n_bootstrap : int, default 9999
+        Number of bootstrap resamples, for bootstrap methods.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(n_batches, 2)`` with the lower/upper bound per batch.
+
+    Raises
+    ------
+    ValueError
+        If a non-bootstrap method is requested with ``average != "micro"``.
+    NotImplementedError
+        If ``method`` is not one of the implemented methods.
+    """
     if method in ['percentile', 'basic', 'bca']:
         return stratified_bootstrap_CI(y_true, y_pred, metric_name=metric, average=average, n_bootstrap=n_bootstrap, alpha=alpha, method=method, stratified=stratified)
     elif method in ["delong", "logit_transform", "empirical_likelihood"] and metric in ['auc', 'auroc'] and average=="micro":
@@ -134,6 +264,29 @@ def CI_AUC(y_true, y_pred, metric, method, alpha, average, stratified, n_bootstr
         raise ValueError("Non-bootstrap CI methods are not defined for multi-class AUC.")
 
 def CI_LT(AUC, m, n, S, alpha):
+    """Logit-transform confidence interval for AUC.
+
+    Builds a symmetric normal-approximation interval on the logit scale and
+    maps it back to ``[0, 1]``, which improves behavior near the boundaries
+    compared to a direct normal approximation on the AUC scale.
+
+    Parameters
+    ----------
+    AUC : numpy.ndarray
+        Point estimate(s) of AUC.
+    m, n : numpy.ndarray
+        Number of negative / positive samples.
+    S : numpy.ndarray
+        Standard error estimate of AUC (e.g. from the DeLong variance).
+    alpha : float
+        Significance level.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(..., 2)`` with the lower/upper bound. ``nan`` where
+        ``AUC`` is exactly 0 or 1.
+    """
     z_alpha = ndtri(1-alpha/2)
     center_term = np.log(AUC/(1-AUC))
     variance_term = np.sqrt((m+n)*(S**2)/(m*n))/(AUC*(1-AUC))
@@ -146,6 +299,29 @@ def CI_LT(AUC, m, n, S, alpha):
     return np.array([LT_low, LT_high]).T
 
 def CI_DL(y_pred, y,AUC, m,n,alpha):
+    """DeLong confidence interval for (micro-averaged, binarized) AUC.
+
+    Implements the DeLong et al. (1988) method for the variance of the
+    Mann-Whitney U statistic underlying AUC, via structural components.
+
+    Parameters
+    ----------
+    y_pred : numpy.ndarray
+        Predicted scores, shape ``(..., N)`` (flattened over samples/classes).
+    y : numpy.ndarray
+        Binary indicator array, same shape as ``y_pred``.
+    AUC : numpy.ndarray
+        Point estimate(s) of AUC.
+    m, n : numpy.ndarray
+        Number of negative / positive samples.
+    alpha : float
+        Significance level.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(..., 2)`` with the lower/upper bound.
+    """
 
     X = y_pred * (1-y)
     Y = y_pred * y
@@ -178,28 +354,21 @@ def el_auc_confidence_interval(Y, X, S, AUC, alpha=0.05, tol=1e-8):
     alpha : float, optional
         Significance level (default 0.05).
     tol : float, optional
-        Tolerance for root finding and bisection (default 1e-8).
+        Numerical tolerance for the root-finding and bisection steps.
 
-    Returns:
-    ci_low, ci_high : float
-        Lower and upper confidence limits.
+    Returns
+    -------
+    numpy.ndarray
+        Array ``[ci_low, ci_high]``, the empirical-likelihood confidence
+        bounds for AUC. Degenerate ``[1.0, 1.0]`` / ``[0.0, 0.0]`` are
+        returned in the edge cases where all pairwise comparisons agree.
     """
-    Y = np.asarray(Y)
-    X = np.asarray(X)
-    n = Y.size
-    m = X.size
-
-    # Sort X once and compute empirical CDF values for Y
-    X_sorted = np.sort(X)
-    # Fhat_X(y) = proportion of X <= y
-    idx = np.searchsorted(X_sorted, Y, side='right')
-    F = idx / m       # Fhat_X(Y)
-    U = 1 - F        # U_hat
-    v = F            # rename for consistency
-
-    # Edge cases: all U's are 0 or 1
-    sumU = U.sum()
-    if sumU == 0:
+    n = len(Y)
+    m = len(X)
+    v = np.array([1.0 if yy > xx else (0.5 if yy == xx else 0.0)
+                  for yy in Y for xx in X])
+    sumU = np.sum(v)
+    if sumU == n * m:
         return np.array([1.0, 1.0])
     if sumU == n:
         return np.array([0.0, 0.0])
@@ -254,6 +423,28 @@ def el_auc_confidence_interval(Y, X, S, AUC, alpha=0.05, tol=1e-8):
 
 @njit
 def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):
+    """Draw stratified bootstrap resample indices, JIT-compiled with numba.
+
+    For each of ``n_bootstrap`` resamples, resamples with replacement
+    independently within each class, preserving the original per-class
+    sample counts.
+
+    Parameters
+    ----------
+    class_indices : list of numpy.ndarray
+        For each class, the array of sample indices belonging to it.
+    class_sizes : list of int
+        Number of samples to draw for each class (typically equal to
+        ``len(class_indices[c])``, to preserve class proportions).
+    n_bootstrap : int
+        Number of bootstrap resamples to draw.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(n_bootstrap, sum(class_sizes))`` of dtype
+        ``int32``, each row a resampled set of original-sample indices.
+    """
     n_classes = len(class_indices)
     n_total = sum(class_sizes)
     result = np.empty((n_bootstrap, n_total), dtype=np.int32)
@@ -270,6 +461,48 @@ def stratified_bootstrap_numba(class_indices, class_sizes, n_bootstrap):
 
 # Timing wrapper for stratified_bootstrap_CI
 def stratified_bootstrap_CI(y_true, y_score, metric_name='auc', average='micro', n_bootstrap=9999, alpha=0.05, method='percentile', stratified=True):
+    """Bootstrap confidence interval for a classification metric.
+
+    Computes the confusion-matrix components once for the observed data,
+    then draws ``n_bootstrap`` (optionally class-stratified) resamples,
+    recomputes the metric on each, and derives the percentile, basic, or
+    BCa confidence interval from the resulting bootstrap distribution.
+
+    Parameters
+    ----------
+    y_true : numpy.ndarray
+        True labels, shape ``(batch_size, n_samples)``.
+    y_score : numpy.ndarray
+        Predicted scores, shape ``(batch_size, n_samples, n_classes)``.
+    metric_name : str, default "auc"
+        Name of the metric to bootstrap; looked up via
+        :func:`intervals_and_metrics.pixel_wise_metrics.get_metric`.
+    average : {"macro", "micro"}, default "micro"
+        Averaging strategy passed through to the metric function.
+    n_bootstrap : int, default 9999
+        Number of bootstrap resamples.
+    alpha : float, default 0.05
+        Significance level; the returned interval has nominal coverage
+        ``1 - alpha``.
+    method : {"percentile", "basic", "bca"}, default "percentile"
+        Bootstrap CI method. BCa additionally requires a full jackknife
+        pass (leave-one-out) to estimate the acceleration constant.
+    stratified : bool, default True
+        If ``True``, resample within each class label independently
+        (preserving class proportions); otherwise resample uniformly at
+        random over all samples.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of shape ``(batch_size, 2)`` with the lower and upper bound
+        for each batch element.
+
+    Raises
+    ------
+    ValueError
+        If ``method`` is not one of ``"percentile"``, ``"basic"``, ``"bca"``.
+    """
 
     y_true = np.array(y_true)
     n_classes = y_score.shape[-1]
