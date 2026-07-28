@@ -35,7 +35,7 @@ Both pipelines read a single CSV given by `relative_data_path` in your config. A
 | task1 | algoA | "[0.20, 0.30, 0.50]" | 0 |
 | task1 | algoB | "[0.10, 0.10, 0.80]" | 2 |
 
-- `logits`: a string-encoded list of per-class scores (e.g. softmax outputs or raw logits), one entry per class, evaluated with `eval(...)` — so it must be valid Python list syntax.
+- `logits`: a string-encoded list of per-class scores (e.g. softmax outputs or raw logits), one entry per class. Note: the current loader parses this with `eval(...)`, so the CSV must be trusted (do not run on untrusted input).
 - `target`: the true class index (integer).
 - The number of classes is inferred from the length of `logits`; every row for a given `(subtask, alg_name)` must have the same length. Rows for which the list in `logits` has a different length will be discarded during the processing.
 
@@ -61,7 +61,7 @@ Use this when you just want the coverage for one metric on one task (optionally,
 0. Make sure the `CI` environment is activated (`conda activate CI` — see Prerequisites above).
 
 1. Copy one of the example configs and fill it in:
-   - `src/cfg/single_experiment_example.yaml` for classification metrics (`accuracy`, `f1_score`, `auc`, ...)
+   - `src/cfg/single_experiment_example_classif.yaml` for classification metrics (`accuracy`, `f1_score`, `auc`, ...)
    - `src/cfg/single_experiment_example_segm.yaml` for segmentation metrics (`dsc`, `hd`, ...)
 
    At minimum, set `task` to a value that matches a `subtask` in your data file, and `metric` to the metric you want to evaluate. Leave `algo: null` to evaluate every algorithm found for that task, or set it to a specific algorithm name.

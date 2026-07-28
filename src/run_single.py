@@ -13,7 +13,7 @@ across ``default_classif.yaml`` / ``default_segm.yaml``, plus:
   task / metric in the dataset is run, and the coverage table aggregates
   across all of them.
 
-See ``src/cfg/single_experiment_example.yaml`` (classification) and
+See ``src/cfg/single_experiment_example_classif.yaml`` (classification) and
 ``src/cfg/single_experiment_example_segm.yaml`` (segmentation) for
 templates.
 
@@ -87,7 +87,7 @@ def load_config(path):
         kind = "classification" if is_classif else "segmentation"
         raise ValueError(
             f"Config '{path}' is missing required field(s) for a {kind} metric: {missing}. "
-            f"See src/cfg/single_experiment_example{'' if is_classif else '_segm'}.yaml."
+            f"See src/cfg/single_experiment_example{'_classif' if is_classif else '_segm'}.yaml."
         )
     return cfg, is_classif
 

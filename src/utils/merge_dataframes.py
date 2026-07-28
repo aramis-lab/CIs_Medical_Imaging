@@ -15,7 +15,7 @@ Usage
 -----
 ::
 
-    python src/utils/fuse_results.py \\
+    python src/utils/merge_dataframes.py \\
         --results_dir results/segm/ablations/gaussian_adaptive \\
         --sweep_file src/cfg/sweep/segm_all_pairs.yaml \\
         --task_type segm \\

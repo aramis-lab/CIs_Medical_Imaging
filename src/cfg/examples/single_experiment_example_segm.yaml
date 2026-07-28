@@ -1,6 +1,6 @@
 # Example single-experiment config for a SEGMENTATION metric.
 # Run with:
-#   python src/run_single.py --config src/cfg/single_experiment_example_segm.yaml
+#   python src/run_single.py --config src/cfg/examples/single_experiment_example_segm.yaml
 #
 # This file is self-contained on purpose (no Hydra `defaults:` composition) —
 # fill in every field below and hand it to run_single.py.
