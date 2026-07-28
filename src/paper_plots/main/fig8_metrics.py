@@ -178,7 +178,7 @@ def plot_fig8_metrics(root_folder:str, output_path:str, upload_overleaf: bool = 
                 loc='upper right',
                 frameon=False,
                 fontsize=legend_fontsize,
-                title_fontproperties=FontProperties(weight='bold'))
+                title_fontproperties=FontProperties(size=label_fontsize, weight='bold'))
     ax_top_right.tick_params(axis='y', labelsize=tick_fontsize)
     ax_top_right.set_ylim(-0.05, 10)
     ax_top_right.tick_params(axis='x', labelsize=tick_fontsize-2)

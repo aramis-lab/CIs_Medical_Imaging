@@ -13,11 +13,11 @@ def plot_fig5_param_small_samples(root_folder:str, output_path:str, upload_overl
     plt.rcParams.update({
     "font.family": "sans-serif",
     "font.size": 30,
-    "axes.titlesize": 30,
-    "axes.labelsize": 30,
-    "xtick.labelsize": 27,
-    "ytick.labelsize": 27,
-    "legend.fontsize": 21,
+    "axes.titlesize": 44,
+    "axes.labelsize": 36,
+    "xtick.labelsize": 32,
+    "ytick.labelsize": 32,
+    "legend.fontsize": 32,
     "axes.edgecolor": "black",
     "axes.linewidth": 2,
     "axes.spines.top": True,
@@ -113,7 +113,7 @@ def plot_fig5_param_small_samples(root_folder:str, output_path:str, upload_overl
     ax.set_xticklabels([f"{int(n)}" for n in np.sort(n_values)])
     ax.set_yticks(np.arange(0.5, 1.01, 0.05))
     ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
-    ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.2, 0.5))
+    ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.3, 0.5))
     ax.set_xlim(-1, (len(methods)+2)*len(n_values))
 
     for ax, letter in zip(axs, ['A', 'B']):
@@ -206,7 +206,7 @@ def plot_fig5_param_small_samples(root_folder:str, output_path:str, upload_overl
     ax.set_xticklabels([f"{int(n)}" for n in np.sort(n_values)])
     ax.set_yticks(np.arange(0.5, 1.01, 0.05))
     ax.set_yticklabels((np.arange(0.5, 1.01, 0.05)*100).astype(int))
-    ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.2, 0.5))
+    ax.legend(handles=legend_handles_ax1, loc="lower right", bbox_to_anchor=(1.35, 0.2))
     ax.set_xlim(-1, (len(methods)+2)*len(n_values))
 
     ####### Second plot : mean of DSC ######

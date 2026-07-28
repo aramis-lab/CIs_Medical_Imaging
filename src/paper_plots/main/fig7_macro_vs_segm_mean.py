@@ -94,9 +94,9 @@ def plot_fig7_macro_vs_segm_mean(root_folder:str, output_path:str, upload_overle
                                 alpha=0.6, color=color_dict_segm[metric])
 
         ax.set_title(f"Coverage — {stat_labels[stat]}", fontsize=44, weight="bold")
-        ax.set_xlabel("Sample size", fontsize=32)
-        ax.set_ylabel("Coverage (%)", fontsize=32)
-        ax.tick_params(axis="both", labelsize=24)
+        ax.set_xlabel("Sample size", fontsize=36)
+        ax.set_ylabel("Coverage (%)", fontsize=36)
+        ax.tick_params(axis="both", labelsize=32)
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
         ax.grid(True, axis="y")
         ax.set_ylim(None, 1.01)
@@ -172,9 +172,9 @@ def plot_fig7_macro_vs_segm_mean(root_folder:str, output_path:str, upload_overle
                                 alpha=0.7, color=color_dict_segm[metric])
 
         ax.set_title(f"Width — {stat_labels[stat]}", fontsize=44, weight="bold")
-        ax.set_xlabel("Sample size", fontsize=32)
-        ax.set_ylabel("Width", fontsize=32)
-        ax.tick_params(axis="both", labelsize=24)
+        ax.set_xlabel("Sample size", fontsize=36)
+        ax.set_ylabel("Width", fontsize=36)
+        ax.tick_params(axis="both", labelsize=32)
         ax.grid(True, axis="y")
 
         # ===== SEPARATE LEGENDS =====

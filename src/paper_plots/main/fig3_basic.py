@@ -51,16 +51,16 @@ def plot_fig3_basic(root_folder: str, output_path: str, upload_overleaf: bool = 
             alpha=0.2)
 
     ax.set_title(f'Metric: {metric_labels[metric]}, Stat: {stat_labels[stat]}', weight='bold', fontsize=40)
-    ax.set_xlabel('Sample size',weight='bold', fontsize=32)
-    ax.set_ylabel('Coverage (%)', weight='bold', fontsize=32)
-    ax.tick_params(axis='y', labelsize=28)
-    ax.tick_params(axis='x', labelsize=28)
+    ax.set_xlabel('Sample size',weight='bold', fontsize=36)
+    ax.set_ylabel('Coverage (%)', weight='bold', fontsize=36)
+    ax.tick_params(axis='y', labelsize=32)
+    ax.tick_params(axis='x', labelsize=32)
     ax.set_ylim(0.8,1)
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f'{y*100:.0f}'))
 
     ax.grid(True, axis='y')
 
-    ax.legend(fontsize= 32)
+    ax.legend(fontsize= 36)
 
     ax= axs[1]
 
@@ -91,14 +91,14 @@ def plot_fig3_basic(root_folder: str, output_path: str, upload_overleaf: bool = 
         # ax.hline(0.95, alpha=0.7, linestyle="--")
 
     ax.set_title(f'Metric: {metric_labels[metric]}', weight='bold', fontsize=40)
-    ax.set_xlabel('Sample size',weight='bold', fontsize=32)
-    # ax.set_ylabel('Coverage', weight='bold', fontsize=32)
-    ax.tick_params(axis='y', labelsize=28)
-    ax.tick_params(axis='x', labelsize=28)
+    ax.set_xlabel('Sample size',weight='bold', fontsize=36)
+    # ax.set_ylabel('Coverage', weight='bold', fontsize=36)
+    ax.tick_params(axis='y', labelsize=32)
+    ax.tick_params(axis='x', labelsize=32)
     ax.set_ylim(0.8,1)
     ax.grid(True, axis='y')
 
-    ax.legend(fontsize= 32)
+    ax.legend(fontsize= 36)
 
     for ax, letter in zip(axs, ['A', 'B']):
         ax.text(0.98, 0.02, letter, transform=ax.transAxes,
