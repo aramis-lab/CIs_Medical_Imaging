@@ -1,0 +1,32 @@
+# Example single-experiment config for a SEGMENTATION metric.
+# Run with:
+#   python src/run_single.py --config src/cfg/examples/single_experiment_example_segm.yaml
+#
+# This file is self-contained on purpose (no Hydra `defaults:` composition) —
+# fill in every field below and hand it to run_single.py.
+
+# ---- What to run ----
+task: "task_name_here"   # required: must match a "subtask" value in your data file
+algo: null                # optional: a specific alg_name; leave null to run every
+                           #   algorithm found for this task, and get an aggregated
+                           #   coverage table across all of them
+
+metric: "dsc"              # e.g. dsc, nsd, boundary_iou, cldice, iou, assd, hd, hd_perc, masd
+summary_stat: "mean"       # mean, median, iqr_length, std, trimmed_mean
+trimmed_mean_threshold: 0.1  # only used when summary_stat == "trimmed_mean"; keep a value regardless
+
+# ---- CI methods to evaluate ----
+ci_methods: ["basic", "percentile", "bca", "param_t", "param_z", "hoeffding", "benett"]
+
+# ---- KDE / resampling settings ----
+kernel: "gaussian"          # gaussian, tophat, epanechnikov, exponential, cosine, linear
+adaptive_bandwidth: true
+trim_bandwidth: true        # clip the bandwidth near the metric's bounds (e.g. [0, 1])
+
+sample_sizes: [10, 25, 50, 75, 100, 125, 150, 200, 250]
+n_samples: 10000            # number of Monte-Carlo repeats per sample size
+n_bootstrap: 9999           # unused for the segmentation path today, kept for consistency
+
+# ---- Data & output (relative to the repo root) ----
+relative_data_path: "../data_matrix_segmentation.csv"
+relative_output_dir: "../results_segm"

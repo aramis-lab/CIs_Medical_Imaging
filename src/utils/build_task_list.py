@@ -1,12 +1,22 @@
-"""
-Build a task list for SLURM array jobs.
+"""Build a task list for SLURM array jobs.
 
-Usage:
-    python src/utils/build_task_list.py \
-        --ablation-name epanechnikov_adaptive \
-        --ablation-group classif/ablations \
-        --sweep src/cfg/sweep/classif_all_pairs.yaml \
-        --instance-dir instances_list \
+Reads a sweep YAML file that enumerates (metric, average) or
+(metric, summary_stat) pairs, crosses every pair with the per-metric
+instance lists found in *instance_dir*, and emits a single text file
+whose lines are Hydra override strings — one per SLURM array element.
+This lets a single ``sbatch --array`` submission fan out over every
+(ablation, metric, grouping, task, algorithm) combination without
+manual enumeration.
+
+Usage
+-----
+::
+
+    python src/utils/build_task_list.py \\
+        --ablation-name epanechnikov_adaptive \\
+        --ablation-group classif/ablations \\
+        --sweep src/cfg/sweep/classif_all_pairs.yaml \\
+        --instance-dir instances_list \\
         --output task_lists/epanechnikov_adaptive.txt
 """
 
@@ -16,6 +26,28 @@ from omegaconf import OmegaConf
 
 
 def main():
+    """Parse CLI arguments, cross sweep pairs with instance lists, and write the task file.
+
+    The function performs four steps:
+
+    1. **Load the sweep file** — an OmegaConf YAML that must contain either
+       a ``metric_average_pairs`` or a ``metric_summary_pairs`` list.
+    2. **Build the Hydra ablation override** — a config-group override
+       string of the form
+       ``'<group>@<group_name>=<ablation_name>'``.
+    3. **Cross pairs × instances** — for every (metric, extra_value) pair
+       in the sweep, read the matching instance file
+       (``<instance_dir>/<metric>.txt``) and emit one Hydra override line
+       per (task, algorithm) entry found in it.
+    4. **Write the output file** — one override string per line, ready to
+       be indexed by a SLURM ``$SLURM_ARRAY_TASK_ID``.
+
+    Raises
+    ------
+    SystemExit
+        If the sweep file does not exist, or if it contains neither
+        ``metric_average_pairs`` nor ``metric_summary_pairs``.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--ablation-name", required=True,
                         help="e.g. epanechnikov_adaptive")
