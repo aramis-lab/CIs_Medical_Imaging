@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
     root_folder = args.root_folder
     output_path = args.output_path or os.path.join(
-        root_folder, "clean_figs/supplementary/sunburst.pdf"
+        root_folder, "clean_figs/main/sunburst.pdf"
     )
     upload_overleaf = args.upload_overleaf
     plot_all_sunbursts(root_folder, output_path, upload_overleaf=upload_overleaf)

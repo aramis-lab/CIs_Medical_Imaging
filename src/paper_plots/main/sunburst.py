@@ -36,10 +36,10 @@ THRESH_OVER_GREEN = 0.98      # 0.95–0.98 : green gradient
 THRESH_OVER_ORANGE = 0.99     # 0.98–0.99 : orange gradient
 THRESH_OVER_RED = 1.00        # 0.99–1.00 : red gradient  / >1.00 solid red
 
-_GS = np.array(to_rgb("#2e7d32"))
-_GL = np.array(to_rgb("#a5d6a7"))
-_OR = np.array(to_rgb("#e65100"))
-_RD = np.array(to_rgb("#c62828"))
+_GS = np.array(to_rgb("#1f77b4"))  # correct: blue
+_GL = np.array(to_rgb("#6baed6"))  # lighter blue
+_OR = np.array(to_rgb("#fd8d3c"))  # not correct: orange
+_RD = np.array(to_rgb("#e6550d"))  # darker orange
 
 # Uniform color for the method ring (layer 1), matching the center label
 _METHOD_RING_COLOR = "#595959"
