@@ -1,4 +1,4 @@
-# sunburst.py
+# sunburst_colorblind.py
 
 import numpy as np
 import pandas as pd
@@ -36,8 +36,8 @@ THRESH_OVER_GREEN = 0.98      # 0.95–0.98 : green gradient
 THRESH_OVER_ORANGE = 0.99     # 0.98–0.99 : orange gradient
 THRESH_OVER_RED = 1.00        # 0.99–1.00 : red gradient  / >1.00 solid red
 
-_GS = np.array(to_rgb("#2ca02c"))  # correct: green
-_GL = np.array(to_rgb("#98df8a"))  # lighter green
+_GS = np.array(to_rgb("#1f77b4"))  # correct: blue
+_GL = np.array(to_rgb("#6baed6"))  # lighter blue
 _OR = np.array(to_rgb("#fd8d3c"))  # not correct: orange
 _RD = np.array(to_rgb("#e6550d"))  # darker orange
 
