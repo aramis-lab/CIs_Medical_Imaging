@@ -214,130 +214,167 @@ def tell_significance(
     return significance
 
 
-def plot_significance_matrix_wdp_segm_classif(significance,p_values,task, to_overleaf=False):
+def plot_significance_matrix_wdp_segm_classif(
+    significance: dict,
+    p_values: dict,
+    agreg_type: str,
+    output_path: str,
+    upload_overleaf: bool = False,
+):
     plt.rcdefaults()
-    n_values=significance.keys()
-    
+    plt.rcParams.update({
+        "font.family": "sans-serif",
+        "figure.dpi": 200,
+        "savefig.dpi": 300,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+    })
 
-    fig, axes = plt.subplots(1,len(n_values), figsize=(18, 12), sharey=True)
+    color_map_dict = {
+        -1: "#F5F5F5",   # not available
+        0: "#F8CC80FF",  # not significant
+        1: "#D55E00",    # significant
+    }
 
-    
-    
-    for i,(n, sign_n) in enumerate(significance.items()):
-        ax= axes[i]
-        p_values_n=p_values[n]
-        metrics_classif =sign_n.keys()
-        metrics_segm = list(next(iter(sign_n.values())).keys())
+    n_values = list(significance.keys())
+    metrics_classif = list(next(iter(significance.values())).keys())
+    metrics_segm = list(next(iter(next(iter(significance.values())).values())).keys())
+
+    classif_ticklabels = [metric_labels.get(m, m) for m in metrics_classif]
+    segm_ticklabels = [metric_labels.get(m, m) for m in metrics_segm]
+
+    fig, axes = plt.subplots(1, len(n_values), figsize=(18, 12), sharey=True)
+    axes = np.atleast_1d(axes)
+
+    for col, n in enumerate(n_values):
+        ax = axes[col]
+        sign_n = significance[n]
+        p_values_n = p_values[n]
+
         global_matrix = np.zeros((len(metrics_segm), len(metrics_classif)))
-        pval_matrix= []
-        for j, metric1 in enumerate(metrics_segm):
-            pval_row=[]
-            for k, metric2 in enumerate(metrics_classif):
-                val = sign_n.get(metric2, {}).get(metric1)
-                
-                p_val = p_values_n.get(metric2, {}).get(metric1)
+        pval_matrix = []
 
+        for j, metric_segm in enumerate(metrics_segm):
+            pval_row = []
+            for k, metric_classif in enumerate(metrics_classif):
+                val = sign_n.get(metric_classif, {}).get(metric_segm)
                 if val is None:
-                    global_matrix[j,k]=(-1)      # N/A
+                    global_matrix[j, k] = -1
                 elif val == 0:
-                    global_matrix[j,k]=(0)       # Not significant
+                    global_matrix[j, k] = 0
                 else:
-                    global_matrix[j,k]=(1)
+                    global_matrix[j, k] = 1
 
-                if p_val is None:
-                    pval_row.append("")
-                
-                else:
-                    pval_row.append(format_p(p_val))
+                p_val = p_values_n.get(metric_classif, {}).get(metric_segm)
+                pval_row.append("" if p_val is None else format_p(p_val))
             pval_matrix.append(pval_row)
-    
-        
-        values = np.unique(global_matrix)
 
-        # full mapping dictionary
-        color_map_dict = {
-       -1: "#F5F5F5",      
-            0: "#F8CC80FF",     
-            1: "#D55E00"
-        }
-        # extract only the colors for values that appear
-        colors = [color_map_dict[v] for v in values]
+        cmap = ListedColormap([color_map_dict[v] for v in np.unique(global_matrix)])
 
-        # build colormap
-        cmap = ListedColormap(colors)
-        
-        # Plot heatmap
-        labels_x = [metric_labels.get(m, m) for m in metrics_classif]
-        labels_y = [metric_labels.get(m, m) for m in metrics_segm]
         sns.heatmap(
             global_matrix,
-            xticklabels=labels_x,
-            yticklabels=labels_y,
+            xticklabels=classif_ticklabels,
+            yticklabels=segm_ticklabels,
             annot=pval_matrix,
             cmap=cmap,
             cbar=False,
             ax=ax,
             square=True,
             linewidths=1,
-            fmt='',
-            annot_kws={"fontsize": 5}
+            fmt="",
+            annot_kws={"fontsize": 5},
         )
-        ax.tick_params(axis='x', rotation=90, labelsize=10)
-
-        ax.tick_params(axis='y', rotation=0, labelsize=10)
-
+        ax.tick_params(axis="x", rotation=90, labelsize=10)
+        ax.tick_params(axis="y", rotation=0, labelsize=10)
         ax.set_title(f"n={int(float(n))}", fontsize=12)
 
-        legend_elements = [
-                mpatches.Patch(facecolor="#D55E00",
-                            edgecolor='k',
-                            label="Significant \n(FDR-adjusted p < 0.05)"),
-                mpatches.Patch(facecolor="#F8CC80FF",
-                            edgecolor='k',
-                            label="Not significant"),
-                mpatches.Patch(facecolor="#F5F5F5",
-                            edgecolor='k',
-                            label="Not available"),
-            ]
-    ax.legend(
+    legend_elements = [
+        mpatches.Patch(facecolor="#D55E00", edgecolor="k",
+                       label="Significant \n(FDR-adjusted p < 0.05)"),
+        mpatches.Patch(facecolor="#F8CC80FF", edgecolor="k",
+                       label="Not significant"),
+        mpatches.Patch(facecolor="#F5F5F5", edgecolor="k",
+                       label="Not available"),
+    ]
+    legend = axes[-1].legend(
         handles=legend_elements,
-        loc='center left',
+        loc="center left",
         bbox_to_anchor=(1.01, 0.5),
         ncol=1,
         fontsize=12,
         frameon=True,
         title="Significance levels \nwith FDR correction",
-        title_fontsize=12
+        title_fontsize=12,
     )
-    
-    
-    # fig.subplots_adjust(
-    # left=0.07,   # more space for y tick labels
-    # right=0.8,  # space for legend
-    # # top=1,
-    # # bottom=0,
-    # wspace=0.05,
-    # hspace=0
-    # )
-    plt.tight_layout()
-    output_path=f'../clean_figs/supplementary/test_results/width_segm_classif_{task}/all_n.pdf'
-    fig.savefig(output_path)
-    if to_overleaf:
-        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/width_segm_classif_{task}.pdf", commit_msg="Update figure test width segm classif")
-    else:
+    # exclude the legend from the layout engine but keep it for saving
+    legend.set_in_layout(False)
 
-        plt.show()
-    
+    # tight_layout, leaving free space on the right for the legend
+    fig.tight_layout(rect=[0, 0, 0.82, 1])
 
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+    fig.savefig(output_path, bbox_inches="tight", bbox_extra_artists=(legend,))
+    plt.close(fig)
+
+    if upload_overleaf:
+        upload_to_overleaf(
+            output_path,
+            f"Preprint/supp_figs/tests/width_segm_classif_{agreg_type}.pdf",
+            commit_msg="Update figure test width segm classif",
+        )
 
 
 def main():
-    segm_path='../results_metrics_segm'
-    classif_path='../results_metrics_classif'
-    print('performing tests')
-    p_values=perform_pairwise_tests_wdp_segm_classif(segm_path, classif_path)
-    print('significance')
-    significance=tell_significance(p_values)
-    print('making plot')
-    plot_significance_matrix_wdp_segm_classif(significance, p_values)
+    """
+    Standalone entry point for the width-decay-pace segm-vs-classif figure.
 
+    Note: the BH-FDR correction applied here pools p-values from this test only.
+    `make_correction_fdr.py` instead pools across all tests before correcting, so
+    the q-values — and therefore the figure — differ between the two paths.
+    """
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Generate Supp Figure significance matrix of CI width decay pace, segmentation vs classification."
+    )
+    parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
+    parser.add_argument("--agreg_type", default="micro", choices=["micro", "macro"],
+                        help="Aggregation type of the classification metrics.")
+    parser.add_argument("--output_path", required=False, help="Path to save the output plot.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    agreg_type = args.agreg_type
+    # If output_path not provided, default inside root_folder
+    output_path = args.output_path or os.path.join(
+        root_folder, f"clean_figs/supplementary/test_results/width_segm_classif_{agreg_type}/all_n.pdf"
+    )
+
+    segm_path = os.path.join(root_folder, "results_metrics_segm")
+    if agreg_type == "micro":
+        classif_path = os.path.join(root_folder, "results_metrics_classif")
+    else:
+        classif_path = os.path.join(root_folder, "results_metrics_classif_macro")
+
+    print("fitting wdp")
+    df_fit_results_segm = fit_wdp_segm(segm_path)
+    df_fit_results_classif = fit_wdp_classif(classif_path, agreg_type)
+
+    print("performing tests")
+    p_values = perform_pairwise_tests_wdp_segm_classif(df_fit_results_segm, df_fit_results_classif)
+
+    print("significance")
+    alphas = np.array([0.001, 0.01, 0.05])
+    pvals, locations = get_pvalues_wdp_segm_classif(p_values)
+    _, qvals, _, _ = multipletests(pvals, method="fdr_bh")
+    q_values, significance = reconstruct_wdp_segm_classif(qvals, locations, p_values, alphas)
+
+    print("making plot")
+    plot_significance_matrix_wdp_segm_classif(
+        significance, p_values, agreg_type, output_path, upload_overleaf=args.upload_overleaf
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -11,6 +11,7 @@ import seaborn as sns
 from .test_basic_classif import format_p
 
 from ..plot_utils import metric_labels, stat_labels, method_labels,upload_to_overleaf
+from ..df_loaders import extract_df_segm_cov, extract_df_segm_width, extract_df_classif_cov
 
 
 def get_data(task):
@@ -197,147 +198,193 @@ def tell_significance(
     return significance
 
 
-def plot_significance_matrix_param_boot(significance,p_values, task,type,to_overleaf=False):
+def plot_significance_matrix_param_boot(
+    significance: dict,
+    p_values: dict,
+    task: str,
+    quantity: str,
+    output_path: str,
+    upload_overleaf: bool = False,
+):
     plt.rcdefaults()
-    n_values=significance.keys()
-    metrics= list(next(iter(significance.values())).keys())    
-  
-    methods = list(next(iter(next(iter(significance.values())).values())).keys())    
-    if task=='segm':
-        fig, axes = plt.subplots(1,len(n_values), figsize=(15, 10), sharey=True)
+    plt.rcParams.update({
+        "font.family": "sans-serif",
+        "figure.dpi": 200,
+        "savefig.dpi": 300,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+    })
 
+    color_map_dict = {
+        -1: "#F5F5F5",   # not available
+        0: "#F8CC80FF",  # not significant
+        1: "#D55E00",    # significant
+    }
+
+    n_values = list(significance.keys())
+    metrics = list(next(iter(significance.values())).keys())
+    methods = list(next(iter(next(iter(significance.values())).values())).keys())
+
+    metric_ticklabels = [metric_labels.get(m, m) for m in metrics]
+    method_ticklabels = [method_labels.get(m, m) for m in methods]
+
+    if task == "segm":
+        fig, axes = plt.subplots(1, len(n_values), figsize=(15, 10), sharey=True)
+        annot_fontsize = 6
+        ytick_rotation = 0
+        ytick_fontsize = 14
     else:
-
         fig, axes = plt.subplots(len(n_values), 1, figsize=(12, 20), sharex=True)
-    for i,(n, sign_n) in enumerate(significance.items()):
-        ax=axes[i]
+        annot_fontsize = 16
+        ytick_rotation = 45
+        ytick_fontsize = 16
+    axes = np.atleast_1d(axes)
+
+    for idx, n in enumerate(n_values):
+        ax = axes[idx]
+        sign_n = significance[n]
+        p_values_n = p_values[n]
+
         global_matrix = np.zeros((len(metrics), len(methods)))
         pval_matrix = []
-        p_values_n=p_values[n]
+
         for j, metric in enumerate(metrics):
-            pval_row=[]
+            pval_row = []
             metric_significance = sign_n.get(metric, {})
             p_values_metric = p_values_n.get(metric, {})
             for k, method in enumerate(methods):
-
                 val = metric_significance.get(method)
-                
-                p_val = p_values_metric.get(method)
-
                 if val is None:
-                    global_matrix[j,k]=(-1)      # N/A
+                    global_matrix[j, k] = -1
                 elif val == 0:
-                    global_matrix[j,k]=(0)       # Not significant
+                    global_matrix[j, k] = 0
                 else:
-                    global_matrix[j,k]=(1)
+                    global_matrix[j, k] = 1
 
-                if p_val is None:
-                    pval_row.append("")
-               
-                else:
-                    pval_row.append(format_p(p_val))
-
+                p_val = p_values_metric.get(method)
+                pval_row.append("" if p_val is None else format_p(p_val))
             pval_matrix.append(pval_row)
-            # Create p_val matrix for heatap 
 
-        values = np.unique(global_matrix)
+        cmap = ListedColormap([color_map_dict[v] for v in np.unique(global_matrix)])
 
-        # full mapping dictionary
-        color_map_dict = {
-        -1: "#F5F5F5",      
-            0: "#F8CC80FF",     
-            1: "#D55E00"
-        
-        }
-        # extract only the colors for values that appear
-        colors = [color_map_dict[v] for v in values]
-
-        # build colormap
-        cmap = ListedColormap(colors)
-        
-        # Plot heatmap
-        labels_x = [metric_labels.get(m, m) for m in metrics]
-        labels_y = [method_labels.get(m, m) for m in methods]
         sns.heatmap(
             global_matrix,
-            xticklabels=labels_y,
-            yticklabels=labels_x if task=='segm' else [f"n={int(float(n))}"],
+            xticklabels=method_ticklabels,
+            yticklabels=metric_ticklabels if task == "segm" else [f"n={int(float(n))}"],
             annot=pval_matrix,
             cmap=cmap,
             cbar=False,
             ax=ax,
             square=True,
             linewidths=1,
-            fmt='',
-            annot_kws={"fontsize": 16 if task=='classif' else 6}
+            fmt="",
+            annot_kws={"fontsize": annot_fontsize},
         )
-        ax.tick_params(axis='x', rotation=45, labelsize=14)
+        ax.tick_params(axis="x", rotation=45, labelsize=14)
+        ax.tick_params(axis="y", rotation=ytick_rotation, labelsize=ytick_fontsize)
+        ax.set_title(f"n={int(float(n))}" if task == "segm" else "", fontsize=16)
 
-        ax.tick_params(axis='y', rotation=45 if task=='classif' else 0 , labelsize=16 if task=='classif' else 14)
-        ax.set_title(f'n={int(float(n))}' if task=='segm' else '', fontsize=16)
-        legend_elements = [
-                mpatches.Patch(facecolor="#D55E00",
-                            edgecolor='k',
-                            label="Significant \n(FDR-adjusted p < 0.05)"),
-                mpatches.Patch(facecolor="#F8CC80FF",
-                            edgecolor='k',
-                            label="Not significant"),
-                mpatches.Patch(facecolor="#F5F5F5",
-                            edgecolor='k',
-                            label="Not available"),
-            ]
-    ax.legend(
+    legend_elements = [
+        mpatches.Patch(facecolor="#D55E00", edgecolor="k",
+                       label="Significant \n(FDR-adjusted p < 0.05)"),
+        mpatches.Patch(facecolor="#F8CC80FF", edgecolor="k",
+                       label="Not significant"),
+        mpatches.Patch(facecolor="#F5F5F5", edgecolor="k",
+                       label="Not available"),
+    ]
+    legend = axes[-1].legend(
         handles=legend_elements,
-        loc='center left',
+        loc="center left",
         bbox_to_anchor=(1.01, 0.5),
         ncol=1,
         fontsize=12,
         frameon=True,
         title="Significance levels \nwith FDR correction",
-        title_fontsize=12
+        title_fontsize=12,
     )
-    # plt.tight_layout()
-    if task=='segm':
-        fig.subplots_adjust(
-    left=0.1,   # more space for y tick labels
-    right=0.8,  # space for legend
-    # top=1,
-    # bottom=0,
-    wspace=0.03,
-    # hspace=0.01
-    )
-    else:
+    # exclude the legend from the layout engine but keep it for saving
+    legend.set_in_layout(False)
 
-        fig.subplots_adjust(
-        left=0.08,   # more space for y tick labels
-        # right=0.75,  # space for legend
-        # top=1,
-        # bottom=0,
-        # wspace=0.07,
-        # hspace=0.01
+    # tight_layout, leaving free space on the right for the legend
+    fig.tight_layout(rect=[0, 0, 0.8, 1])
+    # re-apply the desired spacing (tight_layout overrides it)
+    if task == "segm":
+        fig.subplots_adjust(left=0.1, right=0.8, wspace=0.03)
+    else:
+        fig.subplots_adjust(left=0.08, right=0.8)
+
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+    fig.savefig(output_path, bbox_inches="tight", bbox_extra_artists=(legend,))
+    plt.close(fig)
+
+    if upload_overleaf:
+        upload_to_overleaf(
+            output_path,
+            f"Preprint/supp_figs/tests/{quantity}_param_boot_{task}.pdf",
+            commit_msg=f"Update figure test {quantity}_param_boot_{task}",
         )
-    output_path= f'../clean_figs/supplementary/test_results/{type}_param_boot_{task}/all_n.pdf'
-    fig.savefig(output_path)
-    if to_overleaf:
-        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/{type}_param_boot_{task}.pdf", commit_msg=f"Update figure test {type}_param_boot_{task}")
-
-    else:
-        plt.show()
-
-  
-    
 
 
 def main():
-   for task in ['segm', 'classif']:
-        print('get data')
-       
-        print('performing tests')
-        p_values=perform_pairwise_tests_param_boot( task)
-        print('significance')
-        significance=tell_significance(p_values)
-        print('making plot')
-        plot_significance_matrix_param_boot(significance, p_values, task)
+    """
+    Standalone entry point for the parametric-vs-bootstrap figure.
 
-# main()
+    Note: the BH-FDR correction applied here pools p-values from this test only.
+    `make_correction_fdr.py` instead pools across all tests before correcting, so
+    the q-values — and therefore the figure — differ between the two paths.
+    """
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Generate Supp Figure significance matrix of parametric vs bootstrap intervals."
+    )
+    parser.add_argument("--root_folder", required=True, help="Path to the root folder.")
+    parser.add_argument("--task", default="segm", choices=["segm", "classif"],
+                        help="Whether to test segmentation or classification metrics.")
+    parser.add_argument("--quantity", default="cov", choices=["cov", "width"],
+                        help="Whether to test coverage or interval width (width is segm only).")
+    parser.add_argument("--output_path", required=False, help="Path to save the output plot.")
+    parser.add_argument("--upload_overleaf", action="store_true", help="Upload the plot to Overleaf.")
+    args = parser.parse_args()
 
+    root_folder = args.root_folder
+    task = args.task
+    quantity = args.quantity
+    # If output_path not provided, default inside root_folder
+    output_path = args.output_path or os.path.join(
+        root_folder, f"clean_figs/supplementary/test_results/{quantity}_param_boot_{task}/all_n.pdf"
+    )
+
+    file_prefix = "aggregated_results"
+    print("get data")
+    if task == "segm":
+        folder_path = os.path.join(root_folder, "results_metrics_segm")
+        metrics = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "assd", "masd", "hd", "hd_perc"]
+        stats = ["mean"]
+        if quantity == "width":
+            df_results = extract_df_segm_width(folder_path, file_prefix, metrics, stats)
+        else:
+            df_results = extract_df_segm_cov(folder_path, file_prefix, metrics, stats)
+    else:
+        folder_path = os.path.join(root_folder, "results_metrics_classif")
+        metrics = ["accuracy"]
+        averages = ["micro"]
+        df_results = extract_df_classif_cov(folder_path, file_prefix, metrics, averages)
+
+    print("performing tests")
+    p_values = perform_pairwise_tests_param_boot(df_results, task)
+
+    print("significance")
+    alphas = np.array([0.001, 0.01, 0.05])
+    pvals, locations = get_pvalues_param_boot(p_values)
+    _, qvals, _, _ = multipletests(pvals, method="fdr_bh")
+    q_values, significance = reconstruct_param_boot(qvals, locations, p_values, alphas)
+
+    print("making plot")
+    plot_significance_matrix_param_boot(
+        significance, p_values, task, quantity, output_path, upload_overleaf=args.upload_overleaf
+    )
+
+
+if __name__ == "__main__":
+    main()

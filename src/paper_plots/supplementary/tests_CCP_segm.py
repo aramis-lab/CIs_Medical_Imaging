@@ -6,6 +6,7 @@ import seaborn as sns
 import matplotlib.patches as mpatches
 from matplotlib.colors import ListedColormap
 from scipy.stats import permutation_test
+from statsmodels.stats.multitest import multipletests
 import argparse
 from .test_basic import format_p
 from ..df_loaders import extract_df_segm_cov
@@ -183,76 +184,81 @@ def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correcti
     return significance
 
 
-def plot_significance_matrix_segm(significance,p_values,to_overleaf=False):
-
+def plot_significance_matrix_segm(
+    significance: dict,
+    p_values: dict,
+    output_path: str,
+    upload_overleaf: bool = False,
+):
     plt.rcdefaults()
+    plt.rcParams.update({
+        "font.family": "sans-serif",
+        "figure.dpi": 200,
+        "savefig.dpi": 300,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+    })
+
+    metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
+    param_methods = ["param_z", "param_t"]
+
+    color_map_dict = {
+        -1: "#F5F5F5",   # not available
+        0: "#F8CC80FF",  # not significant
+        1: "#D55E00",    # significant
+    }
 
     methods = list(significance.keys())
     stats = list(next(iter(significance.values())).keys())
-    # metrics_segm = list(next(iter(next(iter(significance.values())).values())).keys())
-    metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
+    metric_ticklabels = [metric_labels.get(m, m) for m in metrics_segm]
 
+    # constrained_layout removed: it is incompatible with tight_layout
+    fig, axes = plt.subplots(
+        len(methods), len(stats),
+        figsize=(15 * len(stats), 15 * len(methods)),
+        sharey=True,
+        squeeze=False,
+    )
 
-    fig, axes = plt.subplots(len(methods), len(stats), figsize=(15*len(stats), 15 * len(methods)), sharey=True,constrained_layout=True)
+    last_visible_ax = None
+    for row, method in enumerate(methods):
+        for col, stat in enumerate(stats):
+            ax = axes[row][col]
 
-    for col, stat in enumerate(stats):
-        for row, method in enumerate(methods):
-            if len(stats) == 1 and len(methods) == 1:
-                ax = axes
-            elif len(stats) == 1 or len(methods) == 1:
-                ax = axes[max(row, col)]
-            else:
-                ax = axes[row, col]
-
-            if (stat != 'mean') and (method in ['param_z', 'param_t']):
-                ax.axis('off')
+            if (stat != "mean") and (method in param_methods):
+                ax.axis("off")
                 continue
+            last_visible_ax = ax
 
-            # Extract significance for the specific method and stat
             method_stat_significance = significance.get(method, {}).get(stat, {})
-            global_matrix = np.zeros((len(metrics_segm), len(metrics_segm)))
-            for i, metric1 in enumerate(metrics_segm):
-                for j, metric2 in enumerate(metrics_segm):
-                    val = method_stat_significance.get(metric2, {}).get(metric1, None)
-                    if val is None:
-                        global_matrix[i,j]=(-1)      # N/A
-                    elif val == 0:
-                        global_matrix[i,j]=(0)       # Not significant
-                    else:
-                        global_matrix[i,j]=(1)
+            p_values_method_stat = p_values.get(method, {}).get(stat, {})
 
-            # Create p_val matrix for heatap 
+            global_matrix = np.zeros((len(metrics_segm), len(metrics_segm)))
             pval_matrix = []
+
             for i, metric1 in enumerate(metrics_segm):
                 pval_row = []
                 for j, metric2 in enumerate(metrics_segm):
-                    p_val = p_values.get(method, {}).get(stat, {}).get(metric2, {}).get(metric1, None)
-                    if p_val is None:
-                        pval_row.append("")
+                    val = method_stat_significance.get(metric2, {}).get(metric1, None)
+                    if val is None:
+                        global_matrix[i, j] = -1
+                    elif val == 0:
+                        global_matrix[i, j] = 0
                     else:
-                        pval_row.append(format_p(p_val))
+                        global_matrix[i, j] = 1
+
+                    p_val = p_values_method_stat.get(metric2, {}).get(metric1, None)
+                    pval_row.append("" if p_val is None else format_p(p_val))
                 pval_matrix.append(pval_row)
-            
-            values = np.unique(global_matrix)
 
-            # full mapping dictionary
-            color_map_dict = {
-                -1: "#F5F5F5",      
-            0: "#F8CC80FF",     
-            1: "#D55E00"
-        }
-        
-            colors = [color_map_dict[v] for v in values]
-
-            cmap = ListedColormap(colors)
-            
-            labels_x = [metric_labels.get(m, m) for m in metrics_segm]
-            labels_y = [metric_labels.get(m, m) for m in metrics_segm]
+            # only the lower triangle is drawn, so the colormap must be built from it alone
             mask = np.triu(np.ones_like(global_matrix, dtype=bool), k=1)
+            cmap = ListedColormap([color_map_dict[v] for v in np.unique(global_matrix[~mask])])
+
             sns.heatmap(
                 global_matrix,
-                xticklabels=labels_x,
-                yticklabels=labels_y,
+                xticklabels=metric_ticklabels,
+                yticklabels=metric_ticklabels,
                 annot=pval_matrix,
                 mask=mask,
                 cmap=cmap,
@@ -260,191 +266,104 @@ def plot_significance_matrix_segm(significance,p_values,to_overleaf=False):
                 ax=ax,
                 square=True,
                 linewidths=0.4,
-                fmt='',
-                annot_kws={"fontsize": 12}
+                fmt="",
+                annot_kws={"fontsize": 12},
             )
-            ax.tick_params(axis='x', rotation=45, labelsize=14)
-
-            ax.tick_params(axis='y', rotation=45, labelsize=14)
-
-            ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
+            ax.tick_params(axis="x", rotation=45, labelsize=14)
+            ax.tick_params(axis="y", rotation=45, labelsize=14)
+            ax.set_title(
+                f"Stat : {stat_labels.get(stat, stat)}, Method: {method_labels.get(method, method)}",
+                fontsize=16,
+            )
 
     legend_elements = [
-                mpatches.Patch(facecolor="#D55E00",
-                            edgecolor='k',
-                            label="Significant \n(FDR-adjusted p < 0.05)"),
-                mpatches.Patch(facecolor="#F8CC80FF",
-                            edgecolor='k',
-                            label="Not significant"),
-                mpatches.Patch(facecolor="#F5F5F5",
-                            edgecolor='k',
-                            label="Not available"),
-            ]
-    ax.legend(
+        mpatches.Patch(facecolor="#D55E00", edgecolor="k",
+                       label="Significant \n(FDR-adjusted p < 0.05)"),
+        mpatches.Patch(facecolor="#F8CC80FF", edgecolor="k",
+                       label="Not significant"),
+        mpatches.Patch(facecolor="#F5F5F5", edgecolor="k",
+                       label="Not available"),
+    ]
+    legend_ax = last_visible_ax if last_visible_ax is not None else axes[-1][-1]
+    legend = legend_ax.legend(
         handles=legend_elements,
-        
-        bbox_to_anchor=(1, 0.5),
+        loc="center left",
+        bbox_to_anchor=(1.01, 0.5),
         ncol=1,
         fontsize=16,
         frameon=True,
         title="Significance levels \nwith FDR correction",
-        title_fontsize=16
+        title_fontsize=16,
     )
-    
-    output_path='../clean_figs/supplementary/test_results/coverage_segm_metrics/test_segm.pdf'
-    fig.savefig(output_path)
+    # exclude the legend from the layout engine but keep it for saving
+    legend.set_in_layout(False)
 
-    if to_overleaf:
-        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/cov_segm.pdf", commit_msg=f"Update figure test cov segm")
+    # tight_layout, leaving free space on the right for the legend
+    fig.tight_layout(rect=[0, 0, 0.92, 1])
 
-    else:
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+    fig.savefig(output_path, bbox_inches="tight", bbox_extra_artists=(legend,))
+    plt.close(fig)
 
-        plt.show()
-  
+    if upload_overleaf:
+        upload_to_overleaf(
+            output_path,
+            "Preprint/supp_figs/tests/cov_segm.pdf",
+            commit_msg="Update figure test cov segm",
+        )
 
 
-def plot_significance_matrix_segm__(root_folder:str, output_path:str, upload_overleaf: bool = False):
+def main():
+    """
+    Standalone entry point for the pairwise segmentation-metric coverage figure.
 
-    plt.rcdefaults()
+    Note: the BH-FDR correction applied here pools p-values from this test only.
+    `make_correction_fdr.py` instead pools across all tests before correcting, so
+    the q-values — and therefore the figure — differ between the two paths.
+    """
+    parser = argparse.ArgumentParser(
+        description="Perform pairwise significance tests on segmentation CI coverage fits."
+    )
+    parser.add_argument("--root_folder", type=str, required=True,
+                        help="Root folder containing results_metrics_segm.")
+    parser.add_argument("--output_path", type=str, required=False,
+                        help="Output path for the significance matrix plot.")
+    parser.add_argument("--upload_overleaf", action="store_true",
+                        help="Upload the plot to Overleaf.")
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    # If output_path not provided, default inside root_folder
+    output_path = args.output_path or os.path.join(
+        root_folder, "clean_figs/supplementary/test_results/coverage_segm_metrics/test_segm.pdf"
+    )
 
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
-    stats = ["mean"]
+    # perform_pairwise_tests_segm compares these two stats
+    stats = ["mean", "std"]
 
     df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats)
-
     print("Data loaded. Performing fits...")
 
     df_fit_results = perform_fits(df_segm, stats)
-
-    median = df_fit_results.groupby(['method', 'stat', 'metric'])['beta2'].median().reset_index()
-
     print("Fitting completed.")
+
     p_values = perform_pairwise_tests_segm(df_fit_results)
     print("Pairwise tests completed.")
-    significance = tell_significance(p_values, bonferroni_correction=True)
 
-    methods = list(significance.keys())
-    stats = list(next(iter(significance.values())).keys())
-    metrics_all = list(next(iter(next(iter(significance.values())).values())).keys())
+    alphas = np.array([0.001, 0.01, 0.05])
+    pvals, locations = get_pvalues_segm(p_values)
+    _, qvals, _, _ = multipletests(pvals, method="fdr_bh")
+    q_values, significance = reconstruct_segm(qvals, locations, p_values, alphas)
 
-    nb_cols = int(np.floor(np.sqrt(len(methods))))
-    nb_rows = int(np.ceil(len(methods) / nb_cols))
-    _, axes = plt.subplots(nb_rows, nb_cols, figsize=(15 * nb_cols, 12 * nb_rows))
+    print("Making plot...")
+    plot_significance_matrix_segm(
+        significance, p_values, output_path, upload_overleaf=args.upload_overleaf
+    )
 
-    stat = "mean"
-    for i, method in enumerate(methods):
-        row = i // nb_cols
-        col = i % nb_cols
-        if nb_cols == 1 and nb_rows == 1:
-            ax = axes
-        elif nb_cols == 1 or nb_rows == 1:
-            ax = axes[max(row, col)]
-        else:
-            ax = axes[row, col]
-
-        order = median[(median['method'] == method) & (median['stat'] == stat)].sort_values('beta2')['metric'].tolist()
-        metrics_order = [m for m in order if m in metrics_all]
-
-        # Extract significance for the specific method and stat
-        method_stat_significance = significance.get(method, {}).get(stat, {})
-        global_matrix = np.zeros((len(metrics_order), len(metrics_order)))
-
-        for i, metric1 in enumerate(metrics_order):
-            for j, metric2 in enumerate(metrics_order):
-                val = method_stat_significance.get(metric1, {}).get(metric2, None)
-                global_matrix[i, j] = min(2, val) if val is not None else 0
-            global_matrix[i, i] = -1
-
-        # Create p_val matrix for heatap 
-        pval_matrix = []
-        for i, metric1 in enumerate(metrics_order):
-            pval_row = []
-            for j, metric2 in enumerate(metrics_order):
-                p_val = p_values.get(method, {}).get(stat, {}).get(metric1, {}).get(metric2, None)
-                if p_val is not None:
-                    pval_row.append(f"{p_val.round(4)}" if p_val >= 0.0001 else "<0.0001")
-                else:
-                    pval_row.append("0")
-            pval_row[i] = "0"
-            pval_matrix.append(pval_row)
-        
-        values = np.unique(global_matrix)
-
-        # full mapping dictionary
-        color_map_dict = {
-            -1: '#000000',
-            0: '#d9d9d9',
-            1: '#fdae61',
-            2: '#d73027',
-        }
-        # extract only the colors for values that appear
-        colors = [color_map_dict[v] for v in values]
-
-        # build colormap
-        cmap = ListedColormap(colors)
-        
-        # Plot heatmap
-        labels = [metric_labels.get(m, m) for m in metrics_order]
-        sns.heatmap(
-            global_matrix,
-            xticklabels=labels,
-            yticklabels=labels,
-            annot=pval_matrix,
-            cmap=cmap,
-            cbar=False,
-            ax=ax,
-            fmt='',
-            annot_kws={"fontsize": 18}
-        )
-        ax.tick_params(axis='x', rotation=45, labelsize=16)
-
-        ax.tick_params(axis='y', rotation=45, labelsize=16)
-
-        ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=18)
-
-        legend_elements = [
-            mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%, <0.00125'),
-            mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%, <0.00625'),
-            mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-        ]
-        ax.legend(
-            handles=legend_elements,
-            bbox_to_anchor=(1.01, 0.5),
-            ncol=1,
-            fontsize=16,
-            frameon=True,
-            title="Significance levels \nwith Bonferroni correction",
-            title_fontsize=16
-        )
-    
-    for i in range(nb_rows * nb_cols):
-        row = i // nb_cols
-        col = i % nb_cols
-        if i >= len(stats):
-            axes[row, col].axis('off')
-    
-    plt.tight_layout()
-    if not os.path.exists(os.path.dirname(output_path)):
-        os.makedirs(os.path.dirname(output_path))
-    plt.savefig(output_path)
-    plt.close()
-
-    if upload_overleaf:
-        upload_to_overleaf(output_path, f"Preprint/supp_figs/{os.path.basename(output_path)}", commit_msg="Add significance matrix for segmentation metrics")
-
-def main():
-    parser = argparse.ArgumentParser(description="Perform pairwise significance tests on segmentation CI coverage fits.")
-    parser.add_argument('--root_folder', type=str, required=True, help='Root folder containing results_metrics_segm')
-    parser.add_argument('--output_path', type=str, required=False, help='Output path for the significance matrix plot.')
-    parser.add_argument('--upload_overleaf', action='store_true', help='Upload the plot to Overleaf')
-    args = parser.parse_args()
-
-    root_folder = args.root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/pairwise_comp_segm_segm.pdf")
-
-    plot_significance_matrix_segm(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()

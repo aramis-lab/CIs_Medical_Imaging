@@ -8,8 +8,9 @@ from matplotlib.colors import ListedColormap
 from scipy.stats import permutation_test
 import argparse
 
-from ..df_loaders import extract_df_segm_cov
-from ..plot_utils import metric_labels, stat_labels, method_labels
+from .test_basic import format_p
+from ..df_loaders import extract_df_segm_cov, extract_df_segm_width   # replaces the cov-only import
+from ..plot_utils import metric_labels, stat_labels, method_labels, upload_to_overleaf
 
 def perform_fits(df_segm, stats):
     results = []
@@ -131,131 +132,168 @@ def tell_significance(p_vals, alphas=np.array([0.01, 0.05, 0.1]), bonferroni_cor
                         significance[method][stat][metric1][metric2] = 0
     return significance
 
-def plot_significance_matrix_segm(root_folder:str, output_path:str):
-
+def plot_significance_matrix_wdp_segm(
+    significance: dict,
+    p_values: dict,
+    output_path: str,
+    upload_overleaf: bool = False,
+):
     plt.rcdefaults()
+    plt.rcParams.update({
+        "font.family": "sans-serif",
+        "figure.dpi": 200,
+        "savefig.dpi": 300,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+    })
+
+    metric_order = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
+    param_methods = ["param_z", "param_t"]
+
+    # significance is np.sum(p < alphas) with alphas = [0.01, 0.05, 0.1],
+    # so 3 means p < 0.01, 2 means p < 0.05, 1 means p < 0.1
+    color_map_dict = {
+        -1: "#000000",   # diagonal
+        0: "#d9d9d9",    # not significant
+        1: "#fee08b",    # 10%
+        2: "#fdae61",    # 5%
+        3: "#d73027",    # 1%
+    }
+
+    methods = list(significance.keys())
+    stats = list(next(iter(significance.values())).keys())
+    metrics_all = list(next(iter(next(iter(significance.values())).values())).keys())
+    metrics_all = [m for m in metric_order if m in metrics_all]
+    metric_ticklabels = [metric_labels.get(m, m) for m in metrics_all]
+
+    fig, axes = plt.subplots(
+        len(stats), len(methods),
+        figsize=(15 * len(methods), 12 * len(stats)),
+        squeeze=False,
+    )
+
+    last_visible_ax = None
+    for row, stat in enumerate(stats):
+        for col, method in enumerate(methods):
+            ax = axes[row][col]
+
+            if (stat != "mean") and (method in param_methods):
+                ax.axis("off")
+                continue
+            last_visible_ax = ax
+
+            method_stat_significance = significance.get(method, {}).get(stat, {})
+            p_values_method_stat = p_values.get(method, {}).get(stat, {})
+
+            global_matrix = np.zeros((len(metrics_all), len(metrics_all)))
+            pval_matrix = []
+
+            for i, metric1 in enumerate(metrics_all):
+                pval_row = []
+                for j, metric2 in enumerate(metrics_all):
+                    val = method_stat_significance.get(metric1, {}).get(metric2, None)
+                    global_matrix[i, j] = min(3, val) if val is not None else 0
+
+                    p_val = p_values_method_stat.get(metric1, {}).get(metric2, None)
+                    pval_row.append("" if p_val is None else format_p(p_val))
+                global_matrix[i, i] = -1
+                pval_row[i] = ""
+                pval_matrix.append(pval_row)
+
+            cmap = ListedColormap([color_map_dict[v] for v in np.unique(global_matrix)])
+
+            sns.heatmap(
+                global_matrix,
+                xticklabels=metric_ticklabels,
+                yticklabels=metric_ticklabels,
+                annot=pval_matrix,
+                cmap=cmap,
+                cbar=False,
+                ax=ax,
+                fmt="",
+                annot_kws={"fontsize": 16},
+            )
+            ax.tick_params(axis="x", rotation=45, labelsize=14)
+            ax.tick_params(axis="y", rotation=45, labelsize=14)
+            ax.set_title(
+                f"Stat : {stat_labels.get(stat, stat)}, Method: {method_labels.get(method, method)}",
+                fontsize=16,
+            )
+
+    legend_elements = [
+        mpatches.Patch(facecolor="#d73027", edgecolor="k", label="1%"),
+        mpatches.Patch(facecolor="#fdae61", edgecolor="k", label="5%"),
+        mpatches.Patch(facecolor="#fee08b", edgecolor="k", label="10%"),
+        mpatches.Patch(facecolor="#d9d9d9", edgecolor="k", label="Not significant"),
+    ]
+    legend_ax = last_visible_ax if last_visible_ax is not None else axes[-1][-1]
+    legend = legend_ax.legend(
+        handles=legend_elements,
+        loc="center left",
+        bbox_to_anchor=(1.01, 0.5),
+        ncol=1,
+        fontsize=16,
+        frameon=True,
+        title="Significance levels \nwith Bonferroni correction",
+        title_fontsize=16,
+    )
+    # exclude the legend from the layout engine but keep it for saving
+    legend.set_in_layout(False)
+
+    fig.tight_layout(rect=[0, 0, 0.92, 1])
+
+    if not os.path.exists(os.path.dirname(output_path)):
+        os.makedirs(os.path.dirname(output_path))
+    fig.savefig(output_path, bbox_inches="tight", bbox_extra_artists=(legend,))
+    plt.close(fig)
+
+    if upload_overleaf:
+        upload_to_overleaf(
+            output_path,
+            "Preprint/supp_figs/tests/width_segm.pdf",
+            commit_msg="Update figure test width segm",
+        )
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Perform pairwise significance tests on segmentation CI width fits."
+    )
+    parser.add_argument("--root_folder", type=str, required=True,
+                        help="Root folder containing results_metrics_segm.")
+    parser.add_argument("--output_path", type=str, required=False,
+                        help="Output path for the significance matrix plot.")
+    parser.add_argument("--upload_overleaf", action="store_true",
+                        help="Upload the plot to Overleaf.")
+    args = parser.parse_args()
+
+    root_folder = args.root_folder
+    # If output_path not provided, default inside root_folder
+    output_path = args.output_path or os.path.join(
+        root_folder, "clean_figs/supplementary/tests_WDP_segm.pdf"
+    )
 
     folder_path_segm = os.path.join(root_folder, "results_metrics_segm")
     file_prefix_segm = "aggregated_results"
     metrics_segm = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
     stats = ["mean"]
 
-    # df_segm = extract_df_segm_cov(folder_path_segm, file_prefix_segm, metrics_segm, stats)
-    df_segm = pd.read_csv('../../../results_metrics_segm/aggregated_results_')
-
+    df_segm = extract_df_segm_width(folder_path_segm, file_prefix_segm, metrics_segm, stats)
     print("Data loaded. Performing fits...")
 
     df_fit_results = perform_fits(df_segm, stats)
     print("Fitting completed.")
+
     p_values = perform_pairwise_tests(df_fit_results)
     print("Pairwise tests completed.")
+
     significance = tell_significance(p_values, bonferroni_correction=True)
 
-    metric_order = ["dsc", "iou", "boundary_iou", "nsd", "cldice", "hd", "hd_perc", "masd", "assd"]
-    methods = list(significance.keys())
-    stats = list(next(iter(significance.values())).keys())
-    metrics_all = list(next(iter(next(iter(significance.values())).values())).keys())
-    metrics_all = [m for m in metric_order if m in metrics_all]
-
-    fig, axes = plt.subplots(len(stats), len(methods), figsize=(15 * len(methods), 12 * len(stats)))
-
-    for row, stat in enumerate(stats):
-        for col, method in enumerate(methods):
-            ax = axes[row, col] if len(stats) > 1 else axes[col]
-
-            if (stat != 'mean') and (method in ['param_z', 'param_t']):
-                ax.axis('off')
-                continue
-
-            # Extract significance for the specific method and stat
-            method_stat_significance = significance.get(method, {}).get(stat, {})
-            global_matrix = np.zeros((len(metrics_all), len(metrics_all)))
-
-            for i, metric1 in enumerate(metrics_all):
-                for j, metric2 in enumerate(metrics_all):
-                    val = method_stat_significance.get(metric1, {}).get(metric2, None)
-                    global_matrix[i, j] = min(3, val) if val is not None else 0
-                global_matrix[i, i] = -1
-
-            # Create p_val matrix for heatap 
-            pval_matrix = []
-            for i, metric1 in enumerate(metrics_all):
-                pval_row = []
-                for j, metric2 in enumerate(metrics_all):
-                    p_val = p_values.get(method, {}).get(stat, {}).get(metric1, {}).get(metric2, None)
-                    if p_val is not None:
-                        pval_row.append(f"{p_val.round(4)}" if p_val >= 0.0001 else "<0.0001")
-                    else:
-                        pval_row.append("0")
-                pval_row[i] = "0"
-                pval_matrix.append(pval_row)
-            
-            values = np.unique(global_matrix)
-
-            # full mapping dictionary
-            color_map_dict = {
-                -1: '#000000',
-                0: '#d9d9d9',
-                1: '#fee08b',
-                2: '#fdae61',
-                3: '#d73027',
-            }
-            # extract only the colors for values that appear
-            colors = [color_map_dict[v] for v in values]
-
-            # build colormap
-            cmap = ListedColormap(colors)
-            
-            # Plot heatmap
-            labels = [metric_labels.get(m, m) for m in metrics_all]
-            sns.heatmap(
-                global_matrix,
-                xticklabels=labels,
-                yticklabels=labels,
-                annot=pval_matrix,
-                cmap=cmap,
-                cbar=False,
-                ax=ax,
-                fmt='',
-                annot_kws={"fontsize": 16}
-            )
-            ax.tick_params(axis='x', rotation=45, labelsize=14)
-
-            ax.tick_params(axis='y', rotation=45, labelsize=14)
-
-            ax.set_title(f"Stat : {stat_labels[stat]}, Method: {method_labels[method]}", fontsize=16)
-
-    legend_elements = [
-        mpatches.Patch(facecolor='#d73027', edgecolor='k', label='1%'),
-        mpatches.Patch(facecolor='#fdae61', edgecolor='k', label='5%'),
-        mpatches.Patch(facecolor='#fee08b', edgecolor='k', label='10%'),
-        mpatches.Patch(facecolor='#d9d9d9', edgecolor='k', label='Not significant')
-    ]
-    plt.legend(
-        handles=legend_elements,
-        bbox_to_anchor=(1.01, 0.5),
-        ncol=1,
-        fontsize=16,
-        frameon=True,
-        title="Significance levels \nwith Bonferroni correction",
-        title_fontsize=16
+    print("Making plot...")
+    plot_significance_matrix_wdp_segm(
+        significance, p_values, output_path, upload_overleaf=args.upload_overleaf
     )
-    plt.tight_layout()
-    if not os.path.exists(os.path.dirname(output_path)):
-        os.makedirs(os.path.dirname(output_path))
-    plt.savefig(output_path)
-    plt.close()
-
-def main():
-    parser = argparse.ArgumentParser(description="Perform pairwise significance tests on segmentation CI width fits.")
-    parser.add_argument('--root_folder', type=str, required=True, help='Root folder containing results_metrics_segm')
-    parser.add_argument('--output_path', type=str, required=False, help='Output path for the significance matrix plot.')
-    args = parser.parse_args()
-
-    root_folder = args.root_folder
-    output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/tests_WDP_segm.pdf")
-
-    plot_significance_matrix_segm(root_folder, output_path)
 
 
-# main()
+if __name__ == "__main__":
+    main()
