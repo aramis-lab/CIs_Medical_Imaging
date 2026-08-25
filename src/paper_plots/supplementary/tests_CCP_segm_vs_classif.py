@@ -7,10 +7,9 @@ import matplotlib.patches as mpatches
 from matplotlib.colors import ListedColormap
 from scipy.stats import permutation_test
 import argparse
-
 from ..df_loaders import extract_df_segm_cov, extract_df_classif_cov
 from ..plot_utils import metric_labels, stat_labels, method_labels, upload_to_overleaf
-
+from .test_basic import format_p
 def perform_fits_segm(df_segm, metrics, stats):
     results = []
     for task in df_segm['task'].unique():
@@ -71,38 +70,86 @@ def perform_fits_classif(df_classif):
     df_fit_results = pd.DataFrame(results)
     return df_fit_results
 
-def perform_pairwise_tests(df_fit_results, df_fit_results_classif):
+def perform_pairwise_tests_segm_classif(df_fit_results, df_fit_results_classif):
 
-    segm_metrics = df_fit_results['metric'].unique()
+    segm_metrics = ['dsc', 'nsd', 'cldice', 'iou', 'boundary_iou']
     classif_metrics = df_fit_results_classif['metric'].unique()
-    methods = df_fit_results_classif['method'].unique()
-    stats = df_fit_results['stat'].unique()
-    p_values = {met : {s : {m : {m2: None for m2 in segm_metrics} for m in classif_metrics} for s in stats} for met in methods}
+    n_values = df_fit_results['n'].unique()
 
-    for method in methods:
-        for stat in stats:
-            if (stat != 'mean') and (method in ['param_z', 'param_t']):
-                continue
-            for metric1 in classif_metrics:
-                for metric2 in segm_metrics:
-                    data_metric1 = df_fit_results_classif[(df_fit_results_classif["method"]==method) & (df_fit_results_classif['metric'] == metric1)]
-                    data_metric2 = df_fit_results[(df_fit_results["method"]==method) & (df_fit_results['metric'] == metric2)]
+    p_values = {str(n): {m : {m2: None for m2 in segm_metrics} for m in classif_metrics} for n in n_values}
+    for n in n_values:
+        for metric1 in classif_metrics:
+            for metric2 in segm_metrics:
+                data_metric1 = df_fit_results_classif[(df_fit_results_classif["method"]=='percentile')& (df_fit_results_classif['metric'] == metric1) &( df_fit_results_classif['n']==n)]
+                data_metric2 = df_fit_results[(df_fit_results["stat"]=='mean')&(df_fit_results["method"]=='percentile') & (df_fit_results['metric'] == metric2)&( df_fit_results['n']==n)]
 
-                    def statistic(x, y):
-                        return np.mean(x) - np.mean(y)
+                def statistic(x, y):
+                    return np.mean(x) - np.mean(y)
 
-                    res = permutation_test(
-                        (data_metric1['beta2'].to_numpy(), data_metric2['beta2'].to_numpy()),
-                        statistic,
-                        vectorized=False,
-                        n_resamples=50000,
-                        alternative='two-sided'
-                    )
-                    pval = res.pvalue
+                res = permutation_test(
+                    (data_metric1['value'].to_numpy(), data_metric2['value'].to_numpy()),
+                    statistic,
+                    vectorized=False,
+                    n_resamples=100000,
+                    alternative='less'
+                )
+                pval = res.pvalue
 
-                    p_values[method][stat][metric1][metric2] = pval
+                p_values[str(n)][metric1][metric2] = pval
 
     return p_values
+
+def get_pvalues_segm_classif(p_vals):
+    pval_list = []
+    locations = []
+
+    for n, metric1_dict in p_vals.items():
+        for metric1, metric2_dict in metric1_dict.items():
+            for metric2, p_val in metric2_dict.items():
+                if p_val is not None:
+                    pval_list.append(p_val)
+                    locations.append(
+                        (n, metric1, metric2)
+                    )
+
+    pval_array = np.asarray(pval_list)
+    return(pval_array, locations)
+
+def reconstruct_segm_classif(qvals, locations,p_vals,alphas):
+   
+    significance = {
+        n: {
+            metric1: {
+                    metric2: None
+                        for metric2 in metric2_dict
+                    }
+                for metric1,metric2_dict in metric1_dict.items()
+        }
+        for n, metric1_dict in p_vals.items()
+    }
+    qvalues = {
+        n: {
+            metric1: {
+                    metric2:  None
+                        for metric2 in metric2_dict
+                    }
+                for metric1,metric2_dict in metric1_dict.items()
+        }
+        for n, metric1_dict in p_vals.items()
+    }
+    # Fill significance levels using q-values
+    for (n, metric1, metric2), q in zip(locations, qvals):
+        significance[n][metric1][metric2] = np.sum(q < alphas)
+        qvalues[n][metric1][metric2] = q
+
+    # Fill missing values
+    for n, metric1_dict in p_vals.items():
+        for metric1, metric2_dict in metric1_dict.items():
+            for metric2, p_val in metric2_dict.items():
+                if p_val is None:
+                    significance[n][metric1][metric2] = 0
+
+    return qvalues,significance
 
 def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correction=True):
     num_comparisons = sum(
@@ -131,8 +178,124 @@ def tell_significance(p_vals, alphas=np.array([0.01, 0.05]), bonferroni_correcti
                     else:
                         significance[method][stat][metric1][metric2] = 0
     return significance
+def plot_significance_matrix_segm_classif(significance,p_values, to_overleaf=False):
 
-def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str, upload_overleaf: bool = False):
+    plt.rcdefaults()
+    n_values=significance.keys()
+    
+
+    fig, axes = plt.subplots(1,len(n_values), figsize=(15 , 8), sharey=True)
+    
+
+    # Extract significance for the specific method and stat
+    
+    for i,(n, sign_n) in enumerate(significance.items()):
+        ax=axes[i]
+        p_values_n=p_values[n]
+        metrics_classif = sign_n.keys()
+        metrics_segm = list(next(iter(sign_n.values())).keys())
+        global_matrix = np.zeros((len(metrics_segm), len(metrics_classif)))
+        pval_matrix = []
+        for j, metric1 in enumerate(metrics_segm):
+            pval_row = []
+
+            for k, metric2 in enumerate(metrics_classif):
+                val = sign_n.get(metric2, {}).get(metric1, None)
+                p_val = p_values_n.get(metric2, {}).get(metric1,None)
+                if val is None:
+                    global_matrix[j,k]=(-1)      # N/A
+                elif val == 0:
+                    global_matrix[j,k]=(0)       # Not significant
+                else:
+                    global_matrix[j,k]=(1)
+
+                if p_val is None:
+                    pval_row.append("")
+                
+                else:
+                    pval_row.append(format_p(p_val))
+            pval_matrix.append(pval_row)
+        # Create p_val matrix for heatap 
+    
+        values = np.unique(global_matrix)
+
+        # full mapping dictionary
+        color_map_dict = {
+           -1: "#F5F5F5",      
+            0: "#F8CC80FF",     
+            1: "#D55E00"
+        }
+        # extract only the colors for values that appear
+        colors = [color_map_dict[v] for v in values]
+
+        # build colormap
+        cmap = ListedColormap(colors)
+        
+        # Plot heatmap
+        labels_x = [metric_labels.get(m, m) for m in metrics_classif]
+        labels_y = [metric_labels.get(m, m) for m in metrics_segm]
+        sns.heatmap(
+            global_matrix,
+            xticklabels=labels_x,
+            yticklabels=labels_y,
+            annot=pval_matrix,
+            cmap=cmap,
+            cbar=False,
+            ax=ax,
+            square=True,
+            linewidths=1,
+            fmt='',
+            annot_kws={"fontsize": 5}
+        )
+        ax.tick_params(axis='x', rotation=90, labelsize=10)
+
+        ax.tick_params(axis='y', rotation=0, labelsize=10)
+
+        ax.set_title(f"n={n}", fontsize=14)
+
+        legend_elements = [
+                mpatches.Patch(facecolor="#D55E00",
+                            edgecolor='k',
+                            label="Significant \n(FDR-adjusted p < 0.05)"),
+                mpatches.Patch(facecolor="#F8CC80FF",
+                            edgecolor='k',
+                            label="Not significant"),
+                mpatches.Patch(facecolor="#F5F5F5",
+                            edgecolor='k',
+                            label="Not available"),
+            ]
+    ax.legend(
+    handles=legend_elements,
+    loc='center left',
+    bbox_to_anchor=(1.01, 0.5),
+    ncol=1,
+    fontsize=10,
+    frameon=True,
+    title="Significance levels \nwith FDR correction",
+    title_fontsize=10
+    )
+    # plt.tight_layout()
+    fig.subplots_adjust(
+    left=0.07,   # more space for y tick labels
+    right=0.85,  # space for legend
+    # top=1,
+    # bottom=0,
+    wspace=0.07,
+    hspace=0
+    )
+    output_path=f'../clean_figs/supplementary/test_results/cov_segm_classif/all_n.pdf'
+    fig.savefig(output_path)
+
+    if to_overleaf:
+        upload_to_overleaf(output_path, f"Preprint/supp_figs/Tests/cov_segm_classif.pdf", commit_msg=f"Update figure test cov segm classif")
+
+    else:
+
+        plt.show()
+
+
+
+def plot_significance_matrix_segm__classif(root_folder:str, output_path:str, upload_overleaf: bool = False):
 
     plt.rcdefaults()
 
@@ -160,7 +323,7 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str, u
     order_segm = median_segm[median_segm['stat'] == 'mean'].sort_values('beta2')['metric'].tolist()
     order_classif = median_classif.sort_values('beta2')['metric'].tolist()
     print("Fitting completed.")
-    p_values = perform_pairwise_tests(df_fit_results_segm, df_fit_results_classif)
+    p_values = perform_pairwise_tests_segm_classif(df_fit_results_segm, df_fit_results_classif)
     print("Pairwise tests completed.")
     significance = tell_significance(p_values, bonferroni_correction=True)
 
@@ -234,6 +397,8 @@ def plot_significance_matrix_segm_vs_classif(root_folder:str, output_path:str, u
             cmap=cmap,
             cbar=False,
             ax=ax,
+            square=True,
+            linewidths=1,
             fmt='',
             annot_kws={"fontsize": 16}
         )
@@ -284,7 +449,7 @@ def main():
     root_folder = args.root_folder
     output_path = args.output_path or os.path.join(root_folder, "clean_figs/supplementary/pairwise_comp_classif_segm.pdf")
 
-    plot_significance_matrix_segm_vs_classif(root_folder, output_path, upload_overleaf=args.upload_overleaf)
+    plot_significance_matrix_segm__classif(root_folder, output_path, upload_overleaf=args.upload_overleaf)
 
 if __name__ == "__main__":
     main()
